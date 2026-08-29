@@ -1,0 +1,4 @@
+fastapi==0.141.1
+uvicorn==0.52.4
+pyserial==3.5
+paho-mqtt==2.1.0
