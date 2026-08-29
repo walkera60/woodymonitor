@@ -38,7 +38,7 @@ Linux distributions using `apt` and `systemd`.
 
 Clone the repository:
 
-    git clone <REPOSITORY-URL> woodymonitor
+    git clone https://github.com/walkera60/woodymonitor.git woodymonitor
     cd woodymonitor
 
 Run the installer:
@@ -112,9 +112,174 @@ Open the following address in a browser:
 
     http://<RASPBERRY-PI-IP>:8080
 
-For example:
+## Home Assistant integration
 
-    http://192.168.1.50:8080
+Woody Monitor can provide its live burner data directly to Home Assistant
+through the built-in REST API.
+
+**MQTT is not required.**
+
+The data flow is:
+
+    Woody Monitor
+          |
+          | HTTP REST API
+          | /api/v1/live
+          v
+    Home Assistant
+          |
+          +-- sensor.woody_boiler_temperature
+          +-- sensor.woody_power
+          +-- sensor.woody_oxygen
+          +-- sensor.woody_hotwater_temperature
+          +-- sensor.woody_pellet_silo
+          +-- sensor.woody_burner_alarm
+          +-- sensor.woody_burner_mode
+          +-- and more
+
+Home Assistant periodically requests the Woody Monitor API and creates
+Home Assistant sensors from the returned values.
+
+### 1. Find the Woody Monitor IP address
+
+Find the IP address of the computer running Woody Monitor.
+
+    192.168.1.50
+
+Test that Woody Monitor is accessible by opening:
+
+    http://192.168.1.50:8080/api/v1/status
+
+A working installation should return JSON containing:
+
+    "application": "Woody Monitor"
+    "connected": true
+
+The complete live data is available at:
+
+    http://192.168.1.50:8080/api/v1/live
+
+### 2. Configure Home Assistant
+
+Open Home Assistant configuration.yaml and add the following REST integration.
+
+Replace 192.168.1.50 with the IP address of the computer running Woody Monitor.
+
+```yaml
+rest:
+  - resource: http://192.168.1.50:8080/api/v1/live
+    scan_interval: 30
+    sensor:
+      - name: "Woody Boiler Temperature"
+        unique_id: woody_boiler_temperature
+        value_template: "{{ value_json.values.boiler_temp | float(0) }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      - name: "Woody Boiler Return Temperature"
+        unique_id: woody_boiler_return_temperature
+        value_template: "{{ value_json.values.boiler_return_temp | float(0) }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      - name: "Woody Hot Water Temperature"
+        unique_id: woody_hotwater_temperature
+        value_template: "{{ value_json.values.hotwater_temp | float(0) }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      - name: "Woody Outdoor Temperature"
+        unique_id: woody_outdoor_temperature
+        value_template: "{{ value_json.values.outside_temp | float(0) }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      - name: "Woody Oxygen"
+        unique_id: woody_oxygen
+        value_template: "{{ value_json.values.oxygen | float(0) }}"
+        unit_of_measurement: "%"
+        state_class: measurement
+
+      - name: "Woody Burner Power"
+        unique_id: woody_burner_power
+        value_template: "{{ value_json.values.power | float(0) }}"
+        unit_of_measurement: "%"
+        state_class: measurement
+
+      - name: "Woody Burner kW"
+        unique_id: woody_burner_kw
+        value_template: "{{ value_json.values.power_kW | float(0) }}"
+        unit_of_measurement: "kW"
+        device_class: power
+        state_class: measurement
+
+      - name: "Woody Pellet Silo"
+        unique_id: woody_pellet_silo
+        value_template: "{{ value_json.values.magazine_content | float(0) }}"
+        unit_of_measurement: "kg"
+        state_class: measurement
+
+      - name: "Woody Burner Alarm"
+        unique_id: woody_burner_alarm
+        value_template: "{{ value_json.values.alarm }}"
+
+      - name: "Woody Burner Mode"
+        unique_id: woody_burner_mode
+        value_template: "{{ value_json.values.mode }}"
+```
+
+### 3. Finish the Home Assistant setup
+
+After adding the REST configuration:
+
+1. Replace 192.168.1.50 with the IP address of your Woody Monitor.
+2. Save configuration.yaml.
+3. Check the Home Assistant configuration for errors.
+4. Restart Home Assistant.
+5. The Woody Monitor sensors will then be available in Home Assistant.
+
+Example entities include:
+
+    sensor.woody_boiler_temperature
+    sensor.woody_boiler_return_temperature
+    sensor.woody_hotwater_temperature
+    sensor.woody_outdoor_temperature
+    sensor.woody_oxygen
+    sensor.woody_burner_power
+    sensor.woody_burner_kw
+    sensor.woody_pellet_silo
+    sensor.woody_burner_alarm
+    sensor.woody_burner_mode
+
+The example uses a 30-second update interval:
+
+    scan_interval: 30
+
+Home Assistant will request the Woody Monitor API every 30 seconds.
+The interval can be changed if required.
+
+### 4. Test the connection
+
+Before configuring Home Assistant, the API can be tested from a browser:
+
+    http://192.168.1.50:8080/api/v1/status
+
+Live data:
+
+    http://192.168.1.50:8080/api/v1/live
+
+The live endpoint returns the burner parameters inside the values object.
+
+### 5. MQTT is optional
+
+Woody Monitor also supports MQTT publishing, but MQTT is not required for Home Assistant.
+
+For a simple Home Assistant installation, the REST API provides a direct local connection between Woody Monitor and Home Assistant.
+
 
 ## MQTT
 
