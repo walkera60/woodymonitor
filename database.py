@@ -1,21 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-2.0-or-later
-#
-# Copyright (C) 2026 Woody Monitor contributors
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 
 import sqlite3
 import threading
@@ -88,6 +71,14 @@ class Database:
                     CREATE INDEX IF NOT EXISTS
                     idx_pellet_prices_time
                     ON pellet_prices(effective_at)
+                """)
+
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS pellet_consumption_hourly (
+                        hour_start TEXT PRIMARY KEY,
+                        feeder_seconds REAL NOT NULL,
+                        kg REAL NOT NULL
+                    )
                 """)
 
                 conn.commit()
@@ -317,6 +308,136 @@ class Database:
                 )
 
                 return rows
+
+            finally:
+                conn.close()
+
+    def upsert_pellet_hour(
+        self,
+        hour_start,
+        feeder_seconds,
+        kg
+    ):
+
+        with self.lock:
+
+            conn = self._connect()
+
+            try:
+
+                conn.execute(
+                    """
+                    INSERT INTO pellet_consumption_hourly (
+                        hour_start,
+                        feeder_seconds,
+                        kg
+                    )
+                    VALUES (?, ?, ?)
+
+                    ON CONFLICT(hour_start)
+                    DO UPDATE SET
+                        feeder_seconds = excluded.feeder_seconds,
+                        kg = excluded.kg
+                    """,
+                    (
+                        hour_start,
+                        float(feeder_seconds),
+                        float(kg)
+                    )
+                )
+
+                conn.commit()
+
+            finally:
+                conn.close()
+
+    def get_pellet_hours(
+        self,
+        start=None,
+        end=None
+    ):
+
+        with self.lock:
+
+            conn = self._connect()
+
+            try:
+
+                if start is not None and end is not None:
+
+                    rows = conn.execute(
+                        """
+                        SELECT
+                            hour_start,
+                            feeder_seconds,
+                            kg
+                        FROM pellet_consumption_hourly
+                        WHERE hour_start >= ?
+                          AND hour_start < ?
+                        ORDER BY hour_start ASC
+                        """,
+                        (start, end)
+                    ).fetchall()
+
+                else:
+
+                    rows = conn.execute(
+                        """
+                        SELECT
+                            hour_start,
+                            feeder_seconds,
+                            kg
+                        FROM pellet_consumption_hourly
+                        ORDER BY hour_start ASC
+                        """
+                    ).fetchall()
+
+                return [
+                    dict(row)
+                    for row in rows
+                ]
+
+            finally:
+                conn.close()
+
+    def cleanup_measurement_history(self, cutoff):
+        with self.lock:
+            conn = self._connect()
+            try:
+                cursor = conn.execute(
+                    """
+                    DELETE FROM measurements
+                    WHERE parameter != 'feeder_time'
+                      AND timestamp < ?
+                    """,
+                    (cutoff,)
+                )
+                deleted = cursor.rowcount
+                conn.commit()
+                return deleted
+            finally:
+                conn.close()
+
+    def cleanup_feeder_history(self, cutoff):
+
+        with self.lock:
+
+            conn = self._connect()
+
+            try:
+                cursor = conn.execute(
+                    """
+                    DELETE FROM measurements
+                    WHERE parameter = 'feeder_time'
+                      AND timestamp < ?
+                    """,
+                    (cutoff,)
+                )
+
+                deleted = cursor.rowcount
+                conn.commit()
+
+                return deleted
 
             finally:
                 conn.close()

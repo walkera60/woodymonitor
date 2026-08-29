@@ -1,21 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-2.0-or-later
-#
-# Copyright (C) 2026 Woody Monitor contributors
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <https://www.gnu.org/licenses/>.
-
 
 import sys
 import time
@@ -24,9 +7,11 @@ import logging
 import os
 import socket
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo, available_timezones
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+BASE_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE_DIR))
 
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse
@@ -80,20 +65,40 @@ def systemd_watchdog_loop():
 # CONFIG
 # ============================================================
 
-DEVICE = "/dev/serial/by-id/usb-FTDI_Chipi-X_FT2UXS6M-if00-port0"
+DEVICE = os.environ.get(
+    "WOODY_SERIAL_DEVICE",
+    "/dev/ttyUSB0"
+)
 
-HOST = "0.0.0.0"
-PORT = 8080
+HOST = os.environ.get("WOODY_HOST", "0.0.0.0")
+PORT = int(os.environ.get("WOODY_PORT", "8080"))
 
 LIVE_INTERVAL = 5
-HISTORY_INTERVAL = 10
+HISTORY_INTERVAL = 60
+
+HISTORY_PARAMETERS = {
+    "alarm",
+    "boiler_temp",
+    "boiler_return_temp",
+    "chute_temp",
+    "hotwater_temp",
+    "outside_temp",
+    "indoor_temp",
+    "smoke_temp",
+    "oxygen",
+    "light",
+    "flow",
+    "power",
+    "power_kW",
+    "feeder_time",
+}
 
 # MQTT
 MQTT_BROKER = os.environ.get("WOODY_MQTT_BROKER", "localhost")
-MQTT_PORT = 1883
+MQTT_PORT = int(os.environ.get("WOODY_MQTT_PORT", "1883"))
 MQTT_USERNAME = os.environ.get("WOODY_MQTT_USERNAME", "")
 MQTT_PASSWORD = os.environ.get("WOODY_MQTT_PASSWORD", "")
-MQTT_TOPIC = "woodymonitor"
+MQTT_TOPIC = os.environ.get("WOODY_MQTT_TOPIC", "woodymonitor")
 MQTT_INTERVAL = 5
 
 
@@ -146,7 +151,7 @@ DEFAULT_FEEDER_SECONDS = 360.0
 
 feeder_calibration_lock = threading.Lock()
 
-FEEDER_SETTINGS_FILE = str(Path(__file__).resolve().parent / "data" / "feeder_settings.json")
+FEEDER_SETTINGS_FILE = str(BASE_DIR / "data" / "feeder_settings.json")
 
 feeder_calibration = {
     "grams": DEFAULT_FEEDER_GRAMS,
@@ -223,7 +228,7 @@ def get_feeder_calibration():
 
 DEFAULT_SILO_CAPACITY_KG = 215.0
 
-SILO_SETTINGS_FILE = str(Path(__file__).resolve().parent / "data" / "silo_settings.json")
+SILO_SETTINGS_FILE = str(BASE_DIR / "data" / "silo_settings.json")
 
 silo_settings_lock = threading.Lock()
 
@@ -302,7 +307,7 @@ def get_silo_settings():
 
 DEFAULT_SILO_CAPACITY_KG = 215.0
 
-SILO_SETTINGS_FILE = str(Path(__file__).resolve().parent / "data" / "silo_settings.json")
+SILO_SETTINGS_FILE = str(BASE_DIR / "data" / "silo_settings.json")
 
 silo_settings_lock = threading.Lock()
 
@@ -372,6 +377,116 @@ def get_silo_settings():
 
     with silo_settings_lock:
         return dict(silo_settings)
+
+
+# ============================================================
+# TIMEZONE SETTINGS
+# ============================================================
+
+TIMEZONE_SETTINGS_FILE = str(BASE_DIR / "data" / "timezone_settings.json")
+
+DEFAULT_TIMEZONE = "Europe/Copenhagen"
+
+timezone_settings_lock = threading.Lock()
+
+timezone_settings = {
+    "timezone": DEFAULT_TIMEZONE
+}
+
+
+def load_timezone_settings():
+
+    global timezone_settings
+
+    try:
+
+        path = Path(TIMEZONE_SETTINGS_FILE)
+
+        if path.exists():
+
+            with path.open("r") as f:
+                data = json.load(f)
+
+            selected = str(
+                data.get(
+                    "timezone",
+                    DEFAULT_TIMEZONE
+                )
+            ).strip()
+
+            if selected in available_timezones():
+
+                timezone_settings["timezone"] = selected
+
+            else:
+
+                logger.warning(
+                    "Invalid timezone '%s', using %s",
+                    selected,
+                    DEFAULT_TIMEZONE
+                )
+
+        logger.info(
+            "Loaded timezone: %s",
+            timezone_settings["timezone"]
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Could not load timezone settings"
+        )
+
+
+def save_timezone_settings():
+
+    path = Path(TIMEZONE_SETTINGS_FILE)
+
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    temporary = path.with_suffix(".tmp")
+
+    with temporary.open("w") as f:
+
+        json.dump(
+            timezone_settings,
+            f,
+            indent=2
+        )
+
+    temporary.replace(path)
+
+
+def get_timezone_name():
+
+    with timezone_settings_lock:
+        return timezone_settings["timezone"]
+
+
+def get_timezone():
+
+    return ZoneInfo(
+        get_timezone_name()
+    )
+
+
+def local_now():
+
+    return datetime.now(
+        timezone.utc
+    ).astimezone(
+        get_timezone()
+    )
+
+
+def utc_now():
+
+    return datetime.now(
+        timezone.utc
+    )
 
 
 # ============================================================
@@ -758,6 +873,220 @@ def mqtt_publish_loop():
 
 
 # ============================================================
+# HOURLY PELLET CONSUMPTION
+# ============================================================
+
+def calculate_pellet_hour(
+    hour_start,
+    hour_end
+):
+
+    calibration = get_feeder_calibration()
+
+    grams = float(calibration["grams"])
+    seconds = float(calibration["seconds"])
+
+    if grams <= 0 or seconds <= 0:
+        raise ValueError(
+            "Invalid feeder calibration"
+        )
+
+    kg_per_second = (
+        grams /
+        seconds /
+        1000.0
+    )
+
+    start_iso = hour_start.isoformat()
+    end_iso = hour_end.isoformat()
+
+    # We need the latest feeder_time value at/before
+    # the beginning of the hour plus all samples during
+    # the hour. Positive counter differences are summed.
+    #
+    # This also handles a feeder_time counter reset:
+    # negative differences contribute zero instead of
+    # producing negative pellet consumption.
+
+    with db.lock:
+
+        conn = db._connect()
+
+        try:
+
+            previous = conn.execute(
+                """
+                SELECT timestamp, value
+                FROM measurements
+                WHERE parameter = 'feeder_time'
+                  AND timestamp <= ?
+                ORDER BY timestamp DESC
+                LIMIT 1
+                """,
+                (start_iso,)
+            ).fetchone()
+
+            rows = conn.execute(
+                """
+                SELECT timestamp, value
+                FROM measurements
+                WHERE parameter = 'feeder_time'
+                  AND timestamp > ?
+                  AND timestamp <= ?
+                ORDER BY timestamp ASC
+                """,
+                (
+                    start_iso,
+                    end_iso
+                )
+            ).fetchall()
+
+        finally:
+
+            conn.close()
+
+    if previous is None or not rows:
+        return False
+
+    previous_value = float(
+        previous["value"]
+    )
+
+    feeder_seconds = 0.0
+
+    for row in rows:
+
+        current_value = float(
+            row["value"]
+        )
+
+        delta = (
+            current_value -
+            previous_value
+        )
+
+        if delta > 0:
+            feeder_seconds += delta
+
+        previous_value = current_value
+
+    kg = (
+        feeder_seconds *
+        kg_per_second
+    )
+
+    db.upsert_pellet_hour(
+        start_iso,
+        feeder_seconds,
+        kg
+    )
+
+    logger.info(
+        "Pellet hour stored: %s -> %.3f kg (%.0f feeder sec)",
+        start_iso,
+        kg,
+        feeder_seconds
+    )
+
+    return True
+
+
+def pellet_hourly_loop():
+
+    last_completed_hour = None
+
+    while True:
+
+        try:
+
+            # Store only completed real elapsed hours.
+            # UTC avoids DST ambiguity. The frontend can
+            # convert timestamps to the configured local zone.
+
+            hour_end = datetime.now(
+                timezone.utc
+            ).replace(
+                minute=0,
+                second=0,
+                microsecond=0
+            )
+
+            hour_start = (
+                hour_end -
+                timedelta(hours=1)
+            )
+
+            hour_key = (
+                hour_start.isoformat()
+            )
+
+            if hour_key != last_completed_hour:
+
+                if calculate_pellet_hour(
+                    hour_start,
+                    hour_end
+                ):
+                    last_completed_hour = (
+                        hour_key
+                    )
+
+        except Exception:
+
+            logger.exception(
+                "Pellet hourly writer error"
+            )
+
+        time.sleep(60)
+
+
+# ============================================================
+# FEEDER HISTORY RETENTION
+# ============================================================
+
+def feeder_retention_loop():
+
+    while True:
+
+        try:
+
+            now = datetime.now(timezone.utc)
+
+            feeder_cutoff = (
+                now - timedelta(hours=48)
+            ).isoformat()
+
+            feeder_deleted = db.cleanup_feeder_history(
+                feeder_cutoff
+            )
+
+            logger.info(
+                "Feeder history cleanup: %d rows deleted",
+                feeder_deleted
+            )
+
+            history_cutoff = (
+                now - timedelta(days=90)
+            ).isoformat()
+
+            history_deleted = db.cleanup_measurement_history(
+                history_cutoff
+            )
+
+            logger.info(
+                "90-day history cleanup: %d rows deleted",
+                history_deleted
+            )
+
+        except Exception:
+
+            logger.exception(
+                "Feeder history cleanup error"
+            )
+
+        time.sleep(86400)
+
+
+# ============================================================
 # HISTORY WRITER
 # ============================================================
 
@@ -776,13 +1105,21 @@ def history_loop():
 
             if connected and values:
 
-                db.insert_measurements(
-                    values
-                )
+                history_values = {
+                    parameter: value
+                    for parameter, value in values.items()
+                    if parameter in HISTORY_PARAMETERS
+                }
 
-                logger.debug(
-                    "History sample stored"
-                )
+                if history_values:
+                    db.insert_measurements(
+                        history_values
+                    )
+
+                    logger.debug(
+                        "History sample stored: %d parameters",
+                        len(history_values)
+                    )
 
         except Exception:
 
@@ -799,7 +1136,7 @@ def history_loop():
 
 @app.get("/")
 def root():
-    return FileResponse(str(Path(__file__).resolve().parent / "web" / "index.html"))
+    return FileResponse(str(BASE_DIR / "web" / "index.html"))
 
 
 # ============================================================
@@ -823,6 +1160,78 @@ def status():
             ),
             "history_rows": db.count()
         }
+
+
+# ============================================================
+# API: TIMEZONE SETTINGS
+# ============================================================
+
+@app.get("/api/v1/settings/timezone")
+def get_timezone_settings():
+
+    name = get_timezone_name()
+    zone = ZoneInfo(name)
+    now = datetime.now(
+        timezone.utc
+    ).astimezone(zone)
+
+    return {
+        "timezone": name,
+        "local_time": now.isoformat(),
+        "utc_offset": now.strftime("%z"),
+        "utc_offset_display": now.strftime("%z")[:3] + ":" + now.strftime("%z")[3:],
+        "dst": bool(now.dst()),
+        "automatic_dst": True
+    }
+
+
+@app.post("/api/v1/settings/timezone")
+def set_timezone_settings(
+    timezone_name: str = Query(...)
+):
+
+    timezone_name = timezone_name.strip()
+
+    if timezone_name not in available_timezones():
+
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid timezone: {timezone_name}"
+        )
+
+    with timezone_settings_lock:
+
+        timezone_settings["timezone"] = timezone_name
+
+        save_timezone_settings()
+
+    logger.info(
+        "Timezone changed to: %s",
+        timezone_name
+    )
+
+    return get_timezone_settings()
+
+
+# ============================================================
+# API: TIMEZONE LIST
+# ============================================================
+
+@app.get("/api/v1/settings/timezones")
+def get_timezone_list():
+
+    zones = sorted(
+        zone
+        for zone in available_timezones()
+        if "/" in zone
+        and not zone.startswith("Etc/")
+        and not zone.startswith("SystemV/")
+    )
+
+    return {
+        "count": len(zones),
+        "timezones": zones
+    }
 
 
 # ============================================================
@@ -1072,405 +1481,215 @@ def set_pellet_price(
 
 @app.get("/api/v1/consumption/pellets")
 def pellet_consumption(
-    hours: float = Query(
-        24,
-        gt=0,
-        le=8760
-    ),
+    hours: float = Query(24, gt=0, le=8760),
+    start: str | None = Query(None),
+    end: str | None = Query(None)
+):
+    if start and end:
+        start_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
+        end_dt = datetime.fromisoformat(end.replace("Z", "+00:00"))
+    else:
+        end_dt = datetime.now(timezone.utc)
+        start_dt = end_dt - timedelta(hours=hours)
+
+    if start_dt >= end_dt:
+        raise HTTPException(400, "start must be before end")
+
+    calibration = get_feeder_calibration()
+    kg_per_second = (
+        float(calibration["grams"]) /
+        float(calibration["seconds"]) /
+        1000.0
+    )
+
+    def hour_floor(dt):
+        return dt.replace(minute=0, second=0, microsecond=0)
+
+    def raw_segment(seg_start, seg_end):
+        with db.lock:
+            conn = db._connect()
+            try:
+                previous = conn.execute(
+                    """
+                    SELECT value FROM measurements
+                    WHERE parameter='feeder_time'
+                      AND timestamp <= ?
+                    ORDER BY timestamp DESC LIMIT 1
+                    """,
+                    (seg_start.isoformat(),)
+                ).fetchone()
+
+                rows = conn.execute(
+                    """
+                    SELECT timestamp,value FROM measurements
+                    WHERE parameter='feeder_time'
+                      AND timestamp > ?
+                      AND timestamp <= ?
+                    ORDER BY timestamp
+                    """,
+                    (seg_start.isoformat(), seg_end.isoformat())
+                ).fetchall()
+            finally:
+                conn.close()
+
+        if previous is None or not rows:
+            return None
+
+        prev = float(previous["value"])
+        seconds = 0.0
+
+        for row in rows:
+            current = float(row["value"])
+            delta = current - prev
+            if delta > 0:
+                seconds += delta
+            prev = current
+
+        return seconds * kg_per_second
+
+    with db.lock:
+        conn = db._connect()
+        try:
+            price_rows = conn.execute(
+                """
+                SELECT effective_at,price_per_kg
+                FROM pellet_prices
+                WHERE effective_at <= ?
+                ORDER BY effective_at
+                """,
+                (end_dt.isoformat(),)
+            ).fetchall()
+        finally:
+            conn.close()
+
+    prices = []
+    for row in price_rows:
+        try:
+            prices.append((
+                datetime.fromisoformat(
+                    row["effective_at"].replace("Z", "+00:00")
+                ),
+                float(row["price_per_kg"])
+            ))
+        except Exception:
+            pass
+
+    def price_at(dt):
+        active = None
+        for effective, price in prices:
+            if effective <= dt:
+                active = price
+            else:
+                break
+        return active
+
+    intervals = []
+
+    def add_interval(timestamp, kg):
+        price = price_at(timestamp)
+        intervals.append({
+            "timestamp": timestamp.isoformat(),
+            "kg": kg,
+            "price": price,
+            "cost": kg * price if price is not None else None
+        })
+
+    start_hour = hour_floor(start_dt)
+    end_hour = hour_floor(end_dt)
+
+    # Period entirely inside one hour
+    if start_hour == end_hour:
+        kg = raw_segment(start_dt, end_dt)
+        if kg is not None:
+            add_interval(end_dt, kg)
+
+    else:
+        # Partial first hour
+        full_start = start_dt
+        if start_dt != start_hour:
+            first_end = start_hour + timedelta(hours=1)
+            kg = raw_segment(start_dt, first_end)
+            if kg is not None:
+                add_interval(first_end, kg)
+            full_start = first_end
+
+        # Completed full hours
+        full_end = end_hour
+        for row in db.get_pellet_hours(
+            full_start.isoformat(),
+            full_end.isoformat()
+        ):
+            timestamp = (
+                datetime.fromisoformat(
+                    row["hour_start"].replace("Z", "+00:00")
+                ) + timedelta(hours=1)
+            )
+            add_interval(timestamp, float(row["kg"]))
+
+        # Partial last hour
+        if end_dt != end_hour:
+            kg = raw_segment(end_hour, end_dt)
+            if kg is not None:
+                add_interval(end_dt, kg)
+
+    total_kg = sum(x["kg"] for x in intervals)
+    total_cost = sum(
+        x["cost"] for x in intervals
+        if x["cost"] is not None
+    )
+
+    period_days = max(
+        (end_dt - start_dt).total_seconds() / 86400.0,
+        1 / 1440.0
+    )
+
+    return {
+        "start": start_dt.isoformat(),
+        "end": end_dt.isoformat(),
+        "count": len(intervals),
+        "chart_count": len(intervals),
+        "total_kg": total_kg,
+        "average_kg_per_day": total_kg / period_days,
+        "total_cost": total_cost,
+        "kg_per_second": kg_per_second,
+        "data": intervals
+    }
+
+
+# ============================================================
+# API: HOURLY PELLET CONSUMPTION
+# ============================================================
+
+@app.get("/api/v1/consumption/pellets/hourly")
+def pellet_consumption_hourly(
+    hours: float = Query(24, gt=0, le=8760),
     start: str | None = Query(None),
     end: str | None = Query(None)
 ):
 
-    # ---------------------------------------------------------
-    # Determine requested period
-    # ---------------------------------------------------------
-
     if start and end:
-
         start_dt = datetime.fromisoformat(
             start.replace("Z", "+00:00")
         )
-
         end_dt = datetime.fromisoformat(
             end.replace("Z", "+00:00")
         )
-
     else:
-
         end_dt = datetime.now(timezone.utc)
+        start_dt = end_dt - timedelta(hours=hours)
 
-        start_dt = (
-            end_dt -
-            timedelta(hours=hours)
-        )
-
-    if start_dt >= end_dt:
-
-        raise HTTPException(
-            status_code=400,
-            detail="start must be before end"
-        )
-
-    # ---------------------------------------------------------
-    # Feeder calibration
-    # ---------------------------------------------------------
-
-    calibration = get_feeder_calibration()
-
-    grams = float(calibration["grams"])
-    seconds = float(calibration["seconds"])
-
-    if grams <= 0 or seconds <= 0:
-
-        raise HTTPException(
-            status_code=500,
-            detail="Invalid feeder calibration"
-        )
-
-    kg_per_second = (
-        grams /
-        seconds /
-        1000.0
+    rows = db.get_pellet_hours(
+        start_dt.isoformat(),
+        end_dt.isoformat()
     )
-
-    start_iso = start_dt.isoformat()
-    end_iso = end_dt.isoformat()
-
-    # ---------------------------------------------------------
-    # Read feeder_time.
-    #
-    # The previous value is needed to calculate the first
-    # interval correctly.
-    #
-    # IMPORTANT:
-    # feeder_time is a cumulative counter containing actual
-    # auger runtime in seconds.
-    # ---------------------------------------------------------
-
-    with db.lock:
-
-        conn = db._connect()
-
-        try:
-
-            previous = conn.execute(
-                """
-                SELECT timestamp, value
-                FROM measurements
-                WHERE parameter = 'feeder_time'
-                  AND timestamp < ?
-                ORDER BY timestamp DESC
-                LIMIT 1
-                """,
-                (start_iso,)
-            ).fetchone()
-
-            rows = conn.execute(
-                """
-                SELECT timestamp, value
-                FROM measurements
-                WHERE parameter = 'feeder_time'
-                  AND timestamp >= ?
-                  AND timestamp <= ?
-                ORDER BY timestamp ASC
-                """,
-                (start_iso, end_iso)
-            ).fetchall()
-
-            # -------------------------------------------------
-            # Pellet prices.
-            #
-            # Only prices relevant to the requested period are
-            # required. Include the latest price before start.
-            # -------------------------------------------------
-
-            price_rows = conn.execute(
-                """
-                SELECT effective_at, price_per_kg
-                FROM pellet_prices
-                WHERE effective_at <= ?
-                ORDER BY effective_at ASC
-                """,
-                (end_iso,)
-            ).fetchall()
-
-        finally:
-
-            conn.close()
-
-    # ---------------------------------------------------------
-    # No feeder data
-    # ---------------------------------------------------------
-
-    if not rows:
-
-        return {
-            "start": start_iso,
-            "end": end_iso,
-            "count": 0,
-            "chart_count": 0,
-            "total_kg": 0.0,
-            "average_kg_per_day": 0.0,
-            "total_cost": 0.0,
-            "kg_per_second": kg_per_second,
-            "data": []
-        }
-
-    # ---------------------------------------------------------
-    # Build points.
-    # ---------------------------------------------------------
-
-    points = []
-
-    if previous is not None:
-
-        points.append({
-            "timestamp": previous["timestamp"],
-            "value": float(previous["value"])
-        })
-
-    points.extend(
-        {
-            "timestamp": row["timestamp"],
-            "value": float(row["value"])
-        }
-        for row in rows
-    )
-
-    # ---------------------------------------------------------
-    # FAST PATH:
-    #
-    # If feeder_time has not changed anywhere in the requested
-    # period, there is absolutely no pellet consumption.
-    #
-    # This is currently the situation because the burner has
-    # not been running.
-    # ---------------------------------------------------------
-
-    values = [
-        point["value"]
-        for point in points
-    ]
-
-    if values and all(
-        value == values[0]
-        for value in values
-    ):
-
-        return {
-            "start": start_iso,
-            "end": end_iso,
-            "count": max(len(rows) - 1, 0),
-            "chart_count": 1,
-            "total_kg": 0.0,
-            "average_kg_per_day": 0.0,
-            "total_cost": 0.0,
-            "kg_per_second": kg_per_second,
-            "data": [
-                {
-                    "timestamp": rows[-1]["timestamp"],
-                    "kg": 0.0,
-                    "price": None,
-                    "cost": 0.0
-                }
-            ]
-        }
-
-    # ---------------------------------------------------------
-    # Build pellet price history.
-    # ---------------------------------------------------------
-
-    prices = []
-
-    for row in price_rows:
-
-        try:
-
-            effective = datetime.fromisoformat(
-                row["effective_at"].replace(
-                    "Z",
-                    "+00:00"
-                )
-            )
-
-            price = float(
-                row["price_per_kg"]
-            )
-
-            prices.append(
-                (effective, price)
-            )
-
-        except Exception:
-
-            continue
-
-    def price_at(timestamp):
-
-        active = None
-
-        for effective, price in prices:
-
-            if effective <= timestamp:
-                active = price
-            else:
-                break
-
-        return active
-
-    # ---------------------------------------------------------
-    # Calculate actual consumption.
-    # ---------------------------------------------------------
-
-    intervals = []
-
-    total_kg = 0.0
-    total_cost = 0.0
-
-    previous_value = points[0]["value"]
-
-    for point in points[1:]:
-
-        current_value = point["value"]
-
-        delta = current_value - previous_value
-
-        # Counter reset.
-        if delta < 0:
-            delta = 0.0
-
-        kg = delta * kg_per_second
-
-        timestamp = datetime.fromisoformat(
-            point["timestamp"].replace(
-                "Z",
-                "+00:00"
-            )
-        )
-
-        price = price_at(timestamp)
-
-        cost = (
-            kg * price
-            if price is not None
-            else None
-        )
-
-        total_kg += kg
-
-        if cost is not None:
-            total_cost += cost
-
-        intervals.append({
-            "timestamp": point["timestamp"],
-            "kg": kg,
-            "price": price,
-            "cost": cost
-        })
-
-        previous_value = current_value
-
-    # ---------------------------------------------------------
-    # Average consumption per day.
-    # ---------------------------------------------------------
-
-    period_seconds = (
-        end_dt -
-        start_dt
-    ).total_seconds()
-
-    period_days = max(
-        period_seconds / 86400.0,
-        1 / 1440.0
-    )
-
-    average_kg_per_day = (
-        total_kg /
-        period_days
-    )
-
-    # ---------------------------------------------------------
-    # Downsample chart data.
-    #
-    # The total is calculated from ALL measurements.
-    # Only the visual chart is reduced.
-    # ---------------------------------------------------------
-
-    MAX_POINTS = 1000
-
-    chart_data = intervals
-
-    if len(intervals) > MAX_POINTS:
-
-        bucket_size = (
-            len(intervals) +
-            MAX_POINTS -
-            1
-        ) // MAX_POINTS
-
-        chart_data = []
-
-        for i in range(
-            0,
-            len(intervals),
-            bucket_size
-        ):
-
-            bucket = intervals[
-                i:i + bucket_size
-            ]
-
-            bucket_kg = sum(
-                item["kg"]
-                for item in bucket
-            )
-
-            bucket_cost = sum(
-                item["cost"]
-                for item in bucket
-                if item["cost"] is not None
-            )
-
-            weighted_price = 0.0
-            weighted_kg = 0.0
-
-            for item in bucket:
-
-                if (
-                    item["price"] is not None
-                    and item["kg"] > 0
-                ):
-
-                    weighted_price += (
-                        item["kg"] *
-                        item["price"]
-                    )
-
-                    weighted_kg += item["kg"]
-
-            chart_data.append({
-                "timestamp": bucket[-1]["timestamp"],
-                "kg": bucket_kg,
-                "price": (
-                    weighted_price / weighted_kg
-                    if weighted_kg > 0
-                    else None
-                ),
-                "cost": bucket_cost
-            })
 
     return {
-        "start": start_iso,
-        "end": end_iso,
-        "count": len(intervals),
-        "chart_count": len(chart_data),
-        "total_kg": total_kg,
-        "average_kg_per_day": average_kg_per_day,
-        "total_cost": total_cost,
-        "kg_per_second": kg_per_second,
-        "data": chart_data
+        "start": start_dt.isoformat(),
+        "end": end_dt.isoformat(),
+        "count": len(rows),
+        "total_kg": sum(float(r["kg"]) for r in rows),
+        "data": rows
     }
-
 
 
 # ============================================================
@@ -1679,6 +1898,7 @@ def history_parameters():
 @app.on_event("startup")
 def startup():
 
+    load_timezone_settings()
     load_feeder_calibration()
 
     watchdog = threading.Thread(
@@ -1722,8 +1942,20 @@ def startup():
         daemon=True
     )
 
+    pellet_hourly = threading.Thread(
+        target=pellet_hourly_loop,
+        daemon=True
+    )
+
+    feeder_retention = threading.Thread(
+        target=feeder_retention_loop,
+        daemon=True
+    )
+
     collector.start()
     history.start()
+    pellet_hourly.start()
+    feeder_retention.start()
 
     mqtt_setup()
 

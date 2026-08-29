@@ -18,6 +18,7 @@
 
 
 import sys
+import os
 from pathlib import Path
 import time
 import logging
@@ -31,7 +32,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s"
 )
 
-DEVICE = "/dev/serial/by-id/usb-FTDI_Chipi-X_FT2UXS6M-if00-port0"
+DEVICE = os.environ.get("WOODY_SERIAL_DEVICE", "/dev/ttyUSB0")
 
 print("Connecting to pellet burner...")
 print("Device:", DEVICE)

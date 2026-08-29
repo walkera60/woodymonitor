@@ -17,10 +17,11 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 
+import os
 import serial
 import time
 
-PORT = "/dev/serial/by-id/usb-FTDI_Chipi-X_FT2UXS6M-if00-port0"
+PORT = os.environ.get("WOODY_SERIAL_DEVICE", "/dev/ttyUSB0")
 BAUD = 9600
 
 print(f"Opening {PORT}")

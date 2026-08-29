@@ -1820,6 +1820,52 @@ body { padding-bottom:20px; }
         <div class="card col-6">
 
             <div class="card-header">
+                <div class="card-title">Dato, tid og tidszone</div>
+            </div>
+
+            <div style="padding:12px 0;">
+
+                <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">
+                    Vælg tidszone for visning af datoer, historik og
+                    forbrugsperioder. Sommer- og vintertid håndteres automatisk.
+                </div>
+
+                <div style="display:flex;align-items:center;gap:10px;">
+
+                    <span>Tidszone</span>
+
+                    <select
+                        id="timezoneSetting"
+                        style="margin-left:auto;min-width:190px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+                        <option value="Europe/Copenhagen">
+                            Europe/Copenhagen
+                        </option>
+                    </select>
+
+                    <button
+                        class="btn"
+                        onclick="saveTimezoneSettings()"
+                    >
+                        Gem
+                    </button>
+
+                </div>
+
+                <div
+                    id="timezoneInfo"
+                    style="font-size:13px;color:var(--muted);margin-top:10px;"
+                >
+                    Henter tidszone...
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="card col-6">
+
+            <div class="card-header">
                 <div class="card-title">Pilleindstillinger</div>
             </div>
 
@@ -3719,6 +3765,198 @@ function clearAllParameters() {
     updateHistoryChart();
 }
 
+async function loadTimezoneSettings() {
+
+    const select =
+        document.getElementById("timezoneSetting");
+
+    const info =
+        document.getElementById("timezoneInfo");
+
+    if (!select)
+        return;
+
+    try {
+
+        const result =
+            await api("/settings/timezone");
+
+        if (!result)
+            return;
+
+        const timezone =
+            result.timezone ||
+            "Europe/Copenhagen";
+
+        /*
+         * The backend may provide the complete timezone list.
+         * Load it separately so the interface works for other
+         * installations around the world.
+         */
+        try {
+
+            const zones =
+                await api("/settings/timezones");
+
+            if (
+                zones &&
+                Array.isArray(zones.timezones)
+            ) {
+
+                select.innerHTML = "";
+
+                zones.timezones.forEach(zone => {
+
+                    const option =
+                        document.createElement("option");
+
+                    option.value = zone;
+                    option.textContent = zone;
+
+                    if (zone === timezone)
+                        option.selected = true;
+
+                    select.appendChild(option);
+                });
+            }
+
+        } catch (zoneError) {
+
+            console.warn(
+                "Could not load timezone list:",
+                zoneError
+            );
+
+            select.value = timezone;
+        }
+
+        updateTimezoneInfo(result);
+
+    } catch (error) {
+
+        console.error(
+            "Timezone settings:",
+            error
+        );
+
+        if (info) {
+
+            info.textContent =
+                "Kunne ikke hente tidszoneindstillinger.";
+        }
+    }
+}
+
+
+function updateTimezoneInfo(data) {
+
+    const info =
+        document.getElementById("timezoneInfo");
+
+    if (!info)
+        return;
+
+    const timezone =
+        data.timezone ||
+        "Europe/Copenhagen";
+
+    const offset =
+        data.utc_offset ||
+        "";
+
+    const dst =
+        data.dst === true ||
+        data.dst_active === true;
+
+    const localTime =
+        data.local_time ||
+        "";
+
+    let text =
+        `Aktuel tidszone: ${timezone}`;
+
+    if (offset)
+        text += ` · UTC${offset}`;
+
+    if (dst)
+        text += " · Sommertid aktiv";
+
+    else
+        text += " · Vintertid aktiv";
+
+    if (localTime)
+        text += ` · ${localTime}`;
+
+    info.textContent = text;
+}
+
+
+async function saveTimezoneSettings() {
+
+    const select =
+        document.getElementById("timezoneSetting");
+
+    const info =
+        document.getElementById("timezoneInfo");
+
+    if (!select)
+        return;
+
+    const timezone =
+        select.value;
+
+    if (!timezone)
+        return;
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/timezone?timezone_name=" +
+                encodeURIComponent(timezone),
+                {
+                    method: "POST",
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                `${response.status} ${response.statusText}`
+            );
+
+        const result =
+            await response.json();
+
+        updateTimezoneInfo(result);
+
+        /*
+         * Reload the dashboard/history so all period
+         * calculations immediately use the new timezone.
+         */
+        await loadTimezoneSettings();
+
+        if (typeof updateDashboard === "function")
+            updateDashboard();
+
+        if (typeof updateHistoryChart === "function")
+            updateHistoryChart();
+
+    } catch (error) {
+
+        console.error(
+            "Gem tidszone:",
+            error
+        );
+
+        alert(
+            "Kunne ikke gemme tidszonen."
+        );
+    }
+}
+
+
 async function loadPelletPrice() {
 
     const input =
@@ -4384,342 +4622,34 @@ async function updatePelletChart() {
 
     try {
 
-        /*
-         * --------------------------------------------------------
-         * LOAD FEEDER TIME HISTORY
-         *
-         * feeder_time is a cumulative counter containing the
-         * ACTUAL running time of the auger in sekunder.
-         *
-         * The auger does NOT run continuously while the burner
-         * is operating. It is pulsed according to burner power.
-         *
-         * Therefore:
-         *
-         * pellet consumption =
-         *     delta feeder_time × feeder capacity
-         *
-         * Power must NOT be used to calculate consumption here.
-         * The modulation is already represented by feeder_time.
-         * --------------------------------------------------------
-         */
-
-        let url =
-            `/history?parameter=feeder_time`;
-
-        /*
-         * Keep the amount of data sent to the browser small.
-         *
-         * feeder_time is a cumulative counter, so the backend
-         * keeps the LAST real reading in each bucket.
-         *
-         * This gives us roughly 1000 points without changing
-         * the actual consumption calculation.
-         */
-
-        const durationHours =
-            consumptionStart && consumptionEnd
-                ? Math.max(
-                    (
-                        new Date(consumptionEnd) -
-                        new Date(consumptionStart)
-                    ) / 3600000,
-                    1 / 60
-                )
-                : consumptionHours;
-
-        const targetPoints = 1000;
-
-        const bucketSeconds =
-            Math.max(
-                1,
-                Math.ceil(
-                    durationHours * 3600 /
-                    targetPoints
-                )
-            );
-
-        url +=
-            `&bucket_seconds=${bucketSeconds}`;
+        let url = "/consumption/pellets";
 
         if (consumptionStart && consumptionEnd) {
-
-            url +=
-                `&start=${encodeURIComponent(consumptionStart)}` +
-                `&end=${encodeURIComponent(consumptionEnd)}`;
-
+            url += `?start=${encodeURIComponent(consumptionStart)}&end=${encodeURIComponent(consumptionEnd)}`;
         } else {
-
-            url +=
-                `&hours=${consumptionHours}`;
+            url += `?hours=${consumptionHours}`;
         }
-
 
         const result = await api(url);
+        const rows = Array.isArray(result.data) ? result.data : [];
 
-        const rows = Array.isArray(result.data)
-            ? result.data
-            : [];
-
-
-        const totalElement =
-            document.getElementById("pelletTiltal");
-
-        const averageElement =
-            document.getElementById("pelletAverage");
-
-        const costElement =
-            document.getElementById("pelletCost");
-
-
-        /*
-         * --------------------------------------------------------
-         * NOT ENOUGH DATA
-         * --------------------------------------------------------
-         */
-
-        if (rows.length < 2) {
-
-            totalElement.textContent = "--";
-            averageElement.textContent = "--";
-            costElement.textContent = "--";
-
-            if (pelletChart) {
-                pelletChart.destroy();
-                pelletChart = null;
-            }
-
-            return;
-        }
-
-
-        /*
-         * --------------------------------------------------------
-         * FEEDER CALIBRATION
-         *
-         * Example:
-         *
-         * 1200 g / 6 min
-         * = 1200 / 360 g/s
-         * = 3.3333 g/s
-         * = 0.0033333 kg/s
-         *
-         * feeder_capacity is NOT kg/h.
-         * It is gram delivered during 6 minutes
-         * of continuous auger operation.
-         * --------------------------------------------------------
-         */
-
-        const settings =
-            await api("/settings/feeder");
-
-        const gramPerSecond =
-            Number(settings.grams_per_second);
-
-
-        if (
-            !Number.isFinite(gramPerSecond) ||
-            gramPerSecond <= 0
-        ) {
-            throw new Error(
-                "Invalid feeder calibration: grams_per_second=" +
-                settings.grams_per_second
-            );
-        }
-
-
-        const kgPerSecond =
-            gramPerSecond / 1000;
-
-
-        /*
-         * --------------------------------------------------------
-         * PELLET PRICE HISTORY
-         * --------------------------------------------------------
-         */
-
-        const priceResult =
-            await api("/settings/pellet-prices");
-
-        const pelletPrices =
-            Array.isArray(priceResult.prices)
-                ? priceResult.prices
-                    .map(item => ({
-                        effectiveAt:
-                            new Date(item.effective_at),
-
-                        price:
-                            Number(item.price_per_kg)
-                    }))
-                    .filter(item =>
-                        Number.isFinite(
-                            item.effectiveAt.getTime()
-                        ) &&
-                        Number.isFinite(item.price) &&
-                        item.price >= 0
-                    )
-                    .sort(
-                        (a, b) =>
-                            a.effectiveAt - b.effectiveAt
-                    )
-                : [];
-
-
-        /*
-         * Return the pellet price active at a timestamp.
-         */
-
-        function getPelletPrice(timestamp) {
-
-            const time =
-                timestamp.getTime();
-
-            let activePrice = null;
-
-            for (const entry of pelletPrices) {
-
-                if (
-                    entry.effectiveAt.getTime() <= time
-                ) {
-
-                    activePrice =
-                        entry.price;
-
-                } else {
-
-                    break;
-                }
-            }
-
-            return activePrice;
-        }
-
-
-        /*
-         * --------------------------------------------------------
-         * BUILD CONSUMPTION INTERVALS
-         *
-         * IMPORTANT:
-         *
-         * We calculate from the difference between two
-         * cumulative feeder_time readings.
-         *
-         * If feeder_time does not change:
-         *
-         *     delta = 0
-         *     pellet consumption = 0
-         *
-         * This is exactly what we want when the burner is off
-         * or the auger is not currently dosing.
-         * --------------------------------------------------------
-         */
+        const totalElement = document.getElementById("pelletTiltal");
+        const averageElement = document.getElementById("pelletAverage");
+        const costElement = document.getElementById("pelletCost");
 
         const labels = [];
         const values = [];
         const intervalPrices = [];
         const intervalCosts = [];
 
-        let totalKg = 0;
-        let totalCost = 0;
+        for (const row of rows) {
+            const timestamp = new Date(row.timestamp);
+            const kg = Number(row.kg);
+            const price = row.price == null ? null : Number(row.price);
+            const cost = row.cost == null ? null : Number(row.cost);
 
-        let firstTidspunkt = null;
-        let lastTidspunkt = null;
-
-
-        for (let i = 1; i < rows.length; i++) {
-
-            const previous =
-                Number(rows[i - 1].value);
-
-            const current =
-                Number(rows[i].value);
-
-
-            if (
-                !Number.isFinite(previous) ||
-                !Number.isFinite(current)
-            ) {
+            if (!Number.isFinite(timestamp.getTime()) || !Number.isFinite(kg))
                 continue;
-            }
-
-
-            /*
-             * feeder_time is cumulative sekunder.
-             */
-
-            let feederSeconds =
-                current - previous;
-
-
-            /*
-             * Counter reset / invalid backwards movement.
-             */
-
-            if (feederSeconds < 0) {
-                feederSeconds = 0;
-            }
-
-
-            /*
-             * Actual pellet consumption during this interval.
-             *
-             * feederSeconds = actual auger runtime
-             * kgPerSecond   = calibrated pellet delivery
-             */
-
-            const kg =
-                feederSeconds * kgPerSecond;
-
-
-            const timestamp =
-                new Date(
-                    rows[i].timestamp ||
-                    rows[i].time
-                );
-
-
-            if (
-                !Number.isFinite(
-                    timestamp.getTime()
-                )
-            ) {
-                continue;
-            }
-
-
-            if (firstTidspunkt === null) {
-
-                firstTidspunkt =
-                    new Date(
-                        rows[0].timestamp ||
-                        rows[0].time
-                    );
-            }
-
-            lastTidspunkt = timestamp;
-
-
-            /*
-             * Price active when this interval ended.
-             */
-
-            const price =
-                getPelletPrice(timestamp);
-
-
-            const cost =
-                price !== null
-                    ? kg * price
-                    : null;
-
-
-            totalKg += kg;
-
-
-            if (cost !== null) {
-                totalCost += cost;
-            }
-
 
             labels.push(timestamp);
             values.push(kg);
@@ -4727,59 +4657,15 @@ async function updatePelletChart() {
             intervalCosts.push(cost);
         }
 
+        const totalKg = Number(result.total_kg) || 0;
+        const totalCost = Number(result.total_cost) || 0;
+        const averageKg = Number(result.average_kg_per_day) || 0;
+        const kgPerSecond = Number(result.kg_per_second) || 0;
+        const gramPerSecond = kgPerSecond * 1000;
 
-        /*
-         * --------------------------------------------------------
-         * NO VALID INTERVALS
-         * --------------------------------------------------------
-         */
-
-        if (
-            labels.length === 0 ||
-            firstTidspunkt === null ||
-            lastTidspunkt === null
-        ) {
-
-            totalElement.textContent = "0.00 kg";
-            averageElement.textContent = "0.00 kg";
-            costElement.textContent =
-                pelletPrices.length > 0
-                    ? "0.00 kr"
-                    : "--";
-
-            if (pelletChart) {
-                pelletChart.destroy();
-                pelletChart = null;
-            }
-
-            return;
-        }
-
-
-        /*
-         * --------------------------------------------------------
-         * ACTUAL SELECTED PERIOD
-         * --------------------------------------------------------
-         *
-         * Average/day is based on the time span covered by the
-         * history, NOT on the number of records.
-         * --------------------------------------------------------
-         */
-
-        const periodHours =
-            Math.max(
-                (
-                    lastTidspunkt -
-                    firstTidspunkt
-                ) / 3600000,
-                1 / 60
-            );
-
-
-        const averageKg =
-            totalKg /
-            (periodHours / 24);
-
+        const pelletPrices = intervalPrices.filter(
+            value => value !== null && Number.isFinite(value)
+        );
 
         /*
          * --------------------------------------------------------
@@ -5367,11 +5253,8 @@ async function updatePelletChart() {
                 feederKgPerSecond:
                     kgPerSecond,
 
-                totalFeederSeconds:
-                    labels.length > 0
-                        ? Number(rows[rows.length - 1].value) -
-                          Number(rows[0].value)
-                        : 0,
+                dataPoints:
+                    labels.length,
 
                 totalKg:
                     totalKg,
@@ -5442,6 +5325,8 @@ async function initialize() {
     await loadStatus();
 
     await loadHistoryParameters();
+
+    await loadTimezoneSettings();
 
     await updatePelletChart();
 }
