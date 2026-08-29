@@ -1,0 +1,5460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Woody Monitor</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0/dist/chartjs-plugin-zoom.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.6.1/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+:root {
+    --bg:#0d1117;
+    --bg2:#151b23;
+    --card:#1b222c;
+    --card2:#202934;
+    --border:#2b3542;
+    --text:#f2f4f7;
+    --muted:#8d98a7;
+    --green:#35c878;
+    --orange:#ff9f43;
+    --red:#ff5c5c;
+    --blue:#4da3ff;
+    --yellow:#ffd166;
+    --radius:14px;
+}
+
+* { box-sizing:border-box; }
+
+html,body {
+    margin:0;
+    padding:0;
+    width:100%;
+    min-height:100%;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+}
+
+body { padding-bottom:20px; }
+
+.topbar {
+    position:sticky;
+    top:0;
+    z-index:50;
+    min-height:64px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:15px;
+    padding:6px 22px;
+    background:rgba(13,17,23,.95);
+    border-bottom:1px solid var(--border);
+    backdrop-filter:blur(12px);
+}
+
+.logo {
+    display:flex;
+    align-items:center;
+    gap:11px;
+    font-size:20px;
+    font-weight:700;
+}
+
+.logo-fire {
+    width:34px;
+    height:34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px;
+    background:rgba(255,159,67,.15);
+    font-size:20px;
+}
+
+.connection {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    color:var(--muted);
+}
+
+.connection-dot {
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    background:var(--red);
+}
+
+.connection.connected .connection-dot {
+    background:var(--green);
+    box-shadow:0 0 10px rgba(53,200,120,.7);
+}
+
+.container {
+    width:min(1500px,calc(100% - 32px));
+    margin:0 auto;
+    padding-top:22px;
+}
+
+.page-title { margin-bottom:20px; }
+
+.page-title h1 {
+    margin:0;
+    font-size:28px;
+}
+
+.page-title p {
+    margin:5px 0 0;
+    color:var(--muted);
+    font-size:14px;
+}
+
+.grid {
+    display:grid;
+    grid-template-columns:repeat(12,minmax(0,1fr));
+    gap:16px;
+}
+
+.col-12 { grid-column:span 12; }
+.col-8 { grid-column:span 8; }
+.col-6 { grid-column:span 6; }
+.col-4 { grid-column:span 4; }
+.col-3 { grid-column:span 3; }
+
+.card {
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px;
+    min-width:0;
+}
+
+.card-header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:15px;
+}
+
+.card-title {
+    font-size:16px;
+    font-weight:700;
+}
+
+.card-subtitle {
+    margin-top:3px;
+    font-size:12px;
+    color:var(--muted);
+}
+
+.stat { min-height:130px; }
+
+.stat-label {
+    color:var(--muted);
+    font-size:13px;
+    margin-bottom:10px;
+}
+
+.stat-value {
+    font-size:30px;
+    font-weight:700;
+    line-height:1.1;
+}
+
+.stat-unit {
+    margin-left:4px;
+    color:var(--muted);
+    font-size:14px;
+    font-weight:500;
+}
+
+.stat-footer {
+    margin-top:12px;
+    color:var(--muted);
+    font-size:12px;
+}
+
+/* Pillesilo */
+.silo-card {
+    min-height: 300px;
+}
+
+.silo-layout {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:34px;
+    min-height:230px;
+}
+
+/* Vertical pellet silo / column */
+.silo-tank {
+    position:relative;
+    width:110px;
+    height:220px;
+
+    border:3px solid #566273;
+    border-radius:48px 48px 24px 24px;
+
+    background:
+        linear-gradient(
+            90deg,
+            rgba(255,255,255,.035),
+            rgba(255,255,255,.01) 42%,
+            rgba(255,255,255,.07) 72%,
+            rgba(0,0,0,.12)
+        );
+
+    overflow:hidden;
+
+    box-shadow:
+        inset 10px 0 18px rgba(255,255,255,.035),
+        inset -10px 0 18px rgba(0,0,0,.28),
+        0 10px 28px rgba(0,0,0,.30);
+}
+
+/* Tilp lid */
+.silo-top {
+    position:absolute;
+    top:-3px;
+    left:-3px;
+    right:-3px;
+    height:25px;
+
+    border:3px solid #566273;
+    border-radius:50%;
+
+    background:
+        radial-gradient(
+            ellipse at center,
+            #303a47 0%,
+            #202934 65%,
+            #171e27 100%
+        );
+
+    z-index:4;
+
+    box-shadow:
+        0 2px 5px rgba(0,0,0,.35);
+}
+
+/* Pellet fill */
+.silo-fill {
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+
+    height:0%;
+
+    background:
+        linear-gradient(
+            to right,
+            #70471f 0%,
+            #9b642b 18%,
+            #c1843d 50%,
+            #9b642b 82%,
+            #70471f 100%
+        );
+
+    transition:
+        height .8s ease;
+
+    z-index:1;
+}
+
+/* Uneven pellet surface */
+.silo-fill::before {
+    content:"";
+
+    position:absolute;
+    left:-3px;
+    right:-3px;
+    top:-4px;
+
+    height:9px;
+
+    background:
+        radial-gradient(
+            ellipse at 15% 55%,
+            #d39a52 0 18%,
+            transparent 20%
+        ),
+        radial-gradient(
+            ellipse at 42% 40%,
+            #b87936 0 20%,
+            transparent 22%
+        ),
+        radial-gradient(
+            ellipse at 70% 60%,
+            #d39a52 0 19%,
+            transparent 21%
+        ),
+        radial-gradient(
+            ellipse at 90% 40%,
+            #a96d31 0 18%,
+            transparent 20%
+        );
+
+    border-radius:50%;
+
+    opacity:.9;
+}
+
+/* Vertical glass/metal highlight */
+.silo-highlight {
+    position:absolute;
+
+    top:25px;
+    bottom:10px;
+    left:12px;
+
+    width:9px;
+
+    border-radius:9px;
+
+    background:
+        linear-gradient(
+            to right,
+            rgba(255,255,255,.02),
+            rgba(255,255,255,.11),
+            rgba(255,255,255,.02)
+        );
+
+    z-index:3;
+
+    pointer-events:none;
+}
+
+/* Small shadow on right side */
+.silo-tank::after {
+    content:"";
+
+    position:absolute;
+
+    top:25px;
+    right:7px;
+    bottom:8px;
+
+    width:10px;
+
+    border-radius:10px;
+
+    background:
+        linear-gradient(
+            to left,
+            rgba(0,0,0,.25),
+            rgba(0,0,0,0)
+        );
+
+    z-index:3;
+
+    pointer-events:none;
+}
+
+.silo-content {
+    position:relative;
+    z-index:4;
+
+    text-align:center;
+
+    min-width:155px;
+}
+
+.silo-title {
+    color:var(--muted);
+    font-size:13px;
+    margin-bottom:8px;
+}
+
+.silo-value {
+    font-size:30px;
+    font-weight:700;
+    line-height:1.1;
+}
+
+.silo-unit {
+    color:var(--muted);
+    font-size:14px;
+    margin-left:3px;
+}
+
+.silo-level {
+    margin-top:10px;
+    font-size:13px;
+    color:var(--muted);
+}
+
+.silo-capacity {
+    margin-top:4px;
+    font-size:11px;
+    color:var(--muted);
+}
+
+@media(max-width:500px) {
+
+    .silo-layout {
+        gap:18px;
+    }
+
+    .silo-tank {
+        width:85px;
+        height:190px;
+    }
+
+    .silo-content {
+        min-width:125px;
+    }
+
+    .silo-value {
+        font-size:26px;
+    }
+}
+
+.status-large {
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.status-icon {
+    width:48px;
+    height:48px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:12px;
+    background:rgba(53,200,120,.12);
+    font-size:25px;
+}
+
+.status-name {
+    font-size:20px;
+    font-weight:700;
+}
+
+.status-detail {
+    margin-top:3px;
+    font-size:12px;
+    color:var(--muted);
+}
+
+.btn,select {
+    font-family:inherit;
+}
+
+.btn {
+    border:1px solid var(--border);
+    background:var(--card2);
+    color:var(--text);
+    border-radius:9px;
+    padding:8px 12px;
+    cursor:pointer;
+    font-size:13px;
+}
+
+.btn:hover { background:#28323e; }
+
+.btn.active {
+    background:var(--orange);
+    color:#111;
+    border-color:var(--orange);
+    font-weight:700;
+}
+
+.toolbar {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:15px;
+}
+
+.button-group {
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+}
+
+.history-zoom-toolbar {
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:6px;
+    flex-wrap:wrap;
+    margin:0;
+}
+
+.history-zoom-toolbar .btn {
+    min-width:42px;
+    min-height:38px;
+}
+
+.chart-toolbar {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    width:100%;
+    flex-wrap:wrap;
+    margin-bottom:10px;
+}
+
+.chart-toolbar-left {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:wrap;
+    min-width:0;
+}
+
+.chart-toolbar-right {
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:6px;
+    flex-wrap:wrap;
+    margin-left:auto;
+}
+
+.chart-toolbar-right .btn {
+    min-width:42px;
+    min-height:38px;
+}
+
+.chart-container {
+    position:relative;
+    height:390px;
+    width:100%;
+    touch-action:pan-y;
+}
+
+.chart-container.small { height:320px; }
+
+/* ============================================================
+   PELLET CHART
+   Responsive layout for zoom/export controls + chart
+   ============================================================ */
+
+.pellet-chart-container {
+    height:auto;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+}
+
+.pellet-chart-container .history-zoom-toolbar {
+    flex:0 0 auto;
+}
+
+.pellet-chart-container canvas {
+    display:block;
+    width:100% !important;
+    height:270px !important;
+    flex:0 0 270px;
+}
+
+
+
+
+
+
+
+.live-parameter-group-title {
+    min-height:34px;
+    display:flex;
+    align-items:center;
+    padding:0 6px;
+    margin-bottom:8px;
+    color:var(--orange);
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    border-bottom:1px solid var(--border);
+}
+
+.live-parameter-grid {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px 14px;
+}
+
+.live-parameter-grid .parameter {
+    display:grid;
+    grid-template-columns:minmax(210px,1fr) 90px 70px;
+    align-items:center;
+    min-width:0;
+    min-height:42px;
+    padding:7px 12px;
+    border:1px solid var(--border);
+    border-radius:9px;
+    background:var(--card2);
+    font-size:13px;
+}
+
+.live-parameter-grid .parameter:hover {
+    background:rgba(255,255,255,.045);
+}
+
+.live-parameter-grid .parameter-name {
+    min-width:0;
+    white-space:normal;
+    overflow:visible;
+    text-overflow:clip;
+    word-break:normal;
+    color:var(--text);
+    line-height:1.3;
+}
+
+.live-parameter-grid .parameter strong {
+    width:auto;
+    min-width:0;
+    text-align:right;
+    font-size:13px;
+    font-weight:600;
+    color:var(--text);
+}
+
+.live-parameter-grid .parameter-unit {
+    width:auto;
+    min-width:0;
+    margin-left:10px;
+    color:var(--muted);
+    font-size:11px;
+    text-align:left;
+    white-space:nowrap;
+}
+
+.parameter-list {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px 14px;
+    margin-top:16px;
+}
+
+.parameter {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-width:0;
+    min-height:42px;
+    padding:8px 12px;
+    border-radius:9px;
+    background:var(--card2);
+    border:1px solid var(--border);
+    cursor:default;
+    user-select:none;
+    font-size:13px;
+}
+
+.parameter-name {
+    flex:1;
+    min-width:0;
+    white-space:normal;
+    overflow:visible;
+    text-overflow:clip;
+    word-break:normal;
+    color:var(--text);
+    line-height:1.3;
+}
+
+.parameter strong {
+    flex:0 0 auto;
+    min-width:76px;
+    text-align:right;
+    font-size:13px;
+    font-weight:600;
+    color:var(--text);
+}
+
+.parameter-unit {
+    flex:0 0 auto;
+    min-width:52px;
+    color:var(--muted);
+    font-size:11px;
+    text-align:left;
+    white-space:nowrap;
+}
+
+@media(min-width:1250px) {
+    .live-parameter-grid,
+    .parameter-list {
+        grid-template-columns:repeat(3,minmax(300px,1fr));
+    }
+}
+
+@media(max-width:850px) {
+    .live-parameter-grid,
+    .parameter-list {
+        grid-template-columns:1fr;
+    }
+}
+
+@media(max-width:500px) {
+    .live-parameter-grid,
+    .parameter-list {
+        grid-template-columns:1fr;
+    }
+
+    .live-parameter-grid .parameter {
+        grid-template-columns:minmax(0,1fr) 70px 50px;
+        min-height:42px;
+    }
+
+    .parameter {
+        min-height:42px;
+    }
+}
+
+.pellet-summary {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:15px;
+}
+
+.pellet-summary-item {
+    padding:12px;
+    border-radius:10px;
+    background:var(--card2);
+}
+
+.pellet-summary-label {
+    font-size:11px;
+    color:var(--muted);
+}
+
+.pellet-summary-value {
+    margin-top:5px;
+    font-size:20px;
+    font-weight:700;
+}
+
+.events {
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.event {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px;
+    border-radius:9px;
+    background:var(--card2);
+}
+
+.event-time {
+    width:75px;
+    color:var(--muted);
+    font-size:11px;
+}
+
+.event-icon {
+    width:25px;
+    text-align:center;
+}
+
+.event-text {
+    flex:1;
+    font-size:13px;
+}
+
+.event.warning { border-left:3px solid var(--yellow); }
+.event.error { border-left:3px solid var(--red); }
+.event.info { border-left:3px solid var(--blue); }
+
+.raw-table {
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+}
+
+.raw-table th,
+.raw-table td {
+    padding:8px;
+    border-bottom:1px solid var(--border);
+    text-align:left;
+}
+
+.raw-table th { color:var(--muted); }
+
+.page { display:none; }
+.page.active { display:block; }
+
+.top-nav {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    margin-left:auto;
+}
+
+.nav-btn {
+    min-width:72px;
+    height:48px;
+    border:0;
+    background:transparent;
+    color:var(--muted);
+    border-radius:10px;
+    cursor:pointer;
+    padding:4px 8px;
+}
+
+.nav-btn .nav-icon {
+    display:block;
+    font-size:17px;
+    margin-bottom:1px;
+}
+
+.nav-btn span { font-size:10px; }
+
+.nav-btn.active {
+    color:var(--orange);
+    background:rgba(255,159,67,.08);
+}
+
+@media(max-width:900px) {
+    .container {
+        width:calc(100% - 20px);
+        padding-top:15px;
+    }
+
+    .grid { gap:10px; }
+
+    .col-8,.col-6,.col-4,.col-3 {
+        grid-column:span 12;
+    }
+
+    .stat { min-height:110px; }
+
+    .stat-value { font-size:26px; }
+
+    .chart-container { height:300px; }
+
+    .chart-container.small { height:270px; }
+
+    .history-zoom-toolbar {
+        justify-content:center;
+    }
+
+    .history-zoom-toolbar .btn {
+        flex:0 0 auto;
+        min-height:42px;
+    }
+
+    .chart-toolbar {
+        width:100%;
+        display:flex;
+        flex-direction:column;
+        align-items:stretch;
+        gap:8px;
+        margin-bottom:10px;
+    }
+
+    .chart-toolbar-left,
+    .chart-toolbar-right {
+        width:100%;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        flex-wrap:wrap;
+        margin-left:0;
+        gap:6px;
+    }
+
+    .chart-toolbar-left .btn,
+    .chart-toolbar-right .btn {
+        min-height:42px;
+        flex:0 0 auto;
+    }
+
+    .parameter-list {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+    .pellet-summary { grid-template-columns:1fr; }
+
+    /* Pellet chart remains fully visible on mobile */
+    .pellet-chart-container {
+        height:auto;
+        min-height:0;
+    }
+
+    .pellet-chart-container canvas {
+        height:240px !important;
+        flex-basis:240px;
+    }
+
+
+
+    .topbar { padding:0 12px; }
+
+    .logo { font-size:17px; }
+
+    .connection-text { display:none; }
+
+    .topbar {
+        flex-wrap:wrap;
+        min-height:64px;
+    }
+
+    .top-nav {
+        order:3;
+        width:100%;
+        margin:0;
+        justify-content:space-between;
+        border-top:1px solid var(--border);
+        padding-top:4px;
+    }
+
+    .nav-btn {
+        min-width:0;
+        flex:1;
+        padding:0 4px;
+    }
+
+    .nav-btn span { font-size:9px; }
+}
+
+@media(max-width:500px) {
+    .parameter-list { grid-template-columns:1fr; }
+
+    .page-title h1 { font-size:23px; }
+
+    .card { padding:14px; }
+
+    .toolbar {
+        align-items:flex-start;
+        flex-direction:column;
+    }
+
+    .button-group { width:100%; }
+
+    .button-group .btn { flex:1; }
+}
+
+
+/* ============================================================
+   WOODY MONITOR - CLEAN PARAMETER UI
+   ============================================================ */
+
+.live-parameter-group {
+    margin-top: 18px;
+    padding: 14px 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    overflow: hidden;
+}
+
+.live-parameter-group:first-child {
+    margin-top: 0;
+}
+
+.live-parameter-group-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text);
+}
+
+.live-parameter-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+}
+
+.live-parameter-grid .parameter {
+    min-width: 0;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    column-gap: 8px;
+    min-height: 48px;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    overflow: hidden;
+}
+
+.live-parameter-grid .parameter-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+}
+
+.live-parameter-grid .parameter strong {
+    min-width: 45px;
+    text-align: right;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.live-parameter-grid .parameter-unit {
+    min-width: 28px;
+    text-align: left;
+    font-size: 11px;
+    opacity: .65;
+    white-space: nowrap;
+}
+
+/* ============================================================
+   DASHBOARD - FJERN GAMLE SMÅ PARAMETERKORT
+   ============================================================ */
+
+.dashboard-secondary-stats {
+    display: none !important;
+}
+
+/* ============================================================
+   DASHBOARD HISTORY
+   ============================================================ */
+
+.dashboard-history {
+    margin-top: 18px;
+}
+
+.dashboard-history .card {
+    width: 100%;
+}
+
+.dashboard-history-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.dashboard-history-controls .btn {
+    min-width: 55px;
+}
+
+.dashboard-history-chart {
+    position: relative;
+    width: 100%;
+    min-height: 320px;
+    margin-top: 14px;
+}
+
+.dashboard-history-chart canvas {
+    width: 100% !important;
+    max-width: 100%;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 1100px) {
+    .live-parameter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .live-parameter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-history-chart {
+        min-height: 260px;
+    }
+}
+
+
+/* ============================================================
+   WOODY MONITOR - LIVE PARAMETERS
+   HELT TRANSPARENT
+   ============================================================ */
+
+#liveParameters,
+#liveParameters * {
+    box-shadow: none !important;
+}
+
+#liveParameters .live-parameter-group,
+#liveParameters .live-parameter-grid,
+#liveParameters .parameter,
+#liveParameters .live-parameter-grid .parameter {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+}
+
+#liveParameters .live-parameter-group {
+    margin: 18px 0 0 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+}
+
+#liveParameters .live-parameter-group:first-child {
+    margin-top: 0 !important;
+}
+
+#liveParameters .live-parameter-group-title {
+    margin: 22px 0 8px 0 !important;
+    padding: 0 0 7px 0 !important;
+    min-height: 0 !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    background: transparent !important;
+}
+
+#liveParameters .live-parameter-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0 24px !important;
+    background: transparent !important;
+}
+
+#liveParameters .live-parameter-grid .parameter {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) auto auto !important;
+    align-items: center !important;
+    min-height: 38px !important;
+    padding: 5px 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+}
+
+#liveParameters .live-parameter-grid .parameter:hover {
+    background: transparent !important;
+}
+
+#liveParameters .parameter-name {
+    color: var(--text) !important;
+}
+
+#liveParameters .parameter strong {
+    color: var(--text) !important;
+}
+
+#liveParameters .parameter-unit {
+    color: var(--muted) !important;
+}
+
+@media (max-width: 1100px) {
+    #liveParameters .live-parameter-grid {
+        grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+    }
+}
+
+@media (max-width: 700px) {
+    #liveParameters .live-parameter-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="logo">
+        <div class="logo-fire">🔥</div>
+        <div>WOODY MONITOR</div>
+    </div>
+
+    <div id="connection" class="connection">
+        <span class="connection-dot"></span>
+        <span class="connection-text">Forbinder</span>
+        <span id="lastUpdate">--</span>
+    </div>
+
+    <nav class="top-nav">
+
+        <button class="nav-btn active"
+                data-page="dashboard"
+                onclick="showPage('dashboard')">
+            <span class="nav-icon">🏠</span>
+            <span>Oversigt</span>
+        </button>
+
+        <button class="nav-btn"
+                data-page="history"
+                onclick="showPage('history')">
+            <span class="nav-icon">📈</span>
+            <span>Historik</span>
+        </button>
+
+        <button class="nav-btn"
+                data-page="consumption"
+                onclick="showPage('consumption')">
+            <span class="nav-icon">🟫</span>
+            <span>Piller</span>
+        </button>
+
+        <button class="nav-btn"
+                data-page="events"
+                onclick="showPage('events')">
+            <span class="nav-icon">🔔</span>
+            <span>Hændelser</span>
+        </button>
+
+        <button class="nav-btn"
+                data-page="settings"
+                onclick="showPage('settings')">
+            <span class="nav-icon">⚙️</span>
+            <span>Indstillinger</span>
+        </button>
+
+    </nav>
+</header>
+
+<main class="container">
+
+<section id="page-dashboard" class="page active">
+
+    <div class="page-title">
+        <h1>Oversigt</h1>
+        <p>Aktuelle data fra pillefyret</p>
+    </div>
+
+    <div class="grid">
+
+        <div class="card col-6">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Brænderstatus</div>
+                    <div class="card-subtitle">Aktuel driftstilstand</div>
+                </div>
+            </div>
+
+            <div class="status-large">
+                <div class="status-icon">🔥</div>
+
+                <div style="flex:1;min-width:0;">
+
+                    <div id="burnerStatus" class="status-name">--</div>
+
+                    <div id="burnerStatusDetail" class="status-detail">
+                        Live data
+                    </div>
+
+                    <div class="burner-status-grid">
+
+                        <div class="burner-status-item">
+                            <div class="stat-label">Driftstilstand</div>
+                            <div id="burnerDriftstilstand"
+                                 class="burner-status-value">
+                                --
+                            </div>
+                        </div>
+
+                        <div class="burner-status-item">
+                            <div class="stat-label">Kedeltemperatur</div>
+                            <div class="burner-status-value">
+                                <span id="statusBoilerTemp">--</span> °C
+                            </div>
+                        </div>
+
+                        <div class="burner-status-item">
+                            <div class="stat-label">Brændereffekt</div>
+                            <div class="burner-status-value">
+                                <span id="statusPower">--</span> %
+                            </div>
+                        </div>
+
+                        <div class="burner-status-item">
+                            <div class="stat-label">Brændereffekt</div>
+                            <div class="burner-status-value">
+                                <span id="statusPowerKw">--</span> kW
+                            </div>
+                        </div>
+
+                        <div class="burner-status-item">
+                            <div class="stat-label">Varmt vand</div>
+                            <div class="burner-status-value">
+                                <span id="statusHotWater">--</span> °C
+                            </div>
+                        </div>
+
+                        <div class="burner-status-item">
+                            <div class="stat-label">Alarm</div>
+                            <div id="burnerAlarm"
+                                 class="burner-status-value">
+                                Ingen
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card col-6 silo-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Pillesilo</div>
+                    <div class="card-subtitle">Aktuelt pilleniveau</div>
+                </div>
+            </div>
+
+            <div class="silo-layout">
+
+                <div class="silo-tank">
+                    <div class="silo-top"></div>
+                    <div id="siloFill" class="silo-fill"></div>
+                    <div class="silo-highlight"></div>
+                </div>
+
+                <div class="silo-content">
+                    <div class="silo-title">Piller tilbage</div>
+
+                    <div class="silo-value">
+                        <span id="magazineContent">--</span>
+                        <span class="silo-unit">kg</span>
+                    </div>
+
+                    <div class="silo-level">
+                        <span id="siloLevel">--</span>%
+                    </div>
+
+                    <div class="silo-capacity">
+                        Kapacitet: <span id="siloCapacity">215</span> kg
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+                </div>
+            </div>
+            <div id="systemStatus"></div>
+        </div>
+
+    </div>
+
+        <div class="dashboard-history">
+
+    <div class="card">
+
+        <div class="card-header">
+
+            <div>
+                <div class="card-title">Historik</div>
+                <div class="card-subtitle">
+                    Historiske værdier fra Woody Monitor
+                </div>
+            </div>
+
+        </div>
+
+        <!-- GRAF TOOLBAR -->
+        <div class="chart-toolbar">
+
+            <div class="chart-toolbar-left">
+
+                <button class="btn range-btn dashboard-range-btn active"
+                        type="button"
+                        onclick="setHistoryRange(1,this)">1t</button>
+
+                <button class="btn range-btn dashboard-range-btn"
+                        type="button"
+                        onclick="setHistoryRange(6,this)">6t</button>
+
+                <button class="btn range-btn dashboard-range-btn"
+                        type="button"
+                        onclick="setHistoryRange(12,this)">12t</button>
+
+                <button class="btn range-btn dashboard-range-btn"
+                        type="button"
+                        onclick="setHistoryRange(24,this)">24t</button>
+
+                <button class="btn range-btn dashboard-range-btn"
+                        type="button"
+                        onclick="setHistoryRange(48,this)">48t</button>
+
+                <button class="btn range-btn dashboard-range-btn"
+                        type="button"
+                        onclick="setHistoryRange(168,this)">7d</button>
+
+                <button class="btn range-btn dashboard-range-btn"
+                        type="button"
+                        onclick="setHistoryRange(720,this)">30d</button>
+
+                <button class="btn range-btn dashboard-range-btn"
+                        type="button"
+                        onclick="setHistoryRange(2160,this)">90d</button>
+
+                <button class="btn range-btn dashboard-range-btn"
+                        type="button"
+                        onclick="setHistoryRange(4320,this)">180d</button>
+
+                <button class="btn range-btn dashboard-range-btn"
+                        type="button"
+                        onclick="setHistoryRange(8760,this)">1 år</button>
+
+            </div>
+
+            <div class="chart-toolbar-right">
+
+                <button class="btn" type="button"
+                        onclick="historyZoomOut()">−</button>
+
+                <button class="btn" type="button"
+                        onclick="historyResetZoom()">Nulstil zoom</button>
+
+                <button class="btn" type="button"
+                        onclick="historyZoomIn()">+</button>
+
+                <button class="btn" type="button"
+                        onclick="exportHistoryCSV()">CSV</button>
+
+                <button class="btn" type="button"
+                        onclick="exportHistoryExcel()">Excel</button>
+
+            </div>
+
+        </div>
+
+        <!-- FRA / TIL -->
+        <div class="toolbar"
+             style="margin-top:12px;flex-wrap:wrap;">
+
+            <div class="button-group">
+
+                <label>
+                    Fra
+                    <input type="datetime-local"
+                           id="dashboardHistoryFra">
+                </label>
+
+                <label>
+                    Til
+                    <input type="datetime-local"
+                           id="dashboardHistoryTil">
+                </label>
+
+                <button class="btn"
+                        type="button"
+                        onclick="applyDashboardHistoryDateRange()">
+                    Vis periode
+                </button>
+
+                <button class="btn"
+                        type="button"
+                        onclick="clearDashboardHistoryDateRange()">
+                    Ryd
+                </button>
+
+            </div>
+
+        </div>
+
+        <!-- PARAMETER VALG -->
+        <div class="toolbar"
+             style="margin-top:12px;">
+
+            <div class="button-group">
+
+                <button class="btn"
+                        type="button"
+                        onclick="selectAllParameters()">
+                    Alle
+                </button>
+
+                <button class="btn"
+                        type="button"
+                        onclick="clearAllParameters()">
+                    Ingen
+                </button>
+
+            </div>
+
+        </div>
+
+        <!-- GRAF -->
+        <div class="dashboard-history-chart">
+            <canvas id="dashboardHistoryChart"></canvas>
+        </div>
+
+        <!-- PARAMETRE -->
+        <div id="dashboardParameterList"
+             class="parameter-list">
+        </div>
+
+    </div>
+
+</div>
+</div>
+
+</section>
+
+<section id="page-history" class="page">
+
+    <div class="page-title">
+        <h1>Historik</h1>
+        <p>Historiske data gemt i Woody Monitor</p>
+    </div>
+
+    <div class="card">
+
+        <!-- GRAF TOOLBAR -->
+        <div class="chart-toolbar">
+
+            <div class="chart-toolbar-left">
+
+                <button class="btn range-btn active"
+                        onclick="setHistoryRange(1,this)">1t</button>
+
+                <button class="btn range-btn"
+                        onclick="setHistoryRange(6,this)">6t</button>
+
+                <button class="btn range-btn"
+                        onclick="setHistoryRange(12,this)">12t</button>
+
+                <button class="btn range-btn"
+                        onclick="setHistoryRange(24,this)">24t</button>
+
+                <button class="btn range-btn"
+                        onclick="setHistoryRange(48,this)">48t</button>
+
+                <button class="btn range-btn"
+                        onclick="setHistoryRange(168,this)">7d</button>
+
+                <button class="btn range-btn"
+                        onclick="setHistoryRange(720,this)">30d</button>
+
+                <button class="btn range-btn"
+                        onclick="setHistoryRange(2160,this)">90d</button>
+
+                <button class="btn range-btn"
+                        onclick="setHistoryRange(4320,this)">180d</button>
+
+                <button class="btn range-btn"
+                        onclick="setHistoryRange(8760,this)">1 år</button>
+
+            </div>
+
+            <div class="chart-toolbar-right">
+
+                <button class="btn" type="button"
+                        onclick="historyZoomOut()">−</button>
+
+                <button class="btn" type="button"
+                        onclick="historyResetZoom()">Nulstil zoom</button>
+
+                <button class="btn" type="button"
+                        onclick="historyZoomIn()">+</button>
+
+                <button class="btn" type="button"
+                        onclick="exportHistoryCSV()">CSV</button>
+
+                <button class="btn" type="button"
+                        onclick="exportHistoryExcel()">Excel</button>
+
+            </div>
+
+        </div>
+
+        <div class="toolbar" style="margin-top:12px;flex-wrap:wrap;">
+
+            <div class="button-group">
+
+                <label>
+                    Fra
+                    <input type="datetime-local"
+                           id="historyFra">
+                </label>
+
+                <label>
+                    Til
+                    <input type="datetime-local"
+                           id="historyTil">
+                </label>
+
+                <button class="btn"
+                        onclick="applyHistoryDateRange()">
+                    Vis periode
+                </button>
+
+                <button class="btn"
+                        onclick="clearHistoryDateRange()">
+                    Ryd
+                </button>
+
+            </div>
+
+        </div>
+
+        <div class="toolbar">
+
+            <div class="button-group">
+                <button class="btn" onclick="selectAllParameters()">Alle</button>
+                <button class="btn" onclick="clearAllParameters()">Ingen</button>
+            </div>
+
+        </div>
+
+        <div class="chart-container">
+            <canvas id="historyChart"></canvas>
+        </div>
+
+        <div id="historyParameterList" class="parameter-list"></div>
+
+    </div>
+
+</section>
+
+<section id="page-consumption" class="page">
+
+    <div class="page-title">
+        <h1>Pilleforbrug</h1>
+        <p>Pilleforbrug calculated from feeder runtime</p>
+    </div>
+
+    <div class="card">
+
+        <!-- PELLET CHART TOOLBAR -->
+        <div class="chart-toolbar">
+
+            <div class="chart-toolbar-left">
+
+                <button class="btn pellet-range active"
+                        onclick="setConsumptionRange(1,this)">1t</button>
+
+                <button class="btn pellet-range"
+                        onclick="setConsumptionRange(6,this)">6t</button>
+
+                <button class="btn pellet-range"
+                        onclick="setConsumptionRange(12,this)">12t</button>
+
+                <button class="btn pellet-range"
+                        onclick="setConsumptionRange(24,this)">24t</button>
+
+                <button class="btn pellet-range"
+                        onclick="setConsumptionRange(48,this)">48t</button>
+
+                <button class="btn pellet-range"
+                        onclick="setConsumptionRange(168,this)">7d</button>
+
+                <button class="btn pellet-range"
+                        onclick="setConsumptionRange(720,this)">30d</button>
+
+                <button class="btn pellet-range"
+                        onclick="setConsumptionRange(2160,this)">90d</button>
+
+                <button class="btn pellet-range"
+                        onclick="setConsumptionRange(4320,this)">180d</button>
+
+                <button class="btn pellet-range"
+                        onclick="setConsumptionRange(8760,this)">1 år</button>
+
+            </div>
+
+            <div class="chart-toolbar-right">
+
+                <button class="btn"
+                        type="button"
+                        onclick="pelletZoomOut()">−</button>
+
+                <button class="btn"
+                        type="button"
+                        onclick="pelletResetZoom()">Nulstil zoom</button>
+
+                <button class="btn"
+                        type="button"
+                        onclick="pelletZoomIn()">+</button>
+
+                <button class="btn"
+                        type="button"
+                        onclick="exportPelletCSV()">CSV</button>
+
+                <button class="btn"
+                        type="button"
+                        onclick="exportPelletExcel()">Excel</button>
+
+            </div>
+
+        </div>
+
+        <div class="toolbar" style="margin-top:12px;flex-wrap:wrap;">
+
+            <div class="button-group">
+
+                <label>
+                    Fra
+                    <input type="datetime-local"
+                           id="pelletFra">
+                </label>
+
+                <label>
+                    Til
+                    <input type="datetime-local"
+                           id="pelletTil">
+                </label>
+
+                <button class="btn"
+                        onclick="applyPelletDateRange()">
+                    Vis periode
+                </button>
+
+                <button class="btn"
+                        onclick="clearPelletDateRange()">
+                    Ryd
+                </button>
+
+            </div>
+
+        </div>
+
+        <div class="pellet-summary">
+
+            <div class="pellet-summary-item">
+                <div class="pellet-summary-label">I ALT</div>
+                <div id="pelletTiltal" class="pellet-summary-value">--</div>
+            </div>
+
+            <div class="pellet-summary-item">
+                <div class="pellet-summary-label">GENNEMSNIT / DAG</div>
+                <div id="pelletAverage" class="pellet-summary-value">--</div>
+            </div>
+
+            <div class="pellet-summary-item">
+                <div class="pellet-summary-label">PRIS</div>
+                <div id="pelletCost" class="pellet-summary-value">--</div>
+            </div>
+
+        </div>
+
+        <div class="chart-container small pellet-chart-container">
+
+            <canvas id="pelletChart"></canvas>
+
+        </div>
+
+    </div>
+
+</section>
+
+<section id="page-events" class="page">
+
+    <div class="page-title">
+        <h1>Hændelser</h1>
+        <p>Aktuelle alarmer og information om brænderens tilstand</p>
+    </div>
+
+    <div class="card">
+        <div id="eventList" class="events"></div>
+    </div>
+
+</section>
+
+<section id="page-settings" class="page">
+
+    <div class="page-title">
+        <h1>Indstillinger</h1>
+        <p>Konfiguration af Woody Monitor</p>
+    </div>
+
+    <div class="grid">
+
+        <div class="card col-6">
+
+            <div class="card-header">
+                <div class="card-title">Brugerflade</div>
+            </div>
+
+            <div style="padding:12px 0;">
+                Automatiske opdateringer
+                <span style="float:right;color:var(--green);">5 sekunder</span>
+            </div>
+
+            <div style="padding:12px 0;border-top:1px solid var(--border);">
+                API
+                <span style="float:right;color:var(--muted);">/api/v1</span>
+            </div>
+
+            <div style="padding:12px 0;border-top:1px solid var(--border);">
+                MQTT
+                <span style="float:right;color:var(--green);">Aktiv</span>
+            </div>
+
+        </div>
+
+        <div class="card col-12">
+
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Aktuelle parametre</div>
+                    <div class="card-subtitle">
+                        Alle værdier modtaget direkte fra Woody Monitor
+                    </div>
+                </div>
+            </div>
+
+            
+            <div class="live-parameters-wrapper">
+                <div class="card-subtitle" style="margin-bottom:12px;">
+                    Aktuelle værdier fra styreenheden
+                </div>
+
+                <div id="liveParameters" class="live-parameters-clean"></div>
+            </div>
+
+
+        </div>
+
+        <div class="card col-6">
+
+            <div class="card-header">
+                <div class="card-title">Pilleindstillinger</div>
+            </div>
+
+            <div style="padding:12px 0;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span>Pillepris</span>
+
+                    <input
+                        id="pelletPrice"
+                        type="number"
+                        value="3.78"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        style="margin-left:auto;width:90px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+
+                    <span>kr/kg</span>
+
+                    <button
+                        class="btn"
+                        onclick="savePelletPrice()"
+                    >
+                        Gem
+                    </button>
+                </div>
+            </div>
+
+            <div style="padding:12px 0;border-top:1px solid var(--border);">
+
+                <div style="display:flex;align-items:center;gap:10px;">
+
+                    <span>Silokapacitet</span>
+
+                    <input
+                        id="siloCapacitySetting"
+                        type="number"
+                        value="215"
+                        min="1"
+                        max="5000"
+                        step="1"
+                        style="margin-left:auto;width:90px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+
+                    <span>kg</span>
+
+                    <button
+                        class="btn"
+                        onclick="saveSiloCapacity()"
+                    >
+                        Gem
+                    </button>
+
+                </div>
+
+                <div
+                    id="siloCapacityInfo"
+                    style="font-size:12px;color:var(--muted);margin-top:8px;"
+                >
+                    Siloskala på oversigten
+                </div>
+
+            </div>
+
+            <div style="padding:12px 0;border-top:1px solid var(--border);">
+
+                <div style="margin-bottom:8px;">
+                    Kalibrering af føder
+                </div>
+
+                <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">
+                    Mængde piller leveret af sneglen på 6 minutter.
+                    Denne værdi bruges til at beregne pilleforbruget.
+                </div>
+
+                <div style="display:flex;gap:10px;align-items:center;">
+
+                    <input
+                        id="feederGrams"
+                        type="number"
+                        value="1200"
+                        min="1"
+                        max="10000"
+                        step="1"
+                        style="width:110px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+
+                    <span>gram</span>
+
+                    <button
+                        class="btn"
+                        onclick="saveFeederSettings()"
+                    >
+                        Gem
+                    </button>
+
+                </div>
+
+                <div
+                    id="feederCalibrationInfo"
+                    style="font-size:13px;color:var(--muted);margin-top:10px;"
+                >
+                    1200 g / 6 min = 12.00 kg/h
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</section>
+
+</main>
+
+
+<script>
+const API = "/api/v1";
+
+let liveData = {};
+let historyChart = null;
+let pelletChart = null;
+let historyRequestController = null;
+let historyHours = 24;
+let consumptionHours = 24;
+
+let historyStart = null;
+let historyEnd = null;
+
+let consumptionStart = null;
+let consumptionEnd = null;
+let historyParameters = [];
+
+/*
+ * Data currently displayed in the pellet chart.
+ * Used by CSV and Excel export.
+ */
+let pelletExportLabels = [];
+let pelletExportVærdis = [];
+let pelletExportPrices = [];
+let pelletExportCosts = [];
+
+const DISPLAY = {
+    boiler_temp: ["Kedeltemperatur","°C"],
+    boiler_temp_set: ["Kedeltemperatur setpunkt","°C"],
+    boiler_temp_min: ["Minimum kedeltemperatur","°C"],
+    hotwater_temp: ["Varmtvandstemperatur","°C"],
+    hotwater_temp_set: ["Varmtvand setpunkt","°C"],
+    smoke_temp: ["Røggastemperatur","°C"],
+    chute_temp: ["Faldskakt temperatur","°C"],
+    chute_temp_max: ["Maks. faldskakt temperatur","°C"],
+    outside_temp: ["Udetemperatur","°C"],
+    indoor_temp: ["Indetemperatur","°C"],
+    power: ["Brændereffekt","%"],
+    power_kW: ["Brændereffekt","kW"],
+    min_power: ["Minimum brændereffekt","%"],
+    max_power: ["Maksimum brændereffekt","%"],
+    blower_low: ["Blæser lav","%"],
+    blower_mid: ["Blæser mellem","%"],
+    blower_high: ["Blæser høj","%"],
+    blower_off_time: ["Blæser slukketid","s"],
+    blower_corr_low: ["Blæserkorrektion lav","%"],
+    blower_corr_mid: ["Blæserkorrektion mellem","%"],
+    blower_corr_high: ["Blæserkorrektion høj","%"],
+    blower_cleaning: ["Blæser ved rensning","%"],
+    regulator_P: ["Regulator P",""],
+    regulator_I: ["Regulator I",""],
+    regulator_D: ["Regulator D",""],
+    oxygen: ["Ilt / Lambda","%"],
+    oxygen_desired: ["Ønsket ilt","%"],
+    oxygen_low: ["Ilt lav","%"],
+    oxygen_mid: ["Ilt mellem","%"],
+    oxygen_high: ["Ilt høj","%"],
+    oxygen_regulation: ["Iltregulering",""],
+    oxygen_regulation_P: ["Iltregulator P",""],
+    oxygen_regulation_I: ["Iltregulator I",""],
+    oxygen_regulation_D: ["Iltregulator D",""],
+    oxygen_gain: ["Iltforstærkning",""],
+    oxygen_corr_low: ["Iltkorrektion lav","%"],
+    oxygen_corr_mid: ["Iltkorrektion mellem","%"],
+    oxygen_corr_interval: ["Iltkorrektionsinterval","s"],
+    feeder: ["Føder","%"],
+    feeder_time: ["Føderens driftstid","s"],
+    feeder_capacity: ["Føderkapacitet","g / 6 min"],
+    feeder_capacity_min: ["Minimum føderkapacitet",""],
+    feeder_capacity_max: ["Maksimum føderkapacitet",""],
+    feeder_low: ["Føder lav","%"],
+    feeder_high: ["Føder høj","%"],
+    feed_per_minute: ["Føder pr. minut","g/min"],
+    motor_time: ["Motortid","s"],
+    motor_time_perm: ["Motortid permanent","s"],
+    cleaning_interval: ["Renseinterval","min"],
+    cleaning_time: ["Rensetid","s"],
+    comp_clean_blower: ["Kompressor renseblæser","%"],
+    comp_clean_interval: ["Kompressor renseinterval","min"],
+    comp_clean_time: ["Kompressor rensetid","s"],
+    comp_clean_wait: ["Kompressor renseventetid","s"],
+    time_minutes: ["Styreenhedens tid",""],
+    timer_heating_period: ["Varmeperiode",""],
+    timer_hotwater_period: ["Varmtvandsperiode",""],
+    ignition_count: ["Antal optændinger",""],
+    ignition_time: ["Optændingstid","s"],
+    el_time: ["Driftstid","s"],
+    el_time_perm: ["Driftstid permanent","s"],
+    consumption: ["Pilleforbrug","kg/h"],
+    alarm: ["Alarm",""],
+    mode: ["Driftstilstand",""],
+    model: ["Styreenhedsmodel",""],
+    version: ["Styreenhedsversion",""],
+    language: ["Sprog",""],
+    autocalculation: ["Automatisk beregning",""],
+    flow: ["Flow",""],
+    light: ["Lys",""],
+    light_required: ["Lys påkrævet",""]
+};
+
+function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, c => ({
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        '"':"&quot;",
+        "'":"&#039;"
+    }[c]));
+}
+
+function number(value) {
+    if (value === null || value === undefined || value === "") return "--";
+    const n = Number(value);
+    if (!Number.isFinite(n)) return esc(value);
+    return Math.abs(n) >= 100 ? n.toFixed(0) : n.toFixed(1);
+}
+
+function niceName(key) {
+    if (DISPLAY[key]) return DISPLAY[key][0];
+
+    return key
+        .replaceAll("_"," ")
+        .replace(/\b\w/g,c=>c.toUpperCase());
+}
+
+function unitFor(key) {
+    if (DISPLAY[key]) return DISPLAY[key][1];
+    return "";
+}
+
+function findVærdi(values, names) {
+    for (const name of names) {
+        if (values[name] !== undefined && values[name] !== null)
+            return values[name];
+    }
+    return null;
+}
+
+function setVærdi(id,value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = number(value);
+}
+
+function updateConnection(connected) {
+    const el = document.getElementById("connection");
+    const text = el.querySelector(".connection-text");
+
+    el.classList.toggle("connected",!!connected);
+    text.textContent = connected ? "Forbundet" : "Afbrudt";
+}
+
+async function api(path) {
+    const response = await fetch(API + path, {
+        cache:"no-store"
+    });
+
+    if (!response.ok)
+        throw new Error(`${response.status} ${response.statusText}`);
+
+    return response.json();
+}
+
+async function loadLive() {
+    try {
+        const data = await api("/live");
+
+        liveData = data.values || {};
+
+        updateConnection(data.connected);
+
+        const time = data.timestamp
+            ? new Date(data.timestamp).toLocaleTimeString([], {
+                hour:"2-digit",
+                minute:"2-digit",
+                second:"2-digit"
+            })
+            : "--";
+
+        document.getElementById("lastUpdate").textContent = time;
+
+        updateDashboard();
+        renderLiveParameters();
+        renderEvents(data);
+
+    } catch(error) {
+        console.error("Live API:",error);
+        updateConnection(false);
+        document.getElementById("lastUpdate").textContent = "API error";
+    }
+}
+
+function updateDashboard() {
+
+    const v = liveData;
+
+    const power = findVærdi(v,[
+        "power",
+        "burner_power",
+        "output",
+        "effect"
+    ]);
+
+    const boiler = findVærdi(v,[
+        "boiler_temp",
+        "boiler_temperature",
+        "kedeltemperatur"
+    ]);
+
+    const hotwater = findVærdi(v,[
+        "hotwater_temp",
+        "hot_water_temp",
+        "hotwater_temperature",
+        "varmtvand"
+    ]);
+
+    const oxygen = findVærdi(v,[
+        "oxygen",
+        "o2",
+        "lambda"
+    ]);
+
+    const feeder = findVærdi(v,[
+        "feeder",
+        "feeder_percent",
+        "feeder_duty"
+    ]);
+
+    const flue = findVærdi(v,[
+        "smoke_temp",
+        "flue_gas_temp",
+        "fluegas_temp"
+    ]);
+
+    const ret = findVærdi(v,[
+        "boiler_return_temp",
+        "return_temp",
+        "return_temperature"
+    ]);
+
+    const outdoor = findVærdi(v,[
+        "outside_temp",
+        "outdoor_temp",
+        "outdoor_temperature"
+    ]);
+
+    const draft = findVærdi(v,[
+        "draft"
+    ]);
+
+    const fan = findVærdi(v,[
+        "fan",
+        "blower"
+    ]);
+
+    const consumption = findVærdi(v,[
+        "consumption",
+        "pellet_consumption",
+        "fuel_consumption"
+    ]);
+
+    const magazineContent = findVærdi(v,[
+        "magazine_content",
+        "silo_content",
+        "pellet_silo"
+    ]);
+
+    setVærdi("powerVærdi",power);
+    setVærdi("boilerTemp",boiler);
+    setVærdi("hotWaterTemp",hotwater);
+    setVærdi("oxygenVærdi",oxygen);
+    setVærdi("feederVærdi",feeder);
+    setVærdi("flueGasTemp",flue);
+    setVærdi("returnTemp",ret);
+    setVærdi("outdoorTemp",outdoor);
+    setVærdi("draft",draft);
+    setVærdi("fan",fan);
+    setVærdi("consumptionVærdi",consumption);
+
+    /*
+     * Pillesilo
+     *
+     * magazine_content is supplied directly by the
+     * pellet controller in kg.
+     *
+     * 300 kg is currently only the dashboard scale.
+     * It does NOT change any burner setting.
+     */
+    const SILO_MAX_KG =
+        Number(window.siloCapacityKg) > 0
+            ? Number(window.siloCapacityKg)
+            : 215;
+
+    const siloVærdi =
+        magazineContent !== null
+            ? Number(magazineContent)
+            : null;
+
+    const siloVærdiElement =
+        document.getElementById("magazineContent");
+
+    const siloFillElement =
+        document.getElementById("siloFill");
+
+    const siloLevelElement =
+        document.getElementById("siloLevel");
+
+    const siloCapacityElement =
+        document.getElementById("siloCapacity");
+
+    if (siloCapacityElement) {
+        siloCapacityElement.textContent =
+            SILO_MAX_KG;
+    }
+
+    if (
+        siloVærdiElement &&
+        Number.isFinite(siloVærdi)
+    ) {
+        siloVærdiElement.textContent =
+            siloVærdi.toFixed(0);
+    }
+
+    if (
+        siloFillElement &&
+        Number.isFinite(siloVærdi)
+    ) {
+        const level =
+            Math.max(
+                0,
+                Math.min(
+                    100,
+                    (siloVærdi / SILO_MAX_KG) * 100
+                )
+            );
+
+        siloFillElement.style.height =
+            level.toFixed(1) + "%";
+
+        if (siloLevelElement) {
+            siloLevelElement.textContent =
+                level.toFixed(0);
+        }
+    } else {
+
+        if (siloVærdiElement)
+            siloVærdiElement.textContent = "--";
+
+        if (siloLevelElement)
+            siloLevelElement.textContent = "--";
+
+        if (siloFillElement)
+            siloFillElement.style.height = "0%";
+    }
+
+    const status = findVærdi(v,[
+        "status",
+        "state",
+        "burner_status"
+    ]);
+
+    const alarm = findVærdi(v,[
+        "alarm",
+        "alarm_text",
+        "error"
+    ]);
+
+    const mode = findVærdi(v,[
+        "mode",
+        "operating_mode",
+        "burner_mode"
+    ]);
+
+    const powerKw = findVærdi(v,[
+        "power_kw",
+        "power_kW",
+        "effect_kw",
+        "output_kw"
+    ]);
+
+    const alarmText =
+        alarm !== null
+            ? String(alarm).trim()
+            : "";
+
+    const alarmAktiv =
+        alarmText !== "" &&
+        alarmText !== "0" &&
+        alarmText.toLowerCase() !== "ok" &&
+        alarmText.toLowerCase() !== "none" &&
+        alarmText.toLowerCase() !== "normal";
+
+    document.getElementById("burnerStatus").textContent =
+        alarmAktiv
+            ? "Alarm"
+            : status !== null
+                ? String(status)
+                : power !== null
+                    ? Number(power) > 0 ? "I drift" : "Stoppet"
+                    : "Forbundet";
+
+    document.getElementById("burnerStatusDetail").textContent =
+        `Live data • ${Object.keys(v).length} parametre`;
+
+    const modeElement =
+        document.getElementById("burnerDriftstilstand");
+
+    if (modeElement) {
+        modeElement.textContent =
+            mode !== null ? String(mode) : "--";
+    }
+
+    const statusBoilerTempElement =
+        document.getElementById("statusBoilerTemp");
+
+    if (statusBoilerTempElement) {
+        statusBoilerTempElement.textContent =
+            boiler !== null
+                ? Number(boiler).toFixed(1)
+                : "--";
+    }
+
+    const statusHotWaterElement =
+        document.getElementById("statusHotWater");
+
+    if (statusHotWaterElement) {
+        statusHotWaterElement.textContent =
+            hotwater !== null
+                ? Number(hotwater).toFixed(1)
+                : "--";
+    }
+
+    const statusPowerElement =
+        document.getElementById("statusPower");
+
+    if (statusPowerElement) {
+        statusPowerElement.textContent =
+            power !== null
+                ? Number(power).toFixed(0)
+                : "--";
+    }
+
+    const statusPowerKwElement =
+        document.getElementById("statusPowerKw");
+
+    if (statusPowerKwElement) {
+        statusPowerKwElement.textContent =
+            powerKw !== null
+                ? Number(powerKw).toFixed(2)
+                : "--";
+    }
+
+    const alarmElement =
+        document.getElementById("burnerAlarm");
+
+    if (alarmElement) {
+        alarmElement.textContent =
+            alarmAktiv
+                ? String(alarm)
+                : "Ingen";
+    }
+}
+
+function renderLiveParameters() {
+
+    const container = document.getElementById("liveParameters");
+
+    if (!container)
+        return;
+
+    /*
+     * Live parametre vises i faste funktionelle grupper.
+     * Kun parametre som faktisk kommer fra controlleren vises.
+     */
+
+    const groups = {
+
+        "Temperaturer": [
+            "boiler_temp",
+            "boiler_temp_set",
+            "boiler_temp_min",
+            "boiler_temp_diff_up",
+            "boiler_temp_diff_down",
+            "boiler_return_temp",
+            "hotwater_temp",
+            "hotwater_temp_set",
+            "hotwater_temp_diff",
+            "smoke_temp",
+            "chute_temp",
+            "chute_temp_max",
+            "outside_temp",
+            "indoor_temp"
+        ],
+
+        "Brænder": [
+            "mode",
+            "power",
+            "power_kW",
+            "min_power",
+            "max_power",
+            "regulator_P",
+            "regulator_I",
+            "regulator_D"
+        ],
+
+        "Ilt": [
+            "oxygen",
+            "oxygen_desired",
+            "oxygen_low",
+            "oxygen_mid",
+            "oxygen_high",
+            "oxygen_regulation",
+            "oxygen_gain",
+            "oxygen_regulation_P",
+            "oxygen_regulation_I",
+            "oxygen_regulation_D",
+            "oxygen_corr_low",
+            "oxygen_corr_mid",
+            "oxygen_corr_10",
+            "oxygen_corr_50",
+            "oxygen_corr_100",
+            "oxygen_corr_interval"
+        ],
+
+        "Føder": [
+            "feeder_time",
+            "feeder_capacity",
+            "feeder_capacity_min",
+            "feeder_capacity_max",
+            "feeder_low",
+            "feeder_high",
+            "feed_per_minute",
+            "motor_time",
+            "motor_time_perm"
+        ],
+
+        "Blæser": [
+            "blower_low",
+            "blower_mid",
+            "blower_high",
+            "blower_off_time",
+            "blower_corr_low",
+            "blower_corr_mid",
+            "blower_corr_high",
+            "blower_cleaning"
+        ],
+
+        "Rensning": [
+            "cleaning_interval",
+            "cleaning_time",
+            "comp_clean_blower",
+            "comp_clean_interval",
+            "comp_clean_time",
+            "comp_clean_wait"
+        ],
+
+        "Tider": [
+            "time_minutes",
+            "timer_heating_period",
+            "timer_heating_start_1",
+            "timer_heating_start_2",
+            "timer_heating_start_3",
+            "timer_heating_start_4",
+            "timer_hotwater_period",
+            "timer_hotwater_start_1",
+            "timer_hotwater_start_2",
+            "timer_hotwater_start_3"
+        ],
+
+        "System": [
+            "alarm",
+            "autocalculation",
+            "flow",
+            "language",
+            "light",
+            "light_required",
+            "model",
+            "version"
+        ],
+
+        "Øvrige": [
+            "ignition_count",
+            "ignition_time",
+            "el_time",
+            "el_time_perm",
+            "magazine_content"
+        ]
+    };
+
+    const used = new Set();
+    let html = "";
+
+    Object.entries(groups).forEach(([groupName, keys]) => {
+
+        const available = keys.filter(key =>
+            liveData[key] !== null &&
+            liveData[key] !== undefined
+        );
+
+        if (!available.length)
+            return;
+
+        available.forEach(key => used.add(key));
+
+        html += `
+            <div class="live-parameter-group">
+
+                <div class="live-parameter-group-title">
+                    ${esc(groupName)}
+                </div>
+
+                <div class="live-parameter-grid">
+
+                    ${available.map(key => `
+                        <div class="parameter">
+
+                            <span class="parameter-name">
+                                ${esc(niceName(key))}
+                            </span>
+
+                            <strong>
+                                ${esc(number(liveData[key]))}
+                            </strong>
+
+                            <span class="parameter-unit">
+                                ${esc(unitFor(key))}
+                            </span>
+
+                        </div>
+                    `).join("")}
+
+                </div>
+
+            </div>
+        `;
+    });
+
+    /*
+     * Fremtidige controller-parametre som endnu ikke er grupperet.
+     */
+
+    const ungrouped = Object.keys(liveData)
+        .filter(key =>
+            liveData[key] !== null &&
+            liveData[key] !== undefined &&
+            !used.has(key)
+        )
+        .sort();
+
+    if (ungrouped.length) {
+
+        html += `
+            <div class="live-parameter-group">
+
+                <div class="live-parameter-group-title">
+                    Øvrige parametre
+                </div>
+
+                <div class="live-parameter-grid">
+
+                    ${ungrouped.map(key => `
+                        <div class="parameter">
+
+                            <span class="parameter-name">
+                                ${esc(niceName(key))}
+                            </span>
+
+                            <strong>
+                                ${esc(number(liveData[key]))}
+                            </strong>
+
+                            <span class="parameter-unit">
+                                ${esc(unitFor(key))}
+                            </span>
+
+                        </div>
+                    `).join("")}
+
+                </div>
+
+            </div>
+        `;
+    }
+
+    container.innerHTML =
+        html ||
+        `<div style="color:var(--muted);">
+            Ingen live parametre tilgængelige
+        </div>`;
+}
+
+function renderEvents(data) {
+
+    const container = document.getElementById("eventList");
+    const events = [];
+
+    if (data.errors && Object.keys(data.errors).length) {
+        Object.entries(data.errors).forEach(([key,value]) => {
+            events.push({
+                type:"error",
+                icon:"⚠️",
+                text:`${niceName(key)}: ${value}`
+            });
+        });
+    }
+
+    const alarm = findVærdi(liveData,["alarm"]);
+
+    const alarmText =
+        alarm !== null
+            ? String(alarm).trim()
+            : "";
+
+    const alarmAktiv =
+        alarmText !== "" &&
+        alarmText !== "0" &&
+        alarmText.toLowerCase() !== "ok" &&
+        alarmText.toLowerCase() !== "none" &&
+        alarmText.toLowerCase() !== "normal";
+
+    if (alarmAktiv) {
+        events.push({
+            type:"error",
+            icon:"🚨",
+            text:`Alarm: ${alarmText}`
+        });
+    }
+
+    if (!events.length) {
+        events.push({
+            type:"info",
+            icon:"🟢",
+            text:"Ingen aktive brænderalarmer"
+        });
+    }
+
+    container.innerHTML = events.map(event => `
+        <div class="event ${event.type}">
+            <div class="event-time">
+                ${data.timestamp ? new Date(data.timestamp).toLocaleTimeString([],{
+                    hour:"2-digit",
+                    minute:"2-digit"
+                }) : "--"}
+            </div>
+            <div class="event-icon">${event.icon}</div>
+            <div class="event-text">${esc(event.text)}</div>
+        </div>
+    `).join("");
+}
+
+async function loadStatus() {
+
+    try {
+
+        const status = await api("/status");
+
+        document.getElementById("systemStatus").innerHTML = `
+            <div class="event info">
+                <div class="event-icon">🟢</div>
+                <div class="event-text">
+                    API forbundet<br>
+                    <small>${status.parameter_count} live parametre • ${status.history_rows} historikrækker</small>
+                </div>
+            </div>
+        `;
+
+    } catch(error) {
+
+        document.getElementById("systemStatus").innerHTML = `
+            <div class="event error">
+                <div class="event-icon">🔴</div>
+                <div class="event-text">API ikke tilgængelig</div>
+            </div>
+        `;
+    }
+}
+
+async function loadHistoryParameters() {
+
+    try {
+        const result = await api("/history/parameters");
+
+        historyParameters = result.parameters || [];
+
+        buildHistoryParameterList();
+
+    } catch(error) {
+        console.error("History parameters:",error);
+    }
+}
+
+function buildHistoryParameterList() {
+
+    const container = document.getElementById("historyParameterList");
+
+    const preferred = [
+        "boiler_temp",
+        "boiler_setpoint",
+        "hotwater_temp",
+        "hotwater_setpoint",
+        "power",
+        "feeder",
+        "oxygen",
+        "flue_gas_temp",
+        "return_temp",
+        "outdoor_temp",
+        "draft",
+        "fan"
+    ];
+
+    const sorted = [
+        ...preferred.filter(p => historyParameters.includes(p)),
+        ...historyParameters.filter(p => !preferred.includes(p))
+    ];
+
+    const html = sorted.map((key,index) => `
+        <label class="parameter">
+            <input type="checkbox"
+                data-parameter="${esc(key)}"
+                ${index < 4 ? "checked" : ""}
+                onchange="updateHistoryChart()">
+            <span class="parameter-name">${esc(niceName(key))}</span>
+            <span class="parameter-unit">${esc(unitFor(key))}</span>
+        </label>
+    `).join("");
+
+    container.innerHTML = html;
+
+    const dashboardContainer =
+        document.getElementById("dashboardParameterList");
+
+    if (dashboardContainer) {
+        dashboardContainer.innerHTML =
+            sorted.map((key,index) => `
+                <label class="parameter">
+                    <input type="checkbox"
+                        data-parameter="${esc(key)}"
+                        ${index < 4 ? "checked" : ""}
+                        onchange="updateHistoryChart()">
+                    <span class="parameter-name">${esc(niceName(key))}</span>
+                    <span class="parameter-unit">${esc(unitFor(key))}</span>
+                </label>
+            `).join("");
+    }
+
+    updateHistoryChart();
+}
+
+async function updateHistoryChart() {
+
+    const activePage =
+        document.querySelector(".page.active");
+
+    const dashboardActive =
+        activePage &&
+        activePage.id === "page-dashboard";
+
+    const parameterSelector =
+        dashboardActive
+            ? "#dashboardParameterList input:checked"
+            : "#historyParameterList input:checked";
+
+    const selected =
+        [...document.querySelectorAll(parameterSelector)]
+        .map(el => el.dataset.parameter);
+
+    if (!selected.length) {
+
+        if (historyRequestController) {
+            historyRequestController.abort();
+            historyRequestController = null;
+        }
+
+        if (historyChart) {
+            historyChart.destroy();
+            historyChart = null;
+        }
+
+        return;
+    }
+
+    /*
+     * Cancel an older request if the user changes parameters
+     * while a previous history request is still running.
+     */
+    if (historyRequestController) {
+        historyRequestController.abort();
+    }
+
+    historyRequestController = new AbortController();
+
+    try {
+
+        let url =
+            `/history/multi?parameters=${encodeURIComponent(selected.join(","))}`;
+
+        let rangeHours = historyHours;
+
+        if (historyStart && historyEnd) {
+
+            url +=
+                `&start=${encodeURIComponent(historyStart)}` +
+                `&end=${encodeURIComponent(historyEnd)}`;
+
+            const startMs =
+                new Date(historyStart).getTime();
+
+            const endMs =
+                new Date(historyEnd).getTime();
+
+            rangeHours =
+                Math.max(
+                    0,
+                    (endMs - startMs) / 3600000
+                );
+
+        } else {
+
+            url +=
+                `&hours=${historyHours}`;
+        }
+
+        const response = await fetch(
+            API + url,
+            {
+                cache: "no-store",
+                signal: historyRequestController.signal
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                `${response.status} ${response.statusText}`
+            );
+        }
+
+        const result = await response.json();
+
+        const rows = result.data || [];
+
+        if (!rows.length) {
+            throw new Error(
+                "No history data for selected period."
+            );
+        }
+
+        /*
+         * IMPORTANT:
+         *
+         * Each dataset now gets its OWN timestamps.
+         *
+         * Previously all parameters were forced onto one huge
+         * common timestamp array. With many parameters this
+         * created thousands of unnecessary null values.
+         */
+        const datasets = selected.map(parameter => {
+
+            const points = rows
+                .filter(row =>
+                    row.parameter === parameter
+                )
+                .map(row => ({
+                    x: new Date(
+                        row.timestamp || row.time
+                    ),
+                    y:
+                        row.value !== undefined
+                            ? Number(row.value)
+                            : null
+                }))
+                .sort(
+                    (a, b) =>
+                        a.x.getTime() - b.x.getTime()
+                );
+
+            return {
+                label: niceName(parameter),
+                data: points,
+
+                borderWidth: 2,
+
+                pointRadius: 0,
+                pointHoverRadius: 3,
+
+                tension: 0.2,
+                spanGaps: true,
+
+                yAxisID:
+                    unitFor(parameter) === "°C"
+                        ? "temperature"
+                        : "other"
+            };
+        });
+
+        const canvas =
+            document.getElementById(
+                dashboardActive
+                    ? "dashboardHistoryChart"
+                    : "historyChart"
+            );
+
+        if (!canvas)
+            return;
+
+        const ctx =
+            canvas.getContext("2d");
+
+        if (historyChart) {
+            historyChart.destroy();
+            historyChart = null;
+        }
+
+        /*
+         * Up to 48 hours:
+         * show clock time.
+         *
+         * More than 48 hours:
+         * show calendar dates.
+         */
+        const useTime =
+            rangeHours <= 48;
+
+        const isMobile =
+            window.innerWidth < 600;
+
+        historyChart = new Chart(ctx, {
+
+            type: "line",
+
+            data: {
+                datasets
+            },
+
+            options: {
+
+                responsive: true,
+                maintainAspectRatio: false,
+
+                animation: false,
+
+                normalized: true,
+
+                interaction: {
+                    mode: "nearest",
+                    intersect: false
+                },
+
+                plugins: {
+
+                    legend: {
+                        labels: {
+                            color: "#f2f4f7",
+                            usePointStyle: true,
+                            boxWidth: 8
+                        }
+                    },
+
+                    zoom: {
+
+                        limits: {
+                            x: {
+                                min: "original",
+                                max: "original",
+
+                                minRange:
+                                    15 * 60 * 1000
+                            }
+                        },
+
+                        /*
+                         * Drag horizontally to move through
+                         * the history.
+                         *
+                         * No modifier key is required.
+                         * This is much better on mobile.
+                         */
+                        pan: {
+                            enabled: true,
+                            mode: "x"
+                        },
+
+                        zoom: {
+
+                            /*
+                             * Mouse wheel zoom on desktop.
+                             */
+                            wheel: {
+                                enabled: true,
+                                speed: 0.08
+                            },
+
+                            /*
+                             * Pinch zoom on phones/tablets.
+                             */
+                            pinch: {
+                                enabled: true
+                            },
+
+                            /*
+                             * Disable drag-to-zoom.
+                             * Drag is reserved for panning.
+                             */
+                            drag: {
+                                enabled: false
+                            },
+
+                            mode: "x"
+                        }
+                    }
+                },
+
+                scales: {
+
+                    x: {
+
+                        type: "time",
+
+                        time:
+                            useTime
+                                ? {
+
+                                    /*
+                                     * 24h / 48h:
+                                     * clock on horizontal axis.
+                                     */
+                                    unit: "hour",
+
+                                    tooltipFormat:
+                                        "dd/MM/yyyy HH:mm",
+
+                                    displayFormats: {
+                                        hour: "HH:mm",
+                                        day: "dd/MM"
+                                    }
+
+                                }
+                                : {
+
+                                    /*
+                                     * >48h:
+                                     * calendar dates.
+                                     */
+                                    unit: "day",
+
+                                    tooltipFormat:
+                                        "dd/MM/yyyy HH:mm",
+
+                                    displayFormats: {
+                                        day: "dd/MM",
+                                        month: "MMM yyyy"
+                                    }
+                                },
+
+                        ticks: {
+
+                            color: "#8d98a7",
+
+                            maxTicksLimit:
+                                isMobile
+                                    ? 6
+                                    : 10,
+
+                            autoSkip: true
+                        },
+
+                        grid: {
+                            color:
+                                "rgba(255,255,255,.05)"
+                        }
+                    },
+
+                    temperature: {
+
+                        type: "linear",
+                        position: "left",
+
+                        ticks: {
+                            color: "#8d98a7"
+                        },
+
+                        grid: {
+                            color:
+                                "rgba(255,255,255,.05)"
+                        }
+                    },
+
+                    other: {
+
+                        type: "linear",
+                        position: "right",
+
+                        grid: {
+                            drawOnChartArea: false
+                        },
+
+                        ticks: {
+                            color: "#8d98a7"
+                        }
+                    }
+                }
+            }
+        });
+
+        historyRequestController = null;
+
+    } catch(error) {
+
+        if (error.name === "AbortError")
+            return;
+
+        console.error(
+            "History API:",
+            error
+        );
+
+        historyRequestController = null;
+    }
+}
+
+
+function historyZoomIn() {
+
+    if (!historyChart)
+        return;
+
+    historyChart.zoom(
+        {
+            x: 1.5
+        }
+    );
+}
+
+
+function historyZoomOut() {
+
+    if (!historyChart)
+        return;
+
+    historyChart.zoom(
+        {
+            x: 0.67
+        }
+    );
+}
+
+
+function historyResetZoom() {
+
+    if (!historyChart)
+        return;
+
+    historyChart.resetZoom();
+}
+
+
+
+
+async function getHistoryExportRows() {
+
+    /*
+     * Export directly from the History API instead of reading
+     * Chart.js. This guarantees that export follows the same
+     * period and selected parameters as the History graph.
+     */
+
+    const selected =
+        [...document.querySelectorAll(
+            "#historyParameterList input:checked"
+        )]
+        .map(el => el.dataset.parameter)
+        .filter(Boolean);
+
+    if (!selected.length) {
+        return [];
+    }
+
+    let url =
+        `/history/multi?parameters=${encodeURIComponent(
+            selected.join(",")
+        )}`;
+
+    /*
+     * Use the manually selected Fra/Til period when active.
+     */
+    if (historyStart && historyEnd) {
+
+        url +=
+            `&start=${encodeURIComponent(historyStart)}` +
+            `&end=${encodeURIComponent(historyEnd)}`;
+
+    } else {
+
+        /*
+         * Otherwise use exactly the selected range button:
+         * 1h, 6h, 12h, 24h, 48h, 7d, etc.
+         */
+        url +=
+            `&hours=${encodeURIComponent(historyHours)}`;
+    }
+
+    const response =
+        await fetch(
+            API + url,
+            {
+                cache: "no-store"
+            }
+        );
+
+    if (!response.ok) {
+
+        throw new Error(
+            `History API error: ${response.status} ${response.statusText}`
+        );
+    }
+
+    const result =
+        await response.json();
+
+    const apiRows =
+        result.data || [];
+
+    const rows = [];
+
+    apiRows.forEach(row => {
+
+        const parameter =
+            row.parameter;
+
+        if (!parameter) {
+            return;
+        }
+
+        const display =
+            DISPLAY[parameter] ||
+            [parameter, ""];
+
+        const unit =
+            display[1] || "";
+
+        const timestamp =
+            row.timestamp ||
+            row.time;
+
+        if (!timestamp) {
+            return;
+        }
+
+        const numericVærdi =
+            Number(row.value);
+
+        rows.push({
+
+            Tidspunkt:
+                timestamp,
+
+            Parameter:
+                parameter,
+
+            Værdi:
+                Number.isFinite(numericVærdi)
+                    ? numericVærdi
+                    : row.value,
+
+            Enhed:
+                unit
+        });
+    });
+
+    /*
+     * Keep export ordered chronologically and then by parameter.
+     */
+    rows.sort((a, b) => {
+
+        const ta =
+            new Date(a.Tidspunkt).getTime();
+
+        const tb =
+            new Date(b.Tidspunkt).getTime();
+
+        if (ta !== tb) {
+            return ta - tb;
+        }
+
+        return String(a.Parameter)
+            .localeCompare(String(b.Parameter));
+    });
+
+    return rows;
+}
+
+
+function getHistoryExportFilename(extension) {
+
+    const now =
+        new Date();
+
+    const stamp =
+        now.getFullYear() +
+        "-" +
+        String(now.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(now.getDate()).padStart(2, "0") +
+        "_" +
+        String(now.getHours()).padStart(2, "0") +
+        "-" +
+        String(now.getMinutes()).padStart(2, "0");
+
+    return (
+        "WoodyMonitor_History_" +
+        stamp +
+        "." +
+        extension
+    );
+}
+
+
+function downloadBlob(blob, filename) {
+
+    const url =
+        URL.createObjectURL(blob);
+
+    const link =
+        document.createElement("a");
+
+    link.href = url;
+    link.download = filename;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    setTimeout(
+        () => URL.revokeObjectURL(url),
+        1000
+    );
+}
+
+
+async function exportHistoryCSV() {
+
+    try {
+
+        alert("CSV button works - reading history data...");
+
+        const rows =
+            await getHistoryExportRows();
+
+        console.log("Woody Monitor CSV export rows:", rows.length);
+        console.log("Woody Monitor CSV export data:", rows.slice(0, 5));
+
+        if (!rows.length) {
+
+            alert(
+                "No history data available for the selected period."
+            );
+
+            return;
+        }
+
+        const headers = [
+            "Tidspunkt",
+            "Parameter",
+            "Værdi",
+            "Enhed"
+        ];
+
+        const lines = [
+            headers.join(";")
+        ];
+
+        rows.forEach(row => {
+
+            lines.push([
+                row.Tidspunkt,
+                row.Parameter,
+                row.Værdi,
+                row.Enhed
+            ].map(value => {
+
+                const text =
+                    String(value ?? "");
+
+                return '"' +
+                    text.replaceAll('"', '""') +
+                    '"';
+
+            }).join(";"));
+        });
+
+        const csv =
+            "\uFEFF" +
+            lines.join("\r\n");
+
+        const blob =
+            new Blob(
+                [csv],
+                {
+                    type:
+                        "text/csv;charset=utf-8"
+                }
+            );
+
+        downloadBlob(
+            blob,
+            getHistoryExportFilename("csv")
+        );
+
+    } catch (error) {
+
+        console.error(
+            "History CSV export:",
+            error
+        );
+
+        alert(
+            "Could not export history data. " +
+            error.message
+        );
+    }
+}
+
+
+async function exportHistoryExcel() {
+
+    try {
+
+        const rows =
+            await getHistoryExportRows();
+
+        if (!rows.length) {
+
+            alert(
+                "No history data available for the selected period."
+            );
+
+            return;
+        }
+
+        if (
+            typeof XLSX === "undefined"
+        ) {
+
+            alert(
+                "Excel export library is not loaded."
+            );
+
+            return;
+        }
+
+        const worksheet =
+            XLSX.utils.json_to_sheet(rows);
+
+        worksheet["!cols"] = [
+            { wch: 28 },
+            { wch: 24 },
+            { wch: 16 },
+            { wch: 12 }
+        ];
+
+        const workbook =
+            XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            "History"
+        );
+
+        XLSX.writeFile(
+            workbook,
+            getHistoryExportFilename("xlsx")
+        );
+
+    } catch (error) {
+
+        console.error(
+            "History Excel export:",
+            error
+        );
+
+        alert(
+            "Could not export history data. " +
+            error.message
+        );
+    }
+}
+
+
+function setHistoryRange(hours, button) {
+
+    historyHours = Number(hours);
+
+    historyStart = null;
+    historyEnd = null;
+
+    const activeRangeSelector =
+        document.querySelector(".page.active")?.id === "page-dashboard"
+            ? ".dashboard-range-btn"
+            : ".page#page-history .range-btn";
+
+    document
+        .querySelectorAll(activeRangeSelector)
+        .forEach(btn =>
+            btn.classList.remove("active")
+        );
+
+    if (button)
+        button.classList.add("active");
+
+    updateHistoryChart();
+}
+
+
+function applyHistoryDateRange() {
+
+    const from =
+        document.getElementById("historyFra").value;
+
+    const to =
+        document.getElementById("historyTil").value;
+
+    if (!from || !to) {
+
+        alert("Select both Fra and Til.");
+        return;
+    }
+
+    const start =
+        new Date(from);
+
+    const end =
+        new Date(to);
+
+    if (
+        !Number.isFinite(start.getTime()) ||
+        !Number.isFinite(end.getTime()) ||
+        start >= end
+    ) {
+
+        alert("Invalid date/time range.");
+        return;
+    }
+
+    historyStart =
+        start.toISOString();
+
+    historyEnd =
+        end.toISOString();
+
+    document
+        .querySelectorAll(".range-btn")
+        .forEach(btn =>
+            btn.classList.remove("active")
+        );
+
+    updateHistoryChart();
+}
+
+
+function applyDashboardHistoryDateRange() {
+
+    const from =
+        document.getElementById("dashboardHistoryFra").value;
+
+    const to =
+        document.getElementById("dashboardHistoryTil").value;
+
+    if (!from || !to) {
+        alert("Select both Fra and Til.");
+        return;
+    }
+
+    const start = new Date(from);
+    const end = new Date(to);
+
+    if (
+        !Number.isFinite(start.getTime()) ||
+        !Number.isFinite(end.getTime()) ||
+        start >= end
+    ) {
+        alert("Invalid date/time range.");
+        return;
+    }
+
+    historyStart = start.toISOString();
+    historyEnd = end.toISOString();
+
+    document
+        .querySelectorAll(".dashboard-range-btn")
+        .forEach(btn =>
+            btn.classList.remove("active")
+        );
+
+    updateHistoryChart();
+}
+
+
+function clearDashboardHistoryDateRange() {
+
+    historyStart = null;
+    historyEnd = null;
+
+    document.getElementById("dashboardHistoryFra").value = "";
+    document.getElementById("dashboardHistoryTil").value = "";
+
+    document
+        .querySelectorAll(".dashboard-range-btn")
+        .forEach(btn =>
+            btn.classList.remove("active")
+        );
+
+    const first =
+        document.querySelector(
+            ".dashboard-range-btn"
+        );
+
+    if (first)
+        first.classList.add("active");
+
+    historyHours = 1;
+
+    updateHistoryChart();
+}
+
+
+function clearHistoryDateRange() {
+
+    historyStart = null;
+    historyEnd = null;
+
+    document.getElementById("historyFra").value = "";
+    document.getElementById("historyTil").value = "";
+
+    document
+        .querySelectorAll(".range-btn")
+        .forEach(btn =>
+            btn.classList.remove("active")
+        );
+
+    document
+        .querySelector('.range-btn')
+        .classList.add("active");
+
+    historyHours = 24;
+
+    updateHistoryChart();
+}
+
+
+function selectAllParameters() {
+
+    const activePage =
+        document.querySelector(".page.active");
+
+    const selector =
+        activePage &&
+        activePage.id === "page-dashboard"
+            ? "#dashboardParameterList input"
+            : "#historyParameterList input";
+
+    document.querySelectorAll(selector)
+        .forEach(input => input.checked = true);
+
+    updateHistoryChart();
+}
+
+function clearAllParameters() {
+
+    const activePage =
+        document.querySelector(".page.active");
+
+    const selector =
+        activePage &&
+        activePage.id === "page-dashboard"
+            ? "#dashboardParameterList input"
+            : "#historyParameterList input";
+
+    document.querySelectorAll(selector)
+        .forEach(input => input.checked = false);
+
+    updateHistoryChart();
+}
+
+async function loadPelletPrice() {
+
+    const input =
+        document.getElementById("pelletPrice");
+
+    if (!input)
+        return;
+
+    try {
+
+        const result =
+            await api("/settings/pellet-price");
+
+        if (
+            result &&
+            Number.isFinite(Number(result.price_per_kg))
+        ) {
+            input.value =
+                Number(result.price_per_kg).toFixed(2);
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Pillepris:",
+            error
+        );
+    }
+}
+
+
+async function savePelletPrice() {
+
+    const input =
+        document.getElementById("pelletPrice");
+
+    if (!input)
+        return;
+
+    const price =
+        Number(input.value);
+
+    if (
+        !Number.isFinite(price) ||
+        price < 0 ||
+        price > 100
+    ) {
+
+        alert(
+            "Enter a pellet price between 0 and 100 kr/kg."
+        );
+
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/pellet-price?price=" +
+                encodeURIComponent(price),
+                {
+                    method: "POST",
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                `${response.status} ${response.statusText}`
+            );
+
+        const result =
+            await response.json();
+
+        input.value =
+            Number(result.price_per_kg).toFixed(2);
+
+        await updatePelletChart();
+
+    } catch (error) {
+
+        console.error(
+            "Gem pellet price:",
+            error
+        );
+
+        alert(
+            "Could not save pellet price."
+        );
+    }
+}
+
+
+async function loadFeederSettings() {
+
+    try {
+
+        const result =
+            await api("/settings/feeder");
+
+        const input =
+            document.getElementById("feederGrams");
+
+        if (input)
+            input.value =
+                Math.round(result.grams);
+
+        const info =
+            document.getElementById(
+                "feederCalibrationInfo"
+            );
+
+        if (info) {
+
+            info.textContent =
+                `${Math.round(result.grams)} g / 6 min = ` +
+                `${Number(result.kg_per_hour).toFixed(2)} kg/h`;
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Feeder settings:",
+            error
+        );
+    }
+}
+
+
+async function loadSiloCapacity() {
+
+    const input =
+        document.getElementById("siloCapacitySetting");
+
+    if (!input)
+        return;
+
+    try {
+
+        const response =
+            await fetch(
+                API + "/settings/silo",
+                {
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                `${response.status} ${response.statusText}`
+            );
+
+        const data =
+            await response.json();
+
+        const capacity =
+            Number(data.capacity_kg);
+
+        if (Number.isFinite(capacity)) {
+
+            input.value =
+                capacity.toFixed(0);
+
+            const info =
+                document.getElementById("siloCapacityInfo");
+
+            if (info) {
+                info.textContent =
+                    `Current capacity: ${capacity.toFixed(0)} kg`;
+            }
+        }
+
+    } catch(error) {
+
+        console.error(
+            "Silo settings:",
+            error
+        );
+    }
+}
+
+
+async function saveSiloCapacity() {
+
+    const input =
+        document.getElementById("siloCapacitySetting");
+
+    if (!input)
+        return;
+
+    const capacity =
+        Number(input.value);
+
+    if (
+        !Number.isFinite(capacity) ||
+        capacity < 1 ||
+        capacity > 5000
+    ) {
+
+        alert(
+            "Enter a silo capacity between 1 and 5000 kg."
+        );
+
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/silo?capacity_kg=" +
+                encodeURIComponent(capacity),
+                {
+                    method: "POST",
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                `${response.status} ${response.statusText}`
+            );
+
+        const data =
+            await response.json();
+
+        const saved =
+            Number(data.capacity_kg);
+
+        if (Number.isFinite(saved)) {
+
+            input.value =
+                saved.toFixed(0);
+
+            const info =
+                document.getElementById("siloCapacityInfo");
+
+            if (info) {
+                info.textContent =
+                    `Current capacity: ${saved.toFixed(0)} kg`;
+            }
+
+            /*
+             * Update dashboard immediately if it is visible.
+             */
+            window.siloCapacityKg =
+                saved;
+
+            updateDashboard();
+        }
+
+    } catch(error) {
+
+        console.error(
+            "Gem silo capacity:",
+            error
+        );
+
+        alert(
+            "Could not save silo capacity."
+        );
+    }
+}
+
+
+async function saveFeederSettings() {
+
+    const input =
+        document.getElementById("feederGrams");
+
+    if (!input)
+        return;
+
+    const gram =
+        Number(input.value);
+
+    if (!Number.isFinite(gram) ||
+        gram < 1 ||
+        gram > 10000) {
+
+        alert(
+            "Enter a value between 1 and 10000 gram."
+        );
+
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/feeder?gram=" +
+                encodeURIComponent(gram),
+                {
+                    method: "POST",
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                `${response.status} ${response.statusText}`
+            );
+
+        const data =
+            await response.json();
+
+        const info =
+            document.getElementById(
+                "feederCalibrationInfo"
+            );
+
+        if (info) {
+
+            info.textContent =
+                `${Math.round(data.gram)} g / 6 min = ` +
+                `${Number(data.kg_per_hour).toFixed(2)} kg/h`;
+        }
+
+        await updatePelletChart();
+
+    } catch (error) {
+
+        console.error(
+            "Gem feeder settings:",
+            error
+        );
+
+        alert(
+            "Could not save feeder calibration."
+        );
+    }
+}
+
+
+function setConsumptionRange(hours, button) {
+
+    consumptionHours = Number(hours);
+
+    consumptionStart = null;
+    consumptionEnd = null;
+
+    document
+        .querySelectorAll(".pellet-range")
+        .forEach(btn =>
+            btn.classList.remove("active")
+        );
+
+    if (button)
+        button.classList.add("active");
+
+    updatePelletChart();
+}
+
+
+function applyPelletDateRange() {
+
+    const from =
+        document.getElementById("pelletFra").value;
+
+    const to =
+        document.getElementById("pelletTil").value;
+
+    if (!from || !to) {
+
+        alert("Select both Fra and Til.");
+        return;
+    }
+
+    const start =
+        new Date(from);
+
+    const end =
+        new Date(to);
+
+    if (
+        !Number.isFinite(start.getTime()) ||
+        !Number.isFinite(end.getTime()) ||
+        start >= end
+    ) {
+
+        alert("Invalid date/time range.");
+        return;
+    }
+
+    consumptionStart =
+        start.toISOString();
+
+    consumptionEnd =
+        end.toISOString();
+
+    document
+        .querySelectorAll(".pellet-range")
+        .forEach(btn =>
+            btn.classList.remove("active")
+        );
+
+    updatePelletChart();
+}
+
+
+function clearPelletDateRange() {
+
+    consumptionStart = null;
+    consumptionEnd = null;
+
+    document.getElementById("pelletFra").value = "";
+    document.getElementById("pelletTil").value = "";
+
+    document
+        .querySelectorAll(".pellet-range")
+        .forEach(btn =>
+            btn.classList.remove("active")
+        );
+
+    document
+        .querySelector(".pellet-range")
+        .classList.add("active");
+
+    consumptionHours = 1;
+
+    updatePelletChart();
+}
+
+
+function pelletZoomIn() {
+
+    if (!pelletChart)
+        return;
+
+    pelletChart.zoom(1.5);
+}
+
+
+function pelletZoomOut() {
+
+    if (!pelletChart)
+        return;
+
+    pelletChart.zoom(0.67);
+}
+
+
+function pelletResetZoom() {
+
+    if (!pelletChart)
+        return;
+
+    pelletChart.resetZoom();
+}
+
+
+
+
+function getPelletExportRows() {
+
+    const rows = [];
+
+    for (let i = 0; i < pelletExportLabels.length; i++) {
+
+        const timestamp =
+            pelletExportLabels[i];
+
+        const kg =
+            pelletExportVærdis[i];
+
+        const price =
+            pelletExportPrices[i];
+
+        const cost =
+            pelletExportCosts[i];
+
+        if (
+            timestamp === undefined ||
+            kg === undefined ||
+            kg === null
+        ) {
+            continue;
+        }
+
+        const date =
+            timestamp instanceof Date
+                ? timestamp
+                : new Date(timestamp);
+
+        rows.push({
+
+            Tidspunkt:
+                Number.isFinite(date.getTime())
+                    ? date.toISOString()
+                    : String(timestamp),
+
+            "Pilleforbrug (kg)":
+                Number.isFinite(Number(kg))
+                    ? Number(kg)
+                    : kg,
+
+            "Pillepris (kr/kg)":
+                price !== null &&
+                price !== undefined &&
+                Number.isFinite(Number(price))
+                    ? Number(price)
+                    : "",
+
+            "Cost (DKK)":
+                cost !== null &&
+                cost !== undefined &&
+                Number.isFinite(Number(cost))
+                    ? Number(cost)
+                    : ""
+        });
+    }
+
+    return rows;
+}
+
+
+function getPelletExportFilename(extension) {
+
+    const now =
+        new Date();
+
+    const stamp =
+        now.getFullYear() +
+        "-" +
+        String(now.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(now.getDate()).padStart(2, "0") +
+        "_" +
+        String(now.getHours()).padStart(2, "0") +
+        "-" +
+        String(now.getMinutes()).padStart(2, "0");
+
+    return (
+        "WoodyMonitor_Pellet_Consumption_" +
+        stamp +
+        "." +
+        extension
+    );
+}
+
+
+function exportPelletCSV() {
+
+    const rows =
+        getPelletExportRows();
+
+    if (!rows.length) {
+
+        alert(
+            "No pellet consumption data available for export."
+        );
+
+        return;
+    }
+
+    const headers = [
+        "Tidspunkt",
+        "Pilleforbrug (kg)",
+        "Pillepris (kr/kg)",
+        "Cost (DKK)"
+    ];
+
+    const lines = [
+        headers.join(";")
+    ];
+
+    rows.forEach(row => {
+
+        lines.push([
+            row.Tidspunkt,
+            row["Pilleforbrug (kg)"],
+            row["Pillepris (kr/kg)"],
+            row["Cost (DKK)"]
+        ].map(value => {
+
+            const text =
+                String(value ?? "");
+
+            return '"' +
+                text.replaceAll('"', '""') +
+                '"';
+
+        }).join(";"));
+    });
+
+    const csv =
+        "\uFEFF" +
+        lines.join("\r\n");
+
+    const blob =
+        new Blob(
+            [csv],
+            {
+                type:
+                    "text/csv;charset=utf-8"
+            }
+        );
+
+    downloadBlob(
+        blob,
+        getPelletExportFilename("csv")
+    );
+}
+
+
+function exportPelletExcel() {
+
+    const rows =
+        getPelletExportRows();
+
+    if (!rows.length) {
+
+        alert(
+            "No pellet consumption data available for export."
+        );
+
+        return;
+    }
+
+    if (
+        typeof XLSX === "undefined"
+    ) {
+
+        alert(
+            "Excel export library is not loaded."
+        );
+
+        return;
+    }
+
+    const worksheet =
+        XLSX.utils.json_to_sheet(rows);
+
+    worksheet["!cols"] = [
+        { wch: 28 },
+        { wch: 28 },
+        { wch: 26 },
+        { wch: 18 }
+    ];
+
+    const workbook =
+        XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Pilleforbrug"
+    );
+
+    XLSX.writeFile(
+        workbook,
+        getPelletExportFilename("xlsx")
+    );
+}
+
+
+async function updatePelletChart() {
+
+    try {
+
+        /*
+         * --------------------------------------------------------
+         * LOAD FEEDER TIME HISTORY
+         *
+         * feeder_time is a cumulative counter containing the
+         * ACTUAL running time of the auger in sekunder.
+         *
+         * The auger does NOT run continuously while the burner
+         * is operating. It is pulsed according to burner power.
+         *
+         * Therefore:
+         *
+         * pellet consumption =
+         *     delta feeder_time × feeder capacity
+         *
+         * Power must NOT be used to calculate consumption here.
+         * The modulation is already represented by feeder_time.
+         * --------------------------------------------------------
+         */
+
+        let url =
+            `/history?parameter=feeder_time`;
+
+        /*
+         * Keep the amount of data sent to the browser small.
+         *
+         * feeder_time is a cumulative counter, so the backend
+         * keeps the LAST real reading in each bucket.
+         *
+         * This gives us roughly 1000 points without changing
+         * the actual consumption calculation.
+         */
+
+        const durationHours =
+            consumptionStart && consumptionEnd
+                ? Math.max(
+                    (
+                        new Date(consumptionEnd) -
+                        new Date(consumptionStart)
+                    ) / 3600000,
+                    1 / 60
+                )
+                : consumptionHours;
+
+        const targetPoints = 1000;
+
+        const bucketSeconds =
+            Math.max(
+                1,
+                Math.ceil(
+                    durationHours * 3600 /
+                    targetPoints
+                )
+            );
+
+        url +=
+            `&bucket_seconds=${bucketSeconds}`;
+
+        if (consumptionStart && consumptionEnd) {
+
+            url +=
+                `&start=${encodeURIComponent(consumptionStart)}` +
+                `&end=${encodeURIComponent(consumptionEnd)}`;
+
+        } else {
+
+            url +=
+                `&hours=${consumptionHours}`;
+        }
+
+
+        const result = await api(url);
+
+        const rows = Array.isArray(result.data)
+            ? result.data
+            : [];
+
+
+        const totalElement =
+            document.getElementById("pelletTiltal");
+
+        const averageElement =
+            document.getElementById("pelletAverage");
+
+        const costElement =
+            document.getElementById("pelletCost");
+
+
+        /*
+         * --------------------------------------------------------
+         * NOT ENOUGH DATA
+         * --------------------------------------------------------
+         */
+
+        if (rows.length < 2) {
+
+            totalElement.textContent = "--";
+            averageElement.textContent = "--";
+            costElement.textContent = "--";
+
+            if (pelletChart) {
+                pelletChart.destroy();
+                pelletChart = null;
+            }
+
+            return;
+        }
+
+
+        /*
+         * --------------------------------------------------------
+         * FEEDER CALIBRATION
+         *
+         * Example:
+         *
+         * 1200 g / 6 min
+         * = 1200 / 360 g/s
+         * = 3.3333 g/s
+         * = 0.0033333 kg/s
+         *
+         * feeder_capacity is NOT kg/h.
+         * It is gram delivered during 6 minutes
+         * of continuous auger operation.
+         * --------------------------------------------------------
+         */
+
+        const settings =
+            await api("/settings/feeder");
+
+        const gramPerSecond =
+            Number(settings.grams_per_second);
+
+
+        if (
+            !Number.isFinite(gramPerSecond) ||
+            gramPerSecond <= 0
+        ) {
+            throw new Error(
+                "Invalid feeder calibration: grams_per_second=" +
+                settings.grams_per_second
+            );
+        }
+
+
+        const kgPerSecond =
+            gramPerSecond / 1000;
+
+
+        /*
+         * --------------------------------------------------------
+         * PELLET PRICE HISTORY
+         * --------------------------------------------------------
+         */
+
+        const priceResult =
+            await api("/settings/pellet-prices");
+
+        const pelletPrices =
+            Array.isArray(priceResult.prices)
+                ? priceResult.prices
+                    .map(item => ({
+                        effectiveAt:
+                            new Date(item.effective_at),
+
+                        price:
+                            Number(item.price_per_kg)
+                    }))
+                    .filter(item =>
+                        Number.isFinite(
+                            item.effectiveAt.getTime()
+                        ) &&
+                        Number.isFinite(item.price) &&
+                        item.price >= 0
+                    )
+                    .sort(
+                        (a, b) =>
+                            a.effectiveAt - b.effectiveAt
+                    )
+                : [];
+
+
+        /*
+         * Return the pellet price active at a timestamp.
+         */
+
+        function getPelletPrice(timestamp) {
+
+            const time =
+                timestamp.getTime();
+
+            let activePrice = null;
+
+            for (const entry of pelletPrices) {
+
+                if (
+                    entry.effectiveAt.getTime() <= time
+                ) {
+
+                    activePrice =
+                        entry.price;
+
+                } else {
+
+                    break;
+                }
+            }
+
+            return activePrice;
+        }
+
+
+        /*
+         * --------------------------------------------------------
+         * BUILD CONSUMPTION INTERVALS
+         *
+         * IMPORTANT:
+         *
+         * We calculate from the difference between two
+         * cumulative feeder_time readings.
+         *
+         * If feeder_time does not change:
+         *
+         *     delta = 0
+         *     pellet consumption = 0
+         *
+         * This is exactly what we want when the burner is off
+         * or the auger is not currently dosing.
+         * --------------------------------------------------------
+         */
+
+        const labels = [];
+        const values = [];
+        const intervalPrices = [];
+        const intervalCosts = [];
+
+        let totalKg = 0;
+        let totalCost = 0;
+
+        let firstTidspunkt = null;
+        let lastTidspunkt = null;
+
+
+        for (let i = 1; i < rows.length; i++) {
+
+            const previous =
+                Number(rows[i - 1].value);
+
+            const current =
+                Number(rows[i].value);
+
+
+            if (
+                !Number.isFinite(previous) ||
+                !Number.isFinite(current)
+            ) {
+                continue;
+            }
+
+
+            /*
+             * feeder_time is cumulative sekunder.
+             */
+
+            let feederSeconds =
+                current - previous;
+
+
+            /*
+             * Counter reset / invalid backwards movement.
+             */
+
+            if (feederSeconds < 0) {
+                feederSeconds = 0;
+            }
+
+
+            /*
+             * Actual pellet consumption during this interval.
+             *
+             * feederSeconds = actual auger runtime
+             * kgPerSecond   = calibrated pellet delivery
+             */
+
+            const kg =
+                feederSeconds * kgPerSecond;
+
+
+            const timestamp =
+                new Date(
+                    rows[i].timestamp ||
+                    rows[i].time
+                );
+
+
+            if (
+                !Number.isFinite(
+                    timestamp.getTime()
+                )
+            ) {
+                continue;
+            }
+
+
+            if (firstTidspunkt === null) {
+
+                firstTidspunkt =
+                    new Date(
+                        rows[0].timestamp ||
+                        rows[0].time
+                    );
+            }
+
+            lastTidspunkt = timestamp;
+
+
+            /*
+             * Price active when this interval ended.
+             */
+
+            const price =
+                getPelletPrice(timestamp);
+
+
+            const cost =
+                price !== null
+                    ? kg * price
+                    : null;
+
+
+            totalKg += kg;
+
+
+            if (cost !== null) {
+                totalCost += cost;
+            }
+
+
+            labels.push(timestamp);
+            values.push(kg);
+            intervalPrices.push(price);
+            intervalCosts.push(cost);
+        }
+
+
+        /*
+         * --------------------------------------------------------
+         * NO VALID INTERVALS
+         * --------------------------------------------------------
+         */
+
+        if (
+            labels.length === 0 ||
+            firstTidspunkt === null ||
+            lastTidspunkt === null
+        ) {
+
+            totalElement.textContent = "0.00 kg";
+            averageElement.textContent = "0.00 kg";
+            costElement.textContent =
+                pelletPrices.length > 0
+                    ? "0.00 kr"
+                    : "--";
+
+            if (pelletChart) {
+                pelletChart.destroy();
+                pelletChart = null;
+            }
+
+            return;
+        }
+
+
+        /*
+         * --------------------------------------------------------
+         * ACTUAL SELECTED PERIOD
+         * --------------------------------------------------------
+         *
+         * Average/day is based on the time span covered by the
+         * history, NOT on the number of records.
+         * --------------------------------------------------------
+         */
+
+        const periodHours =
+            Math.max(
+                (
+                    lastTidspunkt -
+                    firstTidspunkt
+                ) / 3600000,
+                1 / 60
+            );
+
+
+        const averageKg =
+            totalKg /
+            (periodHours / 24);
+
+
+        /*
+         * --------------------------------------------------------
+         * CHART AGGREGATION
+         *
+         * Keep the chart responsive for long periods.
+         * The total remains based on the original intervals.
+         * --------------------------------------------------------
+         */
+
+        let chartLabels = labels;
+        let chartVærdis = values;
+        let chartPrices = intervalPrices;
+        let chartCosts = intervalCosts;
+
+
+        if (labels.length > 1000) {
+
+            const step =
+                Math.ceil(
+                    labels.length / 1000
+                );
+
+            chartLabels = [];
+            chartVærdis = [];
+            chartPrices = [];
+            chartCosts = [];
+
+
+            for (
+                let i = 0;
+                i < labels.length;
+                i += step
+            ) {
+
+                let sumKg = 0;
+                let sumCost = 0;
+
+                let weightedPrice = 0;
+                let weightedKg = 0;
+
+
+                for (
+                    let j = i;
+                    j < Math.min(
+                        i + step,
+                        values.length
+                    );
+                    j++
+                ) {
+
+                    const kg =
+                        values[j];
+
+                    const price =
+                        intervalPrices[j];
+
+                    const cost =
+                        intervalCosts[j];
+
+
+                    sumKg += kg;
+
+
+                    if (
+                        price !== null &&
+                        Number.isFinite(price) &&
+                        kg > 0
+                    ) {
+
+                        weightedPrice +=
+                            kg * price;
+
+                        weightedKg += kg;
+                    }
+
+
+                    if (
+                        cost !== null &&
+                        Number.isFinite(cost)
+                    ) {
+
+                        sumCost += cost;
+                    }
+                }
+
+
+                chartLabels.push(
+                    labels[i]
+                );
+
+                chartVærdis.push(
+                    sumKg
+                );
+
+                chartPrices.push(
+                    weightedKg > 0
+                        ? weightedPrice / weightedKg
+                        : null
+                );
+
+                chartCosts.push(
+                    sumCost
+                );
+            }
+        }
+
+
+        /*
+         * --------------------------------------------------------
+         * SAVE DATA FOR EXPORT
+         * --------------------------------------------------------
+         */
+
+        pelletExportLabels =
+            chartLabels.slice();
+
+        pelletExportVærdis =
+            chartVærdis.slice();
+
+        pelletExportPrices =
+            chartPrices.slice();
+
+        pelletExportCosts =
+            chartCosts.slice();
+
+
+        /*
+         * --------------------------------------------------------
+         * DRAW CHART
+         * --------------------------------------------------------
+         */
+
+        const canvas =
+            document.getElementById(
+                "pelletChart"
+            );
+
+
+        if (!canvas) {
+            throw new Error(
+                "pelletChart canvas not found"
+            );
+        }
+
+
+        const ctx =
+            canvas.getContext("2d");
+
+
+        if (pelletChart) {
+            pelletChart.destroy();
+        }
+
+
+        pelletChart =
+            new Chart(ctx, {
+
+                type: "bar",
+
+                data: {
+
+                    labels:
+                        chartLabels,
+
+                    datasets: [{
+
+                        label:
+                            "Pilleforbrug (kg)",
+
+                        data:
+                            chartVærdis,
+
+                        borderWidth:
+                            0
+                    }]
+                },
+
+
+                options: {
+
+                    responsive:
+                        true,
+
+                    maintainAspectRatio:
+                        false,
+
+
+                    interaction: {
+
+                        mode:
+                            "index",
+
+                        intersect:
+                            false
+                    },
+
+
+                    plugins: {
+
+                        legend: {
+
+                            labels: {
+
+                                color:
+                                    "#f2f4f7"
+                            }
+                        },
+
+
+                        zoom: {
+
+                            pan: {
+
+                                enabled:
+                                    true,
+
+                                mode:
+                                    "x"
+                            },
+
+                            zoom: {
+
+                                wheel: {
+
+                                    enabled:
+                                        true
+                                },
+
+                                pinch: {
+
+                                    enabled:
+                                        true
+                                },
+
+                                mode:
+                                    "x"
+                            }
+                        },
+
+
+                        tooltip: {
+
+                            callbacks: {
+
+                                label:
+                                    function(context) {
+
+                                        const index =
+                                            context.dataIndex;
+
+                                        const kg =
+                                            Number(
+                                                chartVærdis[index]
+                                            );
+
+                                        const price =
+                                            chartPrices[index];
+
+                                        const cost =
+                                            chartCosts[index];
+
+
+                                        let text =
+                                            kg.toFixed(3) +
+                                            " kg";
+
+
+                                        if (
+                                            price !== null &&
+                                            Number.isFinite(price)
+                                        ) {
+
+                                            text +=
+                                                " × " +
+                                                price.toFixed(2) +
+                                                " kr/kg";
+
+
+                                            if (
+                                                cost !== null &&
+                                                Number.isFinite(cost)
+                                            ) {
+
+                                                text +=
+                                                    " = " +
+                                                    cost.toFixed(2) +
+                                                    " kr";
+                                            }
+                                        }
+
+
+                                        return text;
+                                    }
+                            }
+                        }
+                    },
+
+
+                    scales: {
+
+                        x: {
+
+                            type:
+                                "time",
+
+                            time: {
+
+                                tooltipFormat:
+                                    "dd/MM/yyyy HH:mm",
+
+                                displayFormats: {
+
+                                    hour:
+                                        "HH:mm",
+
+                                    day:
+                                        "dd/MM",
+
+                                    month:
+                                        "MMM yyyy"
+                                }
+                            },
+
+
+                            ticks: {
+
+                                color:
+                                    "#8d98a7",
+
+                                maxTicksLimit:
+                                    10,
+
+                                autoSkip:
+                                    true,
+
+                                callback:
+                                    function(value) {
+
+                                        const chart =
+                                            this.chart;
+
+                                        const scale =
+                                            chart.scales.x;
+
+                                        const min =
+                                            scale.min;
+
+                                        const max =
+                                            scale.max;
+
+
+                                        const visibleHours =
+                                            (
+                                                max - min
+                                            ) / 3600000;
+
+
+                                        const date =
+                                            new Date(
+                                                value
+                                            );
+
+
+                                        if (
+                                            !Number.isFinite(
+                                                date.getTime()
+                                            )
+                                        ) {
+                                            return "";
+                                        }
+
+
+                                        if (
+                                            visibleHours <= 24
+                                        ) {
+
+                                            return date.toLocaleTimeString(
+                                                "da-DK",
+                                                {
+                                                    hour:
+                                                        "2-digit",
+
+                                                    minute:
+                                                        "2-digit"
+                                                }
+                                            );
+                                        }
+
+
+                                        if (
+                                            visibleHours <= 72
+                                        ) {
+
+                                            return (
+                                                date.toLocaleDateString(
+                                                    "da-DK",
+                                                    {
+                                                        day:
+                                                            "2-digit",
+
+                                                        month:
+                                                            "2-digit"
+                                                    }
+                                                ) +
+                                                "\n" +
+                                                date.toLocaleTimeString(
+                                                    "da-DK",
+                                                    {
+                                                        hour:
+                                                            "2-digit",
+
+                                                        minute:
+                                                            "2-digit"
+                                                    }
+                                                )
+                                            );
+                                        }
+
+
+                                        if (
+                                            visibleHours <=
+                                            24 * 31
+                                        ) {
+
+                                            return date.toLocaleDateString(
+                                                "da-DK",
+                                                {
+                                                    day:
+                                                        "2-digit",
+
+                                                    month:
+                                                        "2-digit"
+                                                }
+                                            );
+                                        }
+
+
+                                        return date.toLocaleDateString(
+                                            "da-DK",
+                                            {
+                                                month:
+                                                    "short",
+
+                                                year:
+                                                    "numeric"
+                                            }
+                                        );
+                                    }
+                            },
+
+
+                            grid: {
+
+                                display:
+                                    true,
+
+                                color:
+                                    function(context) {
+
+                                        const value =
+                                            context.tick?.value ??
+                                            context.value;
+
+                                        const date =
+                                            new Date(
+                                                value
+                                            );
+
+
+                                        if (
+                                            date.getHours() === 0 &&
+                                            date.getMinutes() === 0
+                                        ) {
+
+                                            return "rgba(255,255,255,.18)";
+                                        }
+
+
+                                        return "rgba(255,255,255,.04)";
+                                    },
+
+
+                                lineWidth:
+                                    function(context) {
+
+                                        const value =
+                                            context.tick?.value ??
+                                            context.value;
+
+                                        const date =
+                                            new Date(
+                                                value
+                                            );
+
+
+                                        if (
+                                            date.getHours() === 0 &&
+                                            date.getMinutes() === 0
+                                        ) {
+                                            return 2;
+                                        }
+
+
+                                        return 1;
+                                    }
+                            }
+                        },
+
+
+                        y: {
+
+                            title: {
+
+                                display:
+                                    true,
+
+                                text:
+                                    "kg",
+
+                                color:
+                                    "#8d98a7"
+                            },
+
+
+                            ticks: {
+
+                                color:
+                                    "#8d98a7"
+                            },
+
+
+                            grid: {
+
+                                color:
+                                    "rgba(255,255,255,.05)"
+                            }
+                        }
+                    }
+                }
+            });
+
+
+        /*
+         * --------------------------------------------------------
+         * SUMMARY
+         * --------------------------------------------------------
+         */
+
+        totalElement.textContent =
+            `${totalKg.toFixed(2)} kg`;
+
+
+        averageElement.textContent =
+            `${averageKg.toFixed(2)} kg`;
+
+
+        const hasPrice =
+            pelletPrices.length > 0 &&
+            intervalCosts.some(
+                cost =>
+                    cost !== null &&
+                    Number.isFinite(cost)
+            );
+
+
+        costElement.textContent =
+            hasPrice
+                ? `${totalCost.toFixed(2)} kr`
+                : "--";
+
+
+        /*
+         * Diagnostic information in browser console.
+         *
+         * This makes it easy to verify the calculation.
+         */
+
+        console.log(
+            "Pellet calculation:",
+            {
+                feederGramsPerSecond:
+                    gramPerSecond,
+
+                feederKgPerSecond:
+                    kgPerSecond,
+
+                totalFeederSeconds:
+                    labels.length > 0
+                        ? Number(rows[rows.length - 1].value) -
+                          Number(rows[0].value)
+                        : 0,
+
+                totalKg:
+                    totalKg,
+
+                periodHours:
+                    periodHours,
+
+                averageKgPerDay:
+                    averageKg
+            }
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Pilleforbrug API:",
+            error
+        );
+
+
+        document.getElementById(
+            "pelletTiltal"
+        ).textContent = "--";
+
+
+        document.getElementById(
+            "pelletAverage"
+        ).textContent = "--";
+
+
+        document.getElementById(
+            "pelletCost"
+        ).textContent = "--";
+    }
+}
+
+function showPage(page) {
+
+    document.querySelectorAll(".page")
+        .forEach(section => section.classList.remove("active"));
+
+    const target = document.getElementById("page-"+page);
+
+    if (target) target.classList.add("active");
+
+    document.querySelectorAll(".nav-btn")
+        .forEach(btn =>
+            btn.classList.toggle("active",btn.dataset.page === page)
+        );
+
+    window.scrollTo({top:0,behavior:"smooth"});
+
+    if (page === "dashboard")
+        setTimeout(updateHistoryChart,50);
+
+    if (page === "history")
+        setTimeout(updateHistoryChart,50);
+
+    if (page === "consumption")
+        setTimeout(updatePelletChart,50);
+}
+
+async function initialize() {
+
+    await loadLive();
+
+    await loadStatus();
+
+    await loadHistoryParameters();
+
+    await updatePelletChart();
+}
+
+initialize();
+
+setInterval(loadLive,5000);
+
+loadPelletPrice();
+loadFeederSettings();
+loadSiloCapacity();
+
+</script>
+
+</body>
+</html>
