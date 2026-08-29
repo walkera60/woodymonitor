@@ -35,6 +35,10 @@ class Protocol(threading.Thread):
         self.dummyDevice=False
         self.checksum=True
         self.frame_term_crlf = False
+        self.last_write_payload = None
+        self.last_write_payload_hex = None
+        self.last_write_response = None
+
         if device == None:
             self.dummyDevice=True
             self.dataBase = self.createDataBase('6.99')
@@ -232,12 +236,26 @@ class Protocol(threading.Thread):
             # Write parameter/command       
             if commandqueue[0]=="PUT":
                 s=self.addCheckSum(commandqueue[1])
-                logger.debug('serial write'+s)
-                self.ser.flushInput()
+
+                # Exact frame sent to the controller
+                wire_s = s
+
                 if self.frame_term_crlf:
-                    s += '\r\n'
-                self.ser.write(s)   
-                logger.debug('serial written'+s)        
+                    wire_s += '\r\n'
+
+                self.last_write_payload = wire_s
+                self.last_write_payload_hex = (
+                    wire_s.encode('latin-1').hex(' ').upper()
+                )
+
+                logger.debug('serial write'+wire_s)
+
+                self.ser.flushInput()
+                self.ser.write(
+                    wire_s.encode('latin-1')
+                )
+
+                logger.debug('serial written'+wire_s)
                 line=""
                 if not self.frame_term_crlf:
                     try:
@@ -249,6 +267,8 @@ class Protocol(threading.Thread):
                     except: 
                         logger.exception('Serial read error')
                     if line:
+                        self.last_write_response = line
+
                         # Send back the response
                         commandqueue[2].put(line)
                     else:

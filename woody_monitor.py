@@ -13,7 +13,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -65,10 +65,7 @@ def systemd_watchdog_loop():
 # CONFIG
 # ============================================================
 
-DEVICE = os.environ.get(
-    "WOODY_SERIAL_DEVICE",
-    "/dev/ttyUSB0"
-)
+DEVICE = os.environ.get("WOODY_SERIAL_DEVICE", "/dev/ttyUSB0")
 
 HOST = os.environ.get("WOODY_HOST", "0.0.0.0")
 PORT = int(os.environ.get("WOODY_PORT", "8080"))
@@ -138,6 +135,13 @@ app.add_middleware(
 # ============================================================
 
 db = Database()
+
+db.add_activity(
+    "SYSTEM",
+    "Woody Monitor started",
+    "Woody Monitor service initialized"
+)
+
 
 
 # ============================================================
@@ -666,6 +670,128 @@ def connect_controller():
 
 
 # ============================================================
+# CONTROLLER CHANGE LOGGING
+# ============================================================
+
+# Only meaningful state changes are logged here.
+# Fast-changing values such as temperatures, power and feeder_time
+# are deliberately excluded to keep the activity log useful.
+
+controller_log_state = {
+    "initialized": False,
+    "connected": False,
+    "mode": None,
+    "alarm": None,
+}
+
+
+def log_controller_changes(
+    connected,
+    values
+):
+
+    global controller_log_state
+
+    previous_initialized = controller_log_state["initialized"]
+    previous_connected = controller_log_state["connected"]
+    previous_mode = controller_log_state["mode"]
+    previous_alarm = controller_log_state["alarm"]
+
+    current_mode = values.get("mode")
+    current_alarm = values.get("alarm")
+
+    # --------------------------------------------------------
+    # First successful controller read
+    # --------------------------------------------------------
+
+    if not previous_initialized:
+
+        controller_log_state["initialized"] = True
+        controller_log_state["connected"] = connected
+        controller_log_state["mode"] = current_mode
+        controller_log_state["alarm"] = current_alarm
+
+        db.add_activity(
+            "CONTROLLER",
+            "Controller connected",
+            f"Initial state: mode={current_mode}, alarm={current_alarm}",
+            response="OK"
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # Connection state
+    # --------------------------------------------------------
+
+    if connected != previous_connected:
+
+        if connected:
+
+            db.add_activity(
+                "CONTROLLER",
+                "Controller connected",
+                "Controller connection restored",
+                response="OK"
+            )
+
+        else:
+
+            db.add_activity(
+                "CONTROLLER",
+                "Controller disconnected",
+                "Connection to pellet controller lost",
+                response="ERROR"
+            )
+
+    # --------------------------------------------------------
+    # Burner mode
+    # --------------------------------------------------------
+
+    if (
+        current_mode is not None
+        and previous_mode is not None
+        and str(current_mode) != str(previous_mode)
+    ):
+
+        db.add_activity(
+            "BURNER",
+            "Mode changed",
+            f"{previous_mode} → {current_mode}",
+            response="OK"
+        )
+
+    # --------------------------------------------------------
+    # Alarm
+    # --------------------------------------------------------
+
+    if (
+        current_alarm is not None
+        and previous_alarm is not None
+        and str(current_alarm).lower()
+            != str(previous_alarm).lower()
+    ):
+
+        old_alarm = str(previous_alarm)
+        new_alarm = str(current_alarm)
+
+        db.add_activity(
+            "ALARM",
+            "Alarm changed",
+            f"{old_alarm} → {new_alarm}",
+            response="OK"
+        )
+
+    # --------------------------------------------------------
+    # Save current state
+    # --------------------------------------------------------
+
+    controller_log_state["connected"] = connected
+    controller_log_state["mode"] = current_mode
+    controller_log_state["alarm"] = current_alarm
+
+
+# ============================================================
 # READ CONTROLLER
 # ============================================================
 
@@ -705,6 +831,12 @@ def read_controller():
         live_data["values"] = values
         live_data["errors"] = errors
 
+    # Register meaningful controller state changes.
+    log_controller_changes(
+        True,
+        values
+    )
+
     return values
 
 
@@ -737,6 +869,12 @@ def collector_loop():
             with state_lock:
                 live_data["connected"] = False
 
+            # Register controller connection loss.
+            log_controller_changes(
+                False,
+                {}
+            )
+
             time.sleep(10)
 
         time.sleep(LIVE_INTERVAL)
@@ -758,6 +896,25 @@ def mqtt_on_connect(client, userdata, flags, reason_code, properties):
         logger.error("MQTT connection failed: %s", reason_code)
     else:
         mqtt_connected = True
+
+        command_topic = f"{MQTT_TOPIC}/command/#"
+
+        try:
+            client.subscribe(
+                command_topic,
+                qos=0
+            )
+
+            logger.info(
+                "MQTT command subscription active: %s",
+                command_topic
+            )
+
+        except Exception:
+            logger.exception(
+                "MQTT command subscription failed"
+            )
+
         logger.info(
             "MQTT connected to %s:%s",
             MQTT_BROKER,
@@ -773,6 +930,222 @@ def mqtt_on_disconnect(client, userdata, disconnect_flags, reason_code, properti
     logger.warning(
         "MQTT disconnected: %s",
         reason_code
+    )
+
+
+def mqtt_on_message(client, userdata, message):
+
+    global burner
+
+    topic = message.topic
+    prefix = f"{MQTT_TOPIC}/command/"
+
+    if not topic.startswith(prefix):
+        return
+
+    parameter = topic[len(prefix):].strip()
+
+    if not parameter:
+        logger.warning(
+            "MQTT command ignored: empty parameter"
+        )
+        return
+
+    try:
+        value = message.payload.decode("utf-8").strip()
+    except Exception:
+        logger.warning(
+            "MQTT command ignored: invalid UTF-8 payload"
+        )
+        return
+
+    logger.info(
+        "MQTT command received: %s = %s",
+        parameter,
+        value
+    )
+
+    # --------------------------------------------------------
+    # Controller must be connected
+    # --------------------------------------------------------
+
+    if burner is None:
+
+        db.add_activity(
+            "MQTT",
+            parameter,
+            f"Command rejected: controller not connected",
+            payload=value,
+            response="Controller not connected"
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # Only settings explicitly allowed by Woody Monitor
+    # --------------------------------------------------------
+
+    allowed = {
+        item
+        for names in CONTROLLER_SETTING_GROUPS.values()
+        for item in names
+    }
+
+    if parameter not in allowed:
+
+        db.add_activity(
+            "MQTT",
+            parameter,
+            "Command rejected: unknown or read-only parameter",
+            payload=value,
+            response="Rejected"
+        )
+
+        logger.warning(
+            "MQTT command rejected: %s",
+            parameter
+        )
+
+        return
+
+    controller_database = burner.getDataBase()
+    dataparam = controller_database.get(parameter)
+
+    if (
+        dataparam is None
+        or not hasattr(dataparam, "address")
+        or not hasattr(dataparam, "frame")
+    ):
+
+        db.add_activity(
+            "MQTT",
+            parameter,
+            "Command rejected: parameter is not writable",
+            payload=value,
+            response="Rejected"
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # Read old value
+    # --------------------------------------------------------
+
+    old_value = None
+
+    try:
+        old_value = burner.getItem(parameter)
+    except Exception as exc:
+        logger.warning(
+            "Could not read old value for MQTT command %s: %s",
+            parameter,
+            exc
+        )
+
+    # --------------------------------------------------------
+    # Send through the same PellMon setItem() path
+    # --------------------------------------------------------
+
+    try:
+
+        response = burner.setItem(
+            parameter,
+            value
+        )
+
+    except Exception as exc:
+
+        logger.exception(
+            "MQTT controller write failed: %s",
+            parameter
+        )
+
+        db.add_activity(
+            "MQTT",
+            parameter,
+            f"Old: {old_value} -> New: {value}",
+            payload=value,
+            response=str(exc)
+        )
+
+        return
+
+    if str(response) != "OK":
+
+        db.add_activity(
+            "MQTT",
+            parameter,
+            f"Old: {old_value} -> New: {value}",
+            payload=value,
+            response=str(response)
+        )
+
+        logger.warning(
+            "MQTT controller write rejected: %s = %s -> %s",
+            parameter,
+            value,
+            response
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # Force controller read-back
+    # --------------------------------------------------------
+
+    readback = None
+
+    try:
+        readback = burner.getItem(parameter)
+    except Exception as exc:
+        logger.warning(
+            "MQTT write succeeded but read-back failed: %s: %s",
+            parameter,
+            exc
+        )
+
+    # --------------------------------------------------------
+    # Technical serial frame
+    # --------------------------------------------------------
+
+    serial_payload = getattr(
+        burner,
+        "last_write_payload",
+        None
+    )
+
+    # --------------------------------------------------------
+    # Activity log
+    #
+    # payload = EXACT VALUE SENT FROM HOME ASSISTANT
+    # serial frame is kept in details for diagnostics.
+    # --------------------------------------------------------
+
+    details = (
+        f"Old: {old_value} -> New: {value} | "
+        f"Read-back: {readback}"
+    )
+
+    if serial_payload:
+        details += (
+            f" | Serial payload: {serial_payload}"
+        )
+
+    db.add_activity(
+        "MQTT",
+        parameter,
+        details,
+        payload=value,
+        response="OK"
+    )
+
+    logger.info(
+        "MQTT command completed: %s = %s "
+        "(readback=%s, serial=%s)",
+        parameter,
+        value,
+        readback,
+        serial_payload
     )
 
 
@@ -794,6 +1167,7 @@ def mqtt_setup():
 
         mqtt_client.on_connect = mqtt_on_connect
         mqtt_client.on_disconnect = mqtt_on_disconnect
+        mqtt_client.on_message = mqtt_on_message
 
         mqtt_client.connect(
             MQTT_BROKER,
@@ -870,6 +1244,252 @@ def mqtt_publish_loop():
             )
 
         time.sleep(MQTT_INTERVAL)
+
+
+# ============================================================
+# DAILY STATISTICS
+# ============================================================
+
+def calculate_daily_stats(local_date):
+
+    zone = get_timezone()
+    timezone_name = get_timezone_name()
+
+    if isinstance(local_date, str):
+        local_date = datetime.strptime(
+            local_date,
+            "%Y-%m-%d"
+        ).date()
+
+    # Local midnight -> next local midnight.
+    # Converting both boundaries separately to UTC also
+    # handles 23/25 hour days around daylight saving time.
+    start_local = datetime(
+        local_date.year,
+        local_date.month,
+        local_date.day,
+        tzinfo=zone
+    )
+
+    next_date = (
+        local_date +
+        timedelta(days=1)
+    )
+
+    end_local = datetime(
+        next_date.year,
+        next_date.month,
+        next_date.day,
+        tzinfo=zone
+    )
+
+    start_utc = (
+        start_local
+        .astimezone(timezone.utc)
+        .isoformat()
+    )
+
+    end_utc = (
+        end_local
+        .astimezone(timezone.utc)
+        .isoformat()
+    )
+
+    with db.lock:
+
+        conn = db._connect()
+
+        try:
+
+            pellet_row = conn.execute(
+                """
+                SELECT
+                    COALESCE(SUM(kg), 0) AS pellet_kg
+                FROM pellet_consumption_hourly
+                WHERE hour_start >= ?
+                  AND hour_start < ?
+                """,
+                (
+                    start_utc,
+                    end_utc
+                )
+            ).fetchone()
+
+            measurement_row = conn.execute(
+                """
+                SELECT
+
+                    AVG(
+                        CASE
+                            WHEN parameter = 'outside_temp'
+                            THEN value
+                        END
+                    ) AS outside_temp_avg,
+
+                    AVG(
+                        CASE
+                            WHEN parameter = 'power'
+                            THEN value
+                        END
+                    ) AS power_avg,
+
+                    MAX(
+                        CASE
+                            WHEN parameter = 'power'
+                            THEN value
+                        END
+                    ) AS power_max,
+
+                    AVG(
+                        CASE
+                            WHEN parameter = 'power_kW'
+                            THEN value
+                        END
+                    ) AS power_kw_avg,
+
+                    MAX(
+                        CASE
+                            WHEN parameter = 'power_kW'
+                            THEN value
+                        END
+                    ) AS power_kw_max
+
+                FROM measurements
+
+                WHERE timestamp >= ?
+                  AND timestamp < ?
+                  AND parameter IN (
+                      'outside_temp',
+                      'power',
+                      'power_kW'
+                  )
+                """,
+                (
+                    start_utc,
+                    end_utc
+                )
+            ).fetchone()
+
+        finally:
+            conn.close()
+
+    pellet_kg = float(
+        pellet_row["pellet_kg"] or 0
+    )
+
+    db.upsert_daily_stats(
+        local_date=local_date.isoformat(),
+        timezone_name=timezone_name,
+        pellet_kg=pellet_kg,
+        outside_temp_avg=measurement_row["outside_temp_avg"],
+        power_avg=measurement_row["power_avg"],
+        power_max=measurement_row["power_max"],
+        power_kw_avg=measurement_row["power_kw_avg"],
+        power_kw_max=measurement_row["power_kw_max"]
+    )
+
+    logger.info(
+        "Daily stats stored: %s -> "
+        "%.3f kg, outside avg=%s, "
+        "power avg=%s, power_kW avg=%s",
+        local_date.isoformat(),
+        pellet_kg,
+        measurement_row["outside_temp_avg"],
+        measurement_row["power_avg"],
+        measurement_row["power_kw_avg"]
+    )
+
+
+def backfill_daily_stats():
+
+    zone = get_timezone()
+    today_local = datetime.now(zone).date()
+
+    with db.lock:
+
+        conn = db._connect()
+
+        try:
+
+            pellet_rows = conn.execute(
+                """
+                SELECT hour_start
+                FROM pellet_consumption_hourly
+                ORDER BY hour_start ASC
+                """
+            ).fetchall()
+
+            existing_rows = conn.execute(
+                """
+                SELECT local_date
+                FROM daily_stats
+                """
+            ).fetchall()
+
+        finally:
+            conn.close()
+
+    if not pellet_rows:
+        logger.info(
+            "Daily stats backfill: no pellet history yet"
+        )
+        return
+
+    existing_dates = {
+        row["local_date"]
+        for row in existing_rows
+    }
+
+    local_dates = sorted({
+        datetime.fromisoformat(
+            row["hour_start"].replace(
+                "Z",
+                "+00:00"
+            )
+        )
+        .astimezone(zone)
+        .date()
+        for row in pellet_rows
+    })
+
+    calculated = 0
+    skipped = 0
+
+    for local_date in local_dates:
+
+        date_key = local_date.isoformat()
+
+        # Completed historical days are permanent once stored.
+        # This prevents old temperature/output statistics from
+        # being overwritten after raw measurement retention expires.
+        if (
+            local_date < today_local
+            and date_key in existing_dates
+        ):
+            skipped += 1
+            continue
+
+        try:
+
+            calculate_daily_stats(
+                local_date
+            )
+
+            calculated += 1
+
+        except Exception:
+
+            logger.exception(
+                "Daily stats backfill error for %s",
+                local_date
+            )
+
+    logger.info(
+        "Daily stats backfill completed: "
+        "%d calculated, %d existing days preserved",
+        calculated,
+        skipped
+    )
 
 
 # ============================================================
@@ -980,6 +1600,25 @@ def calculate_pellet_hour(
         feeder_seconds,
         kg
     )
+
+    try:
+
+        local_date = (
+            hour_start
+            .astimezone(get_timezone())
+            .date()
+        )
+
+        calculate_daily_stats(
+            local_date
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Daily stats update error for pellet hour %s",
+            start_iso
+        )
 
     logger.info(
         "Pellet hour stored: %s -> %.3f kg (%.0f feeder sec)",
@@ -1143,8 +1782,74 @@ def root():
 # API: STATUS
 # ============================================================
 
+def get_wifi_signal():
+    """
+    Read Raspberry Pi WiFi signal from /proc/net/wireless.
+
+    Returns:
+        interface: WiFi interface name
+        dbm: signal strength in dBm
+        percent: approximate signal percentage
+    """
+
+    try:
+        path = Path("/proc/net/wireless")
+
+        if not path.exists():
+            return {
+                "interface": None,
+                "dbm": None,
+                "percent": None
+            }
+
+        lines = path.read_text().splitlines()[2:]
+
+        for line in lines:
+            if ":" not in line:
+                continue
+
+            interface, values = line.split(":", 1)
+            interface = interface.strip()
+
+            fields = values.split()
+
+            if len(fields) < 3:
+                continue
+
+            # /proc/net/wireless signal level
+            dbm = int(float(fields[2].rstrip(".")))
+
+            # Approximate percentage:
+            # -100 dBm = 0%
+            #  -50 dBm = 100%
+            percent = max(
+                0,
+                min(
+                    100,
+                    int((dbm + 100) * 2)
+                )
+            )
+
+            return {
+                "interface": interface,
+                "dbm": dbm,
+                "percent": percent
+            }
+
+    except Exception as e:
+        logging.debug("WiFi signal read failed: %s", e)
+
+    return {
+        "interface": None,
+        "dbm": None,
+        "percent": None
+    }
+
+
 @app.get("/api/v1/status")
 def status():
+
+    wifi = get_wifi_signal()
 
     with state_lock:
 
@@ -1158,7 +1863,8 @@ def status():
             "errors": len(
                 live_data["errors"]
             ),
-            "history_rows": db.count()
+            "history_rows": db.count(),
+            "wifi": wifi
         }
 
 
@@ -1302,6 +2008,422 @@ def set_silo_settings(
     )
 
     return get_silo_settings()
+
+
+
+# ============================================================
+# API: CONTROLLER SETTINGS / COMMANDS
+# ============================================================
+
+# Parameters that are deliberately exposed for editing in
+# Woody Monitor. The actual protocol metadata (address,
+# decimals, min/max and version support) comes directly from
+# the active Scotteprotocol database.
+#
+# Measurements and counters are therefore never made writable
+# merely because they exist in /api/v1/live.
+
+CONTROLLER_SETTING_GROUPS = {
+    "Temperatures": [
+        "boiler_temp_set",
+        "boiler_temp_min",
+        "boiler_temp_diff_down",
+        "boiler_temp_diff_up",
+        "hotwater_temp_set",
+        "hotwater_temp_diff",
+        "chute_temp_max",
+    ],
+
+    "Power": [
+        "min_power",
+        "max_power",
+        "regulator_P",
+        "regulator_I",
+        "regulator_D",
+    ],
+
+    "Feeder": [
+        "feeder_low",
+        "feeder_high",
+        "feed_per_minute",
+        "feeder_capacity",
+        "feeder_capacity_min",
+        "feeder_capacity_max",
+        "magazine_content",
+    ],
+
+    "Blower": [
+        "blower_low",
+        "blower_mid",
+        "blower_high",
+        "blower_cleaning",
+        "blower_off_time",
+        "blower_corr_low",
+        "blower_corr_mid",
+        "blower_corr_high",
+    ],
+
+    "Oxygen": [
+        "oxygen_regulation",
+        "oxygen_low",
+        "oxygen_mid",
+        "oxygen_high",
+        "oxygen_gain",
+        "oxygen_corr_10",
+        "oxygen_corr_50",
+        "oxygen_corr_100",
+        "oxygen_corr_interval",
+        "oxygen_regulation_P",
+        "oxygen_regulation_D",
+    ],
+
+    "Cleaning": [
+        "cleaning_interval",
+        "cleaning_time",
+        "comp_clean_interval",
+        "comp_clean_time",
+        "comp_clean_blower",
+        "comp_clean_wait",
+    ],
+
+    "Timers": [
+        "time_minutes",
+        "timer_heating_period",
+        "timer_heating_start_1",
+        "timer_heating_start_2",
+        "timer_heating_start_3",
+        "timer_heating_start_4",
+        "timer_hotwater_period",
+        "timer_hotwater_start_1",
+        "timer_hotwater_start_2",
+        "timer_hotwater_start_3",
+    ],
+
+    "System": [
+        "autocalculation",
+        "light_required",
+        "language",
+    ],
+}
+
+
+def controller_setting_metadata():
+
+    global burner
+
+    if burner is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Controller not connected"
+        )
+
+    database = burner.getDataBase()
+
+    result = []
+
+    for group, names in CONTROLLER_SETTING_GROUPS.items():
+
+        for name in names:
+
+            dataparam = database.get(name)
+
+            if dataparam is None:
+                continue
+
+            # Writable PellMon parameters have an address and
+            # a readable frame. Commands are deliberately
+            # excluded from the settings page.
+            if not hasattr(dataparam, "address"):
+                continue
+
+            if not hasattr(dataparam, "frame"):
+                continue
+
+            try:
+                value = burner.getItem(name)
+            except Exception:
+                with state_lock:
+                    value = live_data["values"].get(name)
+
+            decimals = getattr(dataparam, "decimals", 0)
+
+            if decimals > 0:
+                step = 1 / (10 ** decimals)
+            else:
+                step = 1
+
+            result.append({
+                "id": name,
+                "name": name.replace("_", " ").title(),
+                "group": group,
+                "value": value,
+                "min": dataparam.min,
+                "max": dataparam.max,
+                "decimals": decimals,
+                "step": step,
+            })
+
+    return result
+
+
+
+@app.get("/api/v1/log")
+def get_activity_log(limit: int = 500):
+
+    limit = max(1, min(int(limit), 2000))
+
+    return {
+        "entries": db.get_activity(limit)
+    }
+
+
+
+@app.post("/api/v1/log")
+def add_activity_log(
+    type: str = Query(...),
+    event: str = Query(...),
+    details: str = Query(None)
+):
+
+    db.add_activity(
+        type,
+        event,
+        details
+    )
+
+    return {"ok": True}
+
+
+@app.delete("/api/v1/log")
+def clear_activity_log():
+
+    db.clear_activity()
+
+    db.add_activity(
+        "SYSTEM",
+        "Log cleared",
+        "Activity log cleared by user"
+    )
+
+    return {"ok": True}
+
+
+@app.get("/api/v1/controller/settings")
+def get_controller_settings():
+
+    return {
+        "settings": controller_setting_metadata()
+    }
+
+
+@app.post("/api/v1/controller/settings/{parameter}")
+def set_controller_setting(
+    parameter: str,
+    value: str = Query(...)
+):
+
+    global burner
+
+    if burner is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Controller not connected"
+        )
+
+    allowed = {
+        item
+        for names in CONTROLLER_SETTING_GROUPS.values()
+        for item in names
+    }
+
+    if parameter not in allowed:
+        raise HTTPException(
+            status_code=404,
+            detail="Unknown or read-only controller setting"
+        )
+
+    database = burner.getDataBase()
+    dataparam = database.get(parameter)
+
+    # Read current value before writing so the log can show
+    # old value -> requested value.
+    old_controller_value = None
+
+    try:
+        old_controller_value = burner.getItem(parameter)
+    except Exception:
+        pass
+
+    if (
+        dataparam is None
+        or not hasattr(dataparam, "address")
+        or not hasattr(dataparam, "frame")
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Parameter is not writable on this controller"
+        )
+
+    try:
+        response = burner.setItem(
+            parameter,
+            value
+        )
+    except Exception as exc:
+        logger.exception(
+            "Controller setting write failed: %s",
+            parameter
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(exc)
+        )
+
+    if str(response) != "OK":
+        raise HTTPException(
+            status_code=400,
+            detail=str(response)
+        )
+
+    # PellMon getItem() knows that this parameter has just
+    # been written and forces a fresh controller read.
+    try:
+        readback = burner.getItem(parameter)
+    except Exception as exc:
+        logger.warning(
+            "Controller setting written but readback failed: %s: %s",
+            parameter,
+            exc
+        )
+        readback = None
+
+    logger.info(
+        "Controller setting changed: %s = %s (readback=%s)",
+        parameter,
+        value,
+        readback
+    )
+
+    db.add_activity(
+        "SETTING",
+        parameter,
+        f"Old: {old_controller_value} -> New: {value} | Read-back: {readback}",
+        # Human-readable serial frame sent to controller.
+        # Example: E010160C
+        payload=getattr(
+            burner,
+            "last_write_payload",
+            None
+        ),
+        response=(
+            "OK"
+            if str(
+                getattr(
+                    burner,
+                    "last_write_response",
+                    ""
+                ) or str(response)
+            ).startswith("OK")
+            else (
+                getattr(
+                    burner,
+                    "last_write_response",
+                    None
+                ) or str(response)
+            )
+        )
+    )
+
+    return {
+        "ok": True,
+        "parameter": parameter,
+        "requested": value,
+        "value": readback,
+    }
+
+
+@app.post("/api/v1/controller/burner/{action}")
+def controller_burner_command(action: str):
+
+    global burner
+
+    if burner is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Controller not connected"
+        )
+
+    commands = {
+        "start": "burner_on",
+        "stop": "burner_off",
+    }
+
+    command = commands.get(action.lower())
+
+    if command is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Action must be start or stop"
+        )
+
+    database = burner.getDataBase()
+
+    if command not in database:
+        raise HTTPException(
+            status_code=400,
+            detail="Command not supported by this controller"
+        )
+
+    try:
+        response = burner.setItem(
+            command,
+            "0"
+        )
+    except Exception as exc:
+
+        logger.exception(
+            "Burner command failed: %s",
+            command
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(exc)
+        )
+
+    if str(response) != "OK":
+        raise HTTPException(
+            status_code=400,
+            detail=str(response)
+        )
+
+    logger.info(
+        "Burner command sent: %s",
+        command
+    )
+
+    db.add_activity(
+        "CONTROLLER",
+        "Burner " + action.lower(),
+        f"Command: {command}",
+        payload=getattr(
+            burner,
+            "last_write_payload_hex",
+            None
+        ),
+        response=getattr(
+            burner,
+            "last_write_response",
+            None
+        ) or str(response)
+    )
+
+    return {
+        "ok": True,
+        "action": action.lower(),
+        "command": command,
+    }
 
 
 # ============================================================
@@ -1660,6 +2782,177 @@ def pellet_consumption(
 # API: HOURLY PELLET CONSUMPTION
 # ============================================================
 
+
+@app.get("/api/v1/statistics/daily")
+def daily_statistics(
+    days: int = Query(365, gt=0, le=3650)
+):
+    """
+    Daily pellet and burner statistics.
+
+    Only completed local calendar days are used for averages
+    and record values. The current day is excluded because it
+    is still incomplete.
+    """
+
+    zone = get_timezone()
+    today_local = datetime.now(zone).date()
+
+    start_date = (
+        today_local - timedelta(days=days)
+    ).isoformat()
+
+    end_date = (
+        today_local - timedelta(days=1)
+    ).isoformat()
+
+    completed_rows = db.get_daily_stats(
+        start_date=start_date,
+        end_date=end_date
+    )
+
+    all_rows = db.get_daily_stats()
+
+    if all_rows:
+        coverage = {
+            "first_date": all_rows[0]["local_date"],
+            "last_date": all_rows[-1]["local_date"],
+            "total_days": len(all_rows),
+            "completed_days_in_period": len(completed_rows)
+        }
+    else:
+        coverage = {
+            "first_date": None,
+            "last_date": None,
+            "total_days": 0,
+            "completed_days_in_period": 0
+        }
+
+    if not completed_rows:
+        return {
+            "timezone": get_timezone_name(),
+            "period_days": days,
+            "coverage": coverage,
+            "averages": {
+                "kg_per_day": None,
+                "kg_per_week": None,
+                "kg_per_month": None,
+                "kg_per_year": None
+            },
+            "max_consumption": None,
+            "max_output": None
+        }
+
+    pellet_values = [
+        float(row["pellet_kg"] or 0)
+        for row in completed_rows
+    ]
+
+    total_kg = sum(pellet_values)
+    completed_count = len(completed_rows)
+
+    avg_per_day = total_kg / completed_count
+
+    # Normalised averages based on the available completed days.
+    avg_per_week = avg_per_day * 7.0
+    avg_per_month = avg_per_day * (365.2425 / 12.0)
+    avg_per_year = avg_per_day * 365.2425
+
+    consumption_candidates = [
+        row
+        for row in completed_rows
+        if float(row["pellet_kg"] or 0) > 0
+    ]
+
+    max_consumption_row = (
+        max(
+            consumption_candidates,
+            key=lambda row: float(row["pellet_kg"] or 0)
+        )
+        if consumption_candidates
+        else None
+    )
+
+    output_candidates = [
+        row
+        for row in completed_rows
+        if row["power_kw_avg"] is not None
+        and float(row["power_kw_avg"] or 0) > 0
+    ]
+
+    max_output_row = (
+        max(
+            output_candidates,
+            key=lambda row: float(row["power_kw_avg"])
+        )
+        if output_candidates
+        else None
+    )
+
+    if max_consumption_row is not None:
+        max_consumption = {
+            "date": max_consumption_row["local_date"],
+            "pellet_kg": float(
+                max_consumption_row["pellet_kg"] or 0
+            ),
+            "outside_temp_avg": (
+                float(max_consumption_row["outside_temp_avg"])
+                if max_consumption_row["outside_temp_avg"] is not None
+                else None
+            )
+        }
+    else:
+        max_consumption = None
+
+    if max_output_row is not None:
+        max_output = {
+            "date": max_output_row["local_date"],
+            "power_kw_avg": float(
+                max_output_row["power_kw_avg"]
+            ),
+            "power_kw_max": (
+                float(max_output_row["power_kw_max"])
+                if max_output_row["power_kw_max"] is not None
+                else None
+            ),
+            "power_avg": (
+                float(max_output_row["power_avg"])
+                if max_output_row["power_avg"] is not None
+                else None
+            ),
+            "power_max": (
+                float(max_output_row["power_max"])
+                if max_output_row["power_max"] is not None
+                else None
+            ),
+            "pellet_kg": float(
+                max_output_row["pellet_kg"] or 0
+            ),
+            "outside_temp_avg": (
+                float(max_output_row["outside_temp_avg"])
+                if max_output_row["outside_temp_avg"] is not None
+                else None
+            )
+        }
+    else:
+        max_output = None
+
+    return {
+        "timezone": get_timezone_name(),
+        "period_days": days,
+        "coverage": coverage,
+        "total_kg_completed_days": total_kg,
+        "averages": {
+            "kg_per_day": avg_per_day,
+            "kg_per_week": avg_per_week,
+            "kg_per_month": avg_per_month,
+            "kg_per_year": avg_per_year
+        },
+        "max_consumption": max_consumption,
+        "max_output": max_output
+    }
+
+
 @app.get("/api/v1/consumption/pellets/hourly")
 def pellet_consumption_hourly(
     hours: float = Query(24, gt=0, le=8760),
@@ -1899,6 +3192,13 @@ def history_parameters():
 def startup():
 
     load_timezone_settings()
+
+    try:
+        backfill_daily_stats()
+    except Exception:
+        logger.exception(
+            "Daily stats startup backfill failed"
+        )
     load_feeder_calibration()
 
     watchdog = threading.Thread(

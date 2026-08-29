@@ -183,7 +183,7 @@ body { padding-bottom:20px; }
     font-size:12px;
 }
 
-/* Pillesilo */
+/* Pellet silo */
 .silo-card {
     min-height: 300px;
 }
@@ -222,7 +222,7 @@ body { padding-bottom:20px; }
         0 10px 28px rgba(0,0,0,.30);
 }
 
-/* Tilp lid */
+/* Top lid */
 .silo-top {
     position:absolute;
     top:-3px;
@@ -1165,7 +1165,612 @@ body { padding-bottom:20px; }
     }
 }
 
+
+
+/* ============================================================
+   MODERN HOME CARDS
+   ============================================================ */
+
+.home-top-grid {
+    align-items: stretch;
+}
+
+.burner-modern-card,
+.silo-modern-card {
+    overflow: hidden;
+}
+
+.burner-modern-header,
+.silo-modern-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.burner-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.burner-heading-icon {
+    font-size: 28px;
+}
+
+.burner-modern-subtitle {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.burner-state-pill {
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: rgba(90, 200, 90, .12);
+    border: 1px solid rgba(90, 200, 90, .18);
+    color: #8fd86f;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.burner-modern-body {
+    display: grid;
+    grid-template-columns: minmax(180px, .8fr) minmax(300px, 1.4fr);
+    gap: 20px;
+    align-items: stretch;
+}
+
+.burner-visual {
+    min-height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at 45% 65%,
+            rgba(255,120,20,.08),
+            transparent 38%),
+        rgba(5,15,25,.22);
+    border: 1px solid rgba(255,255,255,.045);
+}
+
+.burner-machine {
+    width: 205px;
+    height: 180px;
+    position: relative;
+}
+
+.burner-boiler {
+    position: absolute;
+    left: 12px;
+    bottom: 15px;
+    width: 105px;
+    height: 130px;
+    border-radius: 5px;
+    background:
+        linear-gradient(135deg,#36414b,#17212a 60%,#0d141b);
+    border: 1px solid rgba(255,255,255,.15);
+    box-shadow:
+        inset 0 0 20px rgba(255,255,255,.025),
+        0 12px 30px rgba(0,0,0,.35);
+}
+
+.burner-door {
+    position: absolute;
+    width: 49px;
+    height: 65px;
+    left: 27px;
+    bottom: 18px;
+    border-radius: 4px;
+    background: #090f14;
+    border: 3px solid #2c3942;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.burner-flame {
+    font-size: 31px;
+    filter: drop-shadow(0 0 12px rgba(255,120,0,.65));
+}
+
+.burner-chimney {
+    position: absolute;
+    width: 19px;
+    height: 120px;
+    left: 107px;
+    top: 0;
+    border-radius: 3px;
+    background: linear-gradient(90deg,#25313a,#56616a,#182129);
+}
+
+.burner-hopper {
+    position: absolute;
+    right: 3px;
+    top: 54px;
+    width: 68px;
+    height: 82px;
+    clip-path: polygon(0 0,100% 0,82% 100%,18% 100%);
+    background: linear-gradient(135deg,#4d5962,#202a32);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.burner-hopper-pellets {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 10px;
+    height: 42px;
+    background:
+        radial-gradient(circle,#c99651 2px,transparent 3px);
+    background-size: 8px 8px;
+    opacity: .9;
+}
+
+.burner-auger {
+    position: absolute;
+    right: 37px;
+    bottom: 37px;
+    width: 73px;
+    height: 16px;
+    transform: rotate(-11deg);
+    transform-origin: right center;
+    background: linear-gradient(#394750,#141c22);
+    border-radius: 4px;
+}
+
+.burner-metrics {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 1px;
+    overflow: hidden;
+    border-radius: 12px;
+    background: rgba(255,255,255,.075);
+    border: 1px solid rgba(255,255,255,.07);
+}
+
+.burner-metric {
+    min-height: 105px;
+    padding: 18px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: rgba(8,19,30,.88);
+}
+
+.burner-metric-icon {
+    width: 32px;
+    flex: 0 0 32px;
+    font-size: 22px;
+    text-align: center;
+}
+
+.burner-metric-label {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 7px;
+}
+
+.burner-metric-value {
+    font-size: 24px;
+    line-height: 1;
+    font-weight: 750;
+    color: #66a6ff;
+}
+
+.burner-metric-value small {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.burner-metric-value.temperature {
+    color: #83cf55;
+}
+
+.burner-metric-value.power {
+    color: #9a68e8;
+}
+
+.burner-metric-value.power-kw {
+    color: #5799f5;
+}
+
+.burner-metric-value.hotwater {
+    color: #59a0fa;
+}
+
+.burner-metric-value.outdoor {
+    color: #60a7f8;
+}
+
+.alarm-value {
+    color: #82d05b;
+    font-size: 18px;
+}
+
+
+/* SILO */
+
+.silo-capacity-modern {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.silo-modern-body {
+    display: grid;
+    grid-template-columns: 155px minmax(0,1fr);
+    gap: 22px;
+    align-items: stretch;
+}
+
+.silo-modern-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.silo-value-modern {
+    color: #83cf55;
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.silo-value-modern small {
+    font-size: 17px;
+}
+
+.silo-level-modern {
+    color: #91d964;
+    background: rgba(101,190,65,.13);
+    padding: 5px 11px;
+    border-radius: 9px;
+    font-weight: 700;
+    margin-bottom: 17px;
+}
+
+.silo-modern-left .silo-tank {
+    height: 185px;
+}
+
+.silo-forecast-panel {
+    min-width: 0;
+    min-height: 285px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(5,15,25,.28);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.silo-forecast-title {
+    font-size: 13px;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 10px;
+}
+
+.silo-forecast-chart {
+    position: relative;
+    flex: 1;
+    min-height: 190px;
+}
+
+.silo-forecast-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding-top: 10px;
+    margin-top: 8px;
+    border-top: 1px solid rgba(255,255,255,.06);
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.silo-forecast-footer strong {
+    color: var(--text);
+}
+
+
+/* RESPONSIVE */
+
+@media (max-width: 1100px) {
+
+    .burner-modern-body {
+        grid-template-columns: 1fr;
+    }
+
+    .burner-visual {
+        min-height: 210px;
+    }
+
+    .silo-modern-body {
+        grid-template-columns: 125px minmax(0,1fr);
+    }
+}
+
+@media (max-width: 760px) {
+
+    .burner-metrics {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .burner-modern-body {
+        grid-template-columns: 1fr;
+    }
+
+    .silo-modern-body {
+        grid-template-columns: 1fr;
+    }
+
+    .silo-modern-left .silo-tank {
+        height: 160px;
+    }
+
+    .silo-forecast-footer {
+        flex-direction: column;
+        gap: 5px;
+    }
+}
+
+
+
+
+/* Top navigation readability */
+.top-nav .nav-btn {
+    font-size: 15px;
+    font-weight: 650;
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+
+
+
+/* Burner header alarm */
+.burner-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.burner-header-alarm {
+    padding: 7px 13px;
+    border-radius: 999px;
+    background: rgba(90, 200, 90, .10);
+    border: 1px solid rgba(90, 200, 90, .18);
+    color: #8fd86f;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+
+
+
+/* Alarm as plain text */
+.burner-header-alarm {
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--text) !important;
+    font-size: 13px;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.burner-header-alarm .alarm-check {
+    color: #82d05b;
+    font-size: 17px;
+    font-weight: 900;
+}
+
+/* Silo percentage centered inside tank */
+.silo-tank {
+    position: relative;
+}
+
+.silo-percent-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+
+    font-size: 22px;
+    font-weight: 800;
+    color: #ffffff;
+
+    text-shadow:
+        0 1px 3px rgba(0,0,0,.9),
+        0 0 8px rgba(0,0,0,.65);
+
+    pointer-events: none;
+}
+
+
+
+.burner-control-button {
+    min-width: 105px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 8px 13px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.burner-control-button.start {
+    background: rgba(52, 211, 153, .12);
+    border-color: rgba(52, 211, 153, .35);
+    color: var(--green);
+}
+
+.burner-control-button.stop {
+    background: rgba(248, 113, 113, .12);
+    border-color: rgba(248, 113, 113, .35);
+    color: #f87171;
+}
+
+.burner-control-button:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+@media (max-width:700px) {
+    .burner-control-button {
+        min-width: 88px;
+        padding: 7px 9px;
+        font-size: 11px;
+    }
+}
+
+
+
+.burner-status-under-title {
+    margin-top: 3px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+
+
+
+/* Burner status colors */
+
+.burner-status-under-title.status-stopped {
+    color: #fbbf24 !important;
+}
+
+.burner-status-under-title.status-running {
+    color: #34d399 !important;
+}
+
+.burner-status-under-title.status-other {
+    color: #f87171 !important;
+}
+
+
+
+
+/* ============================================================
+   CONTROLLER SETTINGS
+   ============================================================ */
+
+.controller-settings-grid {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:14px;
+}
+
+.controller-settings-group {
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+}
+
+.controller-settings-group-title {
+    padding:10px 13px;
+    border-bottom:1px solid var(--border);
+    font-size:13px;
+    font-weight:700;
+}
+
+.controller-setting-row {
+    display:grid;
+    grid-template-columns:minmax(130px,1fr) 110px 58px;
+    gap:9px;
+    align-items:center;
+    padding:9px 12px;
+    border-bottom:1px solid rgba(255,255,255,.045);
+}
+
+.controller-setting-row:last-child {
+    border-bottom:0;
+}
+
+.controller-setting-name {
+    font-size:13px;
+}
+
+.controller-setting-info {
+    margin-top:2px;
+    font-size:10px;
+    color:var(--muted);
+}
+
+.controller-setting-input {
+    width:100%;
+    box-sizing:border-box;
+    padding:7px 8px;
+    background:#202934;
+    color:white;
+    border:1px solid #2b3542;
+    border-radius:7px;
+    font-size:13px;
+}
+
+.controller-setting-save {
+    padding:7px 6px !important;
+    font-size:11px !important;
+}
+
+.controller-setting-success {
+    color:#34d399 !important;
+}
+
+.controller-setting-error {
+    color:#f87171 !important;
+}
+
+@media (max-width:800px) {
+
+    .controller-settings-grid {
+        grid-template-columns:1fr;
+    }
+
+    .controller-setting-row {
+        grid-template-columns:minmax(110px,1fr) 100px 58px;
+    }
+}
+
+@media (max-width:480px) {
+
+    .controller-setting-row {
+        grid-template-columns:minmax(90px,1fr) 88px 55px;
+        gap:6px;
+        padding:8px;
+    }
+
+    .controller-setting-name {
+        font-size:12px;
+    }
+}
+
+
 </style>
+
+<style id="nav-font-fix">
+.topbar .top-nav .nav-btn,
+.topbar .top-nav .nav-btn span {
+    font-size: 15px !important;
+    font-weight: 650 !important;
+    line-height: 1.2 !important;
+}
+</style>
+
 </head>
 
 <body>
@@ -1178,8 +1783,9 @@ body { padding-bottom:20px; }
 
     <div id="connection" class="connection">
         <span class="connection-dot"></span>
-        <span class="connection-text">Forbinder</span>
+        <span class="connection-text">Connecting</span>
         <span id="lastUpdate">--</span>
+        <span id="wifiSignal" title="Raspberry Pi WiFi signal">📶 WIFI --</span>
     </div>
 
     <nav class="top-nav">
@@ -1187,36 +1793,25 @@ body { padding-bottom:20px; }
         <button class="nav-btn active"
                 data-page="dashboard"
                 onclick="showPage('dashboard')">
-            <span class="nav-icon">🏠</span>
-            <span>Oversigt</span>
-        </button>
-
-        <button class="nav-btn"
-                data-page="history"
-                onclick="showPage('history')">
-            <span class="nav-icon">📈</span>
-            <span>Historik</span>
+            <span>Home</span>
         </button>
 
         <button class="nav-btn"
                 data-page="consumption"
                 onclick="showPage('consumption')">
-            <span class="nav-icon">🟫</span>
-            <span>Piller</span>
+            <span>Consumption</span>
         </button>
 
         <button class="nav-btn"
-                data-page="events"
-                onclick="showPage('events')">
-            <span class="nav-icon">🔔</span>
-            <span>Hændelser</span>
+                data-page="log"
+                onclick="showPage('log')">
+            <span>Log</span>
         </button>
 
         <button class="nav-btn"
                 data-page="settings"
                 onclick="showPage('settings')">
-            <span class="nav-icon">⚙️</span>
-            <span>Indstillinger</span>
+            <span>Settings</span>
         </button>
 
     </nav>
@@ -1226,122 +1821,226 @@ body { padding-bottom:20px; }
 
 <section id="page-dashboard" class="page active">
 
-    <div class="page-title">
-        <h1>Oversigt</h1>
-        <p>Aktuelle data fra pillefyret</p>
-    </div>
+    <div class="grid home-top-grid">
 
-    <div class="grid">
+        <!-- ==================================================
+             BURNER
+             ================================================== -->
+        <div class="card col-6 burner-modern-card">
 
-        <div class="card col-6">
-            <div class="card-header">
-                <div>
-                    <div class="card-title">Brænderstatus</div>
-                    <div class="card-subtitle">Aktuel driftstilstand</div>
+            <div class="burner-modern-header">
+
+                <div class="burner-heading">
+                    <div class="burner-heading-icon">🔥</div>
+
+                    <div>
+                        <div class="card-title">Burner</div>
+                        
+<div id="burnerStatus"
+     class="burner-status-under-title">
+    --
+</div>
+                    </div>
                 </div>
+
+                <div class="burner-header-right">
+
+
+                    <div class="burner-header-alarm">
+                        <span class="alarm-check">✓</span>
+                        <span>Alarm</span>
+                        <span id="burnerAlarm">None</span>
+                    </div>
+
+                    <button
+                        id="burnerControlButton"
+                        class="burner-control-button"
+                        type="button"
+                        onclick="toggleBurner()"
+                        disabled
+                    >
+                        --
+                    </button>
+
+                </div>
+
             </div>
 
-            <div class="status-large">
-                <div class="status-icon">🔥</div>
+            <div class="burner-modern-body">
 
-                <div style="flex:1;min-width:0;">
+                <div class="burner-visual">
+                    <div class="burner-machine">
+                        <div class="burner-chimney"></div>
 
-                    <div id="burnerStatus" class="status-name">--</div>
+                        <div class="burner-hopper">
+                            <div class="burner-hopper-pellets"></div>
+                        </div>
 
-                    <div id="burnerStatusDetail" class="status-detail">
-                        Live data
+                        <div class="burner-boiler">
+                            <div class="burner-door">
+                                <div class="burner-flame">🔥</div>
+                            </div>
+                        </div>
+
+                        <div class="burner-auger"></div>
+                    </div>
+                </div>
+
+                <div class="burner-metrics">
+
+                    <div class="burner-metric">
+                        <div class="burner-metric-icon">🌡️</div>
+                        <div>
+                            <div class="burner-metric-label">
+                                Boiler temp
+                            </div>
+                            <div class="burner-metric-value temperature">
+                                <span id="statusBoilerTemp">--</span>
+                                <small>°C</small>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="burner-status-grid">
-
-                        <div class="burner-status-item">
-                            <div class="stat-label">Driftstilstand</div>
-                            <div id="burnerDriftstilstand"
-                                 class="burner-status-value">
-                                --
+                    <div class="burner-metric">
+                        <div class="burner-metric-icon">⚡</div>
+                        <div>
+                            <div class="burner-metric-label">
+                                Power
+                            </div>
+                            <div class="burner-metric-value power">
+                                <span id="statusPower">--</span>
+                                <small>%</small>
                             </div>
                         </div>
-
-                        <div class="burner-status-item">
-                            <div class="stat-label">Kedeltemperatur</div>
-                            <div class="burner-status-value">
-                                <span id="statusBoilerTemp">--</span> °C
-                            </div>
-                        </div>
-
-                        <div class="burner-status-item">
-                            <div class="stat-label">Brændereffekt</div>
-                            <div class="burner-status-value">
-                                <span id="statusPower">--</span> %
-                            </div>
-                        </div>
-
-                        <div class="burner-status-item">
-                            <div class="stat-label">Brændereffekt</div>
-                            <div class="burner-status-value">
-                                <span id="statusPowerKw">--</span> kW
-                            </div>
-                        </div>
-
-                        <div class="burner-status-item">
-                            <div class="stat-label">Varmt vand</div>
-                            <div class="burner-status-value">
-                                <span id="statusHotWater">--</span> °C
-                            </div>
-                        </div>
-
-                        <div class="burner-status-item">
-                            <div class="stat-label">Alarm</div>
-                            <div id="burnerAlarm"
-                                 class="burner-status-value">
-                                Ingen
-                            </div>
-                        </div>
-
                     </div>
+
+                    <div class="burner-metric">
+                        <div class="burner-metric-icon">⚡</div>
+                        <div>
+                            <div class="burner-metric-label">
+                                Power
+                            </div>
+                            <div class="burner-metric-value power-kw">
+                                <span id="statusPowerKw">--</span>
+                                <small>kW</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="burner-metric">
+                        <div class="burner-metric-icon">🚿</div>
+                        <div>
+                            <div class="burner-metric-label">
+                                Hot water
+                            </div>
+                            <div class="burner-metric-value hotwater">
+                                <span id="statusHotWater">--</span>
+                                <small>°C</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="burner-metric">
+                        <div class="burner-metric-icon">↩️</div>
+                        <div>
+                            <div class="burner-metric-label">
+                                Return temp
+                            </div>
+                            <div class="burner-metric-value outdoor">
+                                <span id="statusReturnTemp">--</span>
+                                <small>°C</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="burner-metric">
+                        <div class="burner-metric-icon">🌡️</div>
+                        <div>
+                            <div class="burner-metric-label">
+                                Outdoor Temp
+                            </div>
+                            <div class="burner-metric-value outdoor">
+                                <span id="statusOutdoorTemp">--</span>
+                                <small>°C</small>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
 
-        <div class="card col-6 silo-card">
-            <div class="card-header">
+
+        <!-- ==================================================
+             SILO
+             ================================================== -->
+        <div class="card col-6 silo-modern-card">
+
+            <div class="silo-modern-header">
                 <div>
-                    <div class="card-title">Pillesilo</div>
-                    <div class="card-subtitle">Aktuelt pilleniveau</div>
+                    <div class="card-title">Pellet silo</div>
+                    <div class="card-subtitle">
+                        Current content and estimated consumption
+                    </div>
+                </div>
+
+                <div class="silo-capacity-modern">
+                    Capacity:
+                    <strong>
+                        <span id="siloCapacity">215</span> kg
+                    </strong>
                 </div>
             </div>
 
-            <div class="silo-layout">
+            <div class="silo-modern-body">
 
-                <div class="silo-tank">
-                    <div class="silo-top"></div>
-                    <div id="siloFill" class="silo-fill"></div>
-                    <div class="silo-highlight"></div>
-                </div>
+                <div class="silo-modern-left">
 
-                <div class="silo-content">
-                    <div class="silo-title">Piller tilbage</div>
-
-                    <div class="silo-value">
+                    <div class="silo-value-modern">
                         <span id="magazineContent">--</span>
-                        <span class="silo-unit">kg</span>
+                        <small>kg</small>
                     </div>
 
-                    <div class="silo-level">
-                        <span id="siloLevel">--</span>%
+                    <div class="silo-tank">
+                        <div class="silo-top"></div>
+                        <div id="siloFill" class="silo-fill"></div>
+                        <div class="silo-highlight"></div>
+
+                        <div class="silo-percent-center">
+                            <span id="siloLevel">--</span>%
+                        </div>
                     </div>
 
-                    <div class="silo-capacity">
-                        Kapacitet: <span id="siloCapacity">215</span> kg
+                </div>
+
+                <div class="silo-forecast-panel">
+
+                    <div class="silo-forecast-title">
+                        Silo content forecast
                     </div>
+
+                    <div class="silo-forecast-chart">
+                        <canvas id="siloForecastChart"></canvas>
+                    </div>
+
+                    <div class="silo-forecast-footer">
+
+                        <div>
+                            Average consumption:
+                            <strong id="siloDailyConsumption">--</strong>
+                            kg/day
+                        </div>
+
+                        <div>
+                            Estimated empty:
+                            <strong id="siloEmptyDate">--</strong>
+                        </div>
+
+                    </div>
+
                 </div>
 
             </div>
-        </div>
-
-                </div>
-            </div>
-            <div id="systemStatus"></div>
         </div>
 
     </div>
@@ -1353,9 +2052,9 @@ body { padding-bottom:20px; }
         <div class="card-header">
 
             <div>
-                <div class="card-title">Historik</div>
+                <div class="card-title">History</div>
                 <div class="card-subtitle">
-                    Historiske værdier fra Woody Monitor
+                    Historical values from Woody Monitor
                 </div>
             </div>
 
@@ -1368,23 +2067,23 @@ body { padding-bottom:20px; }
 
                 <button class="btn range-btn dashboard-range-btn active"
                         type="button"
-                        onclick="setHistoryRange(1,this)">1t</button>
+                        onclick="setHistoryRange(1,this)">1h</button>
 
                 <button class="btn range-btn dashboard-range-btn"
                         type="button"
-                        onclick="setHistoryRange(6,this)">6t</button>
+                        onclick="setHistoryRange(6,this)">6h</button>
 
                 <button class="btn range-btn dashboard-range-btn"
                         type="button"
-                        onclick="setHistoryRange(12,this)">12t</button>
+                        onclick="setHistoryRange(12,this)">12h</button>
 
                 <button class="btn range-btn dashboard-range-btn"
                         type="button"
-                        onclick="setHistoryRange(24,this)">24t</button>
+                        onclick="setHistoryRange(24,this)">24h</button>
 
                 <button class="btn range-btn dashboard-range-btn"
                         type="button"
-                        onclick="setHistoryRange(48,this)">48t</button>
+                        onclick="setHistoryRange(48,this)">48h</button>
 
                 <button class="btn range-btn dashboard-range-btn"
                         type="button"
@@ -1404,7 +2103,7 @@ body { padding-bottom:20px; }
 
                 <button class="btn range-btn dashboard-range-btn"
                         type="button"
-                        onclick="setHistoryRange(8760,this)">1 år</button>
+                        onclick="setHistoryRange(8760,this)">1 year</button>
 
             </div>
 
@@ -1414,10 +2113,17 @@ body { padding-bottom:20px; }
                         onclick="historyZoomOut()">−</button>
 
                 <button class="btn" type="button"
-                        onclick="historyResetZoom()">Nulstil zoom</button>
+                        onclick="historyResetZoom()">Reset zoom</button>
 
                 <button class="btn" type="button"
                         onclick="historyZoomIn()">+</button>
+
+                <button class="btn"
+                        id="historyAutoUpdateButton"
+                        type="button"
+                        onclick="toggleHistoryAutoUpdate()">
+                    Auto update: On
+                </button>
 
                 <button class="btn" type="button"
                         onclick="exportHistoryCSV()">CSV</button>
@@ -1429,20 +2135,20 @@ body { padding-bottom:20px; }
 
         </div>
 
-        <!-- FRA / TIL -->
+        <!-- FROM / TO -->
         <div class="toolbar"
              style="margin-top:12px;flex-wrap:wrap;">
 
             <div class="button-group">
 
                 <label>
-                    Fra
+                    From
                     <input type="datetime-local"
                            id="dashboardHistoryFra">
                 </label>
 
                 <label>
-                    Til
+                    To
                     <input type="datetime-local"
                            id="dashboardHistoryTil">
                 </label>
@@ -1450,13 +2156,13 @@ body { padding-bottom:20px; }
                 <button class="btn"
                         type="button"
                         onclick="applyDashboardHistoryDateRange()">
-                    Vis periode
+                    Show range
                 </button>
 
                 <button class="btn"
                         type="button"
                         onclick="clearDashboardHistoryDateRange()">
-                    Ryd
+                    Clear
                 </button>
 
             </div>
@@ -1472,13 +2178,13 @@ body { padding-bottom:20px; }
                 <button class="btn"
                         type="button"
                         onclick="selectAllParameters()">
-                    Alle
+                    All
                 </button>
 
                 <button class="btn"
                         type="button"
                         onclick="clearAllParameters()">
-                    Ingen
+                    None
                 </button>
 
             </div>
@@ -1502,127 +2208,11 @@ body { padding-bottom:20px; }
 
 </section>
 
-<section id="page-history" class="page">
-
-    <div class="page-title">
-        <h1>Historik</h1>
-        <p>Historiske data gemt i Woody Monitor</p>
-    </div>
-
-    <div class="card">
-
-        <!-- GRAF TOOLBAR -->
-        <div class="chart-toolbar">
-
-            <div class="chart-toolbar-left">
-
-                <button class="btn range-btn active"
-                        onclick="setHistoryRange(1,this)">1t</button>
-
-                <button class="btn range-btn"
-                        onclick="setHistoryRange(6,this)">6t</button>
-
-                <button class="btn range-btn"
-                        onclick="setHistoryRange(12,this)">12t</button>
-
-                <button class="btn range-btn"
-                        onclick="setHistoryRange(24,this)">24t</button>
-
-                <button class="btn range-btn"
-                        onclick="setHistoryRange(48,this)">48t</button>
-
-                <button class="btn range-btn"
-                        onclick="setHistoryRange(168,this)">7d</button>
-
-                <button class="btn range-btn"
-                        onclick="setHistoryRange(720,this)">30d</button>
-
-                <button class="btn range-btn"
-                        onclick="setHistoryRange(2160,this)">90d</button>
-
-                <button class="btn range-btn"
-                        onclick="setHistoryRange(4320,this)">180d</button>
-
-                <button class="btn range-btn"
-                        onclick="setHistoryRange(8760,this)">1 år</button>
-
-            </div>
-
-            <div class="chart-toolbar-right">
-
-                <button class="btn" type="button"
-                        onclick="historyZoomOut()">−</button>
-
-                <button class="btn" type="button"
-                        onclick="historyResetZoom()">Nulstil zoom</button>
-
-                <button class="btn" type="button"
-                        onclick="historyZoomIn()">+</button>
-
-                <button class="btn" type="button"
-                        onclick="exportHistoryCSV()">CSV</button>
-
-                <button class="btn" type="button"
-                        onclick="exportHistoryExcel()">Excel</button>
-
-            </div>
-
-        </div>
-
-        <div class="toolbar" style="margin-top:12px;flex-wrap:wrap;">
-
-            <div class="button-group">
-
-                <label>
-                    Fra
-                    <input type="datetime-local"
-                           id="historyFra">
-                </label>
-
-                <label>
-                    Til
-                    <input type="datetime-local"
-                           id="historyTil">
-                </label>
-
-                <button class="btn"
-                        onclick="applyHistoryDateRange()">
-                    Vis periode
-                </button>
-
-                <button class="btn"
-                        onclick="clearHistoryDateRange()">
-                    Ryd
-                </button>
-
-            </div>
-
-        </div>
-
-        <div class="toolbar">
-
-            <div class="button-group">
-                <button class="btn" onclick="selectAllParameters()">Alle</button>
-                <button class="btn" onclick="clearAllParameters()">Ingen</button>
-            </div>
-
-        </div>
-
-        <div class="chart-container">
-            <canvas id="historyChart"></canvas>
-        </div>
-
-        <div id="historyParameterList" class="parameter-list"></div>
-
-    </div>
-
-</section>
-
 <section id="page-consumption" class="page">
 
     <div class="page-title">
-        <h1>Pilleforbrug</h1>
-        <p>Pilleforbrug calculated from feeder runtime</p>
+        <h1>Pellet consumption</h1>
+        <p>Pellet consumption calculated from feeder runtime</p>
     </div>
 
     <div class="card">
@@ -1633,19 +2223,19 @@ body { padding-bottom:20px; }
             <div class="chart-toolbar-left">
 
                 <button class="btn pellet-range active"
-                        onclick="setConsumptionRange(1,this)">1t</button>
+                        onclick="setConsumptionRange(1,this)">1h</button>
 
                 <button class="btn pellet-range"
-                        onclick="setConsumptionRange(6,this)">6t</button>
+                        onclick="setConsumptionRange(6,this)">6h</button>
 
                 <button class="btn pellet-range"
-                        onclick="setConsumptionRange(12,this)">12t</button>
+                        onclick="setConsumptionRange(12,this)">12h</button>
 
                 <button class="btn pellet-range"
-                        onclick="setConsumptionRange(24,this)">24t</button>
+                        onclick="setConsumptionRange(24,this)">24h</button>
 
                 <button class="btn pellet-range"
-                        onclick="setConsumptionRange(48,this)">48t</button>
+                        onclick="setConsumptionRange(48,this)">48h</button>
 
                 <button class="btn pellet-range"
                         onclick="setConsumptionRange(168,this)">7d</button>
@@ -1660,7 +2250,7 @@ body { padding-bottom:20px; }
                         onclick="setConsumptionRange(4320,this)">180d</button>
 
                 <button class="btn pellet-range"
-                        onclick="setConsumptionRange(8760,this)">1 år</button>
+                        onclick="setConsumptionRange(8760,this)">1 year</button>
 
             </div>
 
@@ -1672,11 +2262,18 @@ body { padding-bottom:20px; }
 
                 <button class="btn"
                         type="button"
-                        onclick="pelletResetZoom()">Nulstil zoom</button>
+                        onclick="pelletResetZoom()">Reset zoom</button>
 
                 <button class="btn"
                         type="button"
                         onclick="pelletZoomIn()">+</button>
+
+                <button class="btn"
+                        id="pelletAutoUpdateButton"
+                        type="button"
+                        onclick="togglePelletAutoUpdate()">
+                    Auto update: On
+                </button>
 
                 <button class="btn"
                         type="button"
@@ -1695,25 +2292,25 @@ body { padding-bottom:20px; }
             <div class="button-group">
 
                 <label>
-                    Fra
+                    From
                     <input type="datetime-local"
                            id="pelletFra">
                 </label>
 
                 <label>
-                    Til
+                    To
                     <input type="datetime-local"
                            id="pelletTil">
                 </label>
 
                 <button class="btn"
                         onclick="applyPelletDateRange()">
-                    Vis periode
+                    Show range
                 </button>
 
                 <button class="btn"
                         onclick="clearPelletDateRange()">
-                    Ryd
+                    Clear
                 </button>
 
             </div>
@@ -1723,17 +2320,17 @@ body { padding-bottom:20px; }
         <div class="pellet-summary">
 
             <div class="pellet-summary-item">
-                <div class="pellet-summary-label">I ALT</div>
+                <div class="pellet-summary-label">TOTAL</div>
                 <div id="pelletTiltal" class="pellet-summary-value">--</div>
             </div>
 
             <div class="pellet-summary-item">
-                <div class="pellet-summary-label">GENNEMSNIT / DAG</div>
+                <div class="pellet-summary-label">AVERAGE / DAY</div>
                 <div id="pelletAverage" class="pellet-summary-value">--</div>
             </div>
 
             <div class="pellet-summary-item">
-                <div class="pellet-summary-label">PRIS</div>
+                <div class="pellet-summary-label">COST</div>
                 <div id="pelletCost" class="pellet-summary-value">--</div>
             </div>
 
@@ -1745,19 +2342,119 @@ body { padding-bottom:20px; }
 
         </div>
 
+        <div class="pellet-summary">
+
+            <div class="pellet-summary-item">
+                <div class="pellet-summary-label">AVG / DAY</div>
+                <div id="pelletStatsDay" class="pellet-summary-value">--</div>
+            </div>
+
+            <div class="pellet-summary-item">
+                <div class="pellet-summary-label">AVG / WEEK</div>
+                <div id="pelletStatsWeek" class="pellet-summary-value">--</div>
+            </div>
+
+            <div class="pellet-summary-item">
+                <div class="pellet-summary-label">AVG / MONTH</div>
+                <div id="pelletStatsMonth" class="pellet-summary-value">--</div>
+            </div>
+
+            <div class="pellet-summary-item">
+                <div class="pellet-summary-label">AVG / YEAR</div>
+                <div id="pelletStatsYear" class="pellet-summary-value">--</div>
+            </div>
+
+        </div>
+
+        <div class="pellet-summary">
+
+            <div class="pellet-summary-item">
+                <div class="pellet-summary-label">MAX CONSUMPTION</div>
+                <div id="pelletStatsMaxConsumption"
+                     class="pellet-summary-value">--</div>
+                <div id="pelletStatsMaxConsumptionInfo"
+                     class="card-subtitle">--</div>
+            </div>
+
+            <div class="pellet-summary-item">
+                <div class="pellet-summary-label">MAX DAILY OUTPUT</div>
+                <div id="pelletStatsMaxOutput"
+                     class="pellet-summary-value">--</div>
+                <div id="pelletStatsMaxOutputInfo"
+                     class="card-subtitle">--</div>
+            </div>
+
+        </div>
+
+        <div id="pelletStatsCoverage"
+             class="card-subtitle">
+            Historical statistics: --
+        </div>
+
     </div>
 
 </section>
 
-<section id="page-events" class="page">
+
+<section id="page-log" class="page">
 
     <div class="page-title">
-        <h1>Hændelser</h1>
-        <p>Aktuelle alarmer og information om brænderens tilstand</p>
+        <h1>Log</h1>
+        <p>Aktiviteter og ændringer i Woody Monitor</p>
     </div>
 
     <div class="card">
-        <div id="eventList" class="events"></div>
+
+        <div class="card-header">
+
+            <div>
+                <div class="card-title">Activity log</div>
+                <div class="card-subtitle">
+                    Ændringer, alarmer, controller-hændelser og kommandoer
+                </div>
+            </div>
+
+            <div style="display:flex;gap:8px;align-items:center;">
+
+                <select
+                    id="logFilter"
+                    onchange="loadActivityLog()"
+                    style="
+                        background:#202934;
+                        color:white;
+                        border:1px solid #2b3542;
+                        border-radius:8px;
+                        padding:7px 10px;
+                        font-size:12px;
+                    "
+                >
+                    <option value="">All</option>
+                    <option value="SETTING">Settings</option>
+                    <option value="BURNER">Burner</option>
+                    <option value="ALARM">Alarm</option>
+                    <option value="CONTROLLER">Controller</option>
+                    <option value="MQTT">MQTT</option>
+                    <option value="SYSTEM">System</option>
+                </select>
+
+                <button
+                    class="btn"
+                    onclick="clearActivityLog()"
+                >
+                    Clear
+                </button>
+
+            </div>
+
+        </div>
+
+        <div
+            id="activityLog"
+            style="
+                margin-top:4px;
+            "
+        ></div>
+
     </div>
 
 </section>
@@ -1765,8 +2462,8 @@ body { padding-bottom:20px; }
 <section id="page-settings" class="page">
 
     <div class="page-title">
-        <h1>Indstillinger</h1>
-        <p>Konfiguration af Woody Monitor</p>
+        <h1>Settings</h1>
+        <p>Configure Woody Monitor</p>
     </div>
 
     <div class="grid">
@@ -1774,12 +2471,12 @@ body { padding-bottom:20px; }
         <div class="card col-6">
 
             <div class="card-header">
-                <div class="card-title">Brugerflade</div>
+                <div class="card-title">User interface</div>
             </div>
 
             <div style="padding:12px 0;">
-                Automatiske opdateringer
-                <span style="float:right;color:var(--green);">5 sekunder</span>
+                Automatic updates
+                <span style="float:right;color:var(--green);">5 seconds</span>
             </div>
 
             <div style="padding:12px 0;border-top:1px solid var(--border);">
@@ -1788,8 +2485,12 @@ body { padding-bottom:20px; }
             </div>
 
             <div style="padding:12px 0;border-top:1px solid var(--border);">
+                <div id="systemStatus"></div>
+            </div>
+
+            <div style="padding:12px 0;border-top:1px solid var(--border);">
                 MQTT
-                <span style="float:right;color:var(--green);">Aktiv</span>
+                <span style="float:right;color:var(--green);">Active</span>
             </div>
 
         </div>
@@ -1798,9 +2499,31 @@ body { padding-bottom:20px; }
 
             <div class="card-header">
                 <div>
-                    <div class="card-title">Aktuelle parametre</div>
+                    <div class="card-title">Controller settings</div>
                     <div class="card-subtitle">
-                        Alle værdier modtaget direkte fra Woody Monitor
+                        Indstillinger fra fyrets controller
+                    </div>
+                </div>
+            </div>
+
+            <div id="controllerSettingsStatus"
+                 style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+                Henter indstillinger...
+            </div>
+
+            <div id="controllerSettings"
+                 class="controller-settings-grid">
+            </div>
+
+        </div>
+
+        <div class="card col-12">
+
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Live parameters</div>
+                    <div class="card-subtitle">
+                        All values received directly from Woody Monitor
                     </div>
                 </div>
             </div>
@@ -1808,7 +2531,7 @@ body { padding-bottom:20px; }
             
             <div class="live-parameters-wrapper">
                 <div class="card-subtitle" style="margin-bottom:12px;">
-                    Aktuelle værdier fra styreenheden
+                    Current values from the controller
                 </div>
 
                 <div id="liveParameters" class="live-parameters-clean"></div>
@@ -1820,14 +2543,14 @@ body { padding-bottom:20px; }
         <div class="card col-6">
 
             <div class="card-header">
-                <div class="card-title">Dato, tid og tidszone</div>
+                <div class="card-title">Date, time and timezone</div>
             </div>
 
             <div style="padding:12px 0;">
 
                 <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">
-                    Vælg tidszone for visning af datoer, historik og
-                    forbrugsperioder. Sommer- og vintertid håndteres automatisk.
+                    Select the timezone used for dates, history and
+                    consumption periods. Daylight saving time is handled automatically.
                 </div>
 
                 <div style="display:flex;align-items:center;gap:10px;">
@@ -1847,7 +2570,7 @@ body { padding-bottom:20px; }
                         class="btn"
                         onclick="saveTimezoneSettings()"
                     >
-                        Gem
+                        Save
                     </button>
 
                 </div>
@@ -1866,12 +2589,12 @@ body { padding-bottom:20px; }
         <div class="card col-6">
 
             <div class="card-header">
-                <div class="card-title">Pilleindstillinger</div>
+                <div class="card-title">Pellet settings</div>
             </div>
 
             <div style="padding:12px 0;">
                 <div style="display:flex;align-items:center;gap:10px;">
-                    <span>Pillepris</span>
+                    <span>Pellet price</span>
 
                     <input
                         id="pelletPrice"
@@ -1889,7 +2612,7 @@ body { padding-bottom:20px; }
                         class="btn"
                         onclick="savePelletPrice()"
                     >
-                        Gem
+                        Save
                     </button>
                 </div>
             </div>
@@ -1898,7 +2621,7 @@ body { padding-bottom:20px; }
 
                 <div style="display:flex;align-items:center;gap:10px;">
 
-                    <span>Silokapacitet</span>
+                    <span>Silo capacity</span>
 
                     <input
                         id="siloCapacitySetting"
@@ -1916,7 +2639,7 @@ body { padding-bottom:20px; }
                         class="btn"
                         onclick="saveSiloCapacity()"
                     >
-                        Gem
+                        Save
                     </button>
 
                 </div>
@@ -1925,7 +2648,7 @@ body { padding-bottom:20px; }
                     id="siloCapacityInfo"
                     style="font-size:12px;color:var(--muted);margin-top:8px;"
                 >
-                    Siloskala på oversigten
+                    Silo scale on the dashboard
                 </div>
 
             </div>
@@ -1933,12 +2656,12 @@ body { padding-bottom:20px; }
             <div style="padding:12px 0;border-top:1px solid var(--border);">
 
                 <div style="margin-bottom:8px;">
-                    Kalibrering af føder
+                    Feeder calibration
                 </div>
 
                 <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">
-                    Mængde piller leveret af sneglen på 6 minutter.
-                    Denne værdi bruges til at beregne pilleforbruget.
+                    Amount of pellets delivered by the auger in 6 minutes.
+                    This value is used to calculate pellet consumption.
                 </div>
 
                 <div style="display:flex;gap:10px;align-items:center;">
@@ -1959,7 +2682,7 @@ body { padding-bottom:20px; }
                         class="btn"
                         onclick="saveFeederSettings()"
                     >
-                        Gem
+                        Save
                     </button>
 
                 </div>
@@ -1998,6 +2721,15 @@ let consumptionStart = null;
 let consumptionEnd = null;
 let historyParameters = [];
 
+let historyAutoUpdate =
+    localStorage.getItem("woodyHistoryAutoUpdate") !== "false";
+
+let pelletAutoUpdate =
+    localStorage.getItem("woodyPelletAutoUpdate") !== "false";
+
+let historyAutoUpdateRunning = false;
+let pelletAutoUpdateRunning = false;
+
 /*
  * Data currently displayed in the pellet chart.
  * Used by CSV and Excel export.
@@ -2008,28 +2740,28 @@ let pelletExportPrices = [];
 let pelletExportCosts = [];
 
 const DISPLAY = {
-    boiler_temp: ["Kedeltemperatur","°C"],
-    boiler_temp_set: ["Kedeltemperatur setpunkt","°C"],
-    boiler_temp_min: ["Minimum kedeltemperatur","°C"],
-    hotwater_temp: ["Varmtvandstemperatur","°C"],
-    hotwater_temp_set: ["Varmtvand setpunkt","°C"],
-    smoke_temp: ["Røggastemperatur","°C"],
-    chute_temp: ["Faldskakt temperatur","°C"],
-    chute_temp_max: ["Maks. faldskakt temperatur","°C"],
-    outside_temp: ["Udetemperatur","°C"],
-    indoor_temp: ["Indetemperatur","°C"],
-    power: ["Brændereffekt","%"],
-    power_kW: ["Brændereffekt","kW"],
-    min_power: ["Minimum brændereffekt","%"],
-    max_power: ["Maksimum brændereffekt","%"],
-    blower_low: ["Blæser lav","%"],
-    blower_mid: ["Blæser mellem","%"],
-    blower_high: ["Blæser høj","%"],
-    blower_off_time: ["Blæser slukketid","s"],
-    blower_corr_low: ["Blæserkorrektion lav","%"],
-    blower_corr_mid: ["Blæserkorrektion mellem","%"],
-    blower_corr_high: ["Blæserkorrektion høj","%"],
-    blower_cleaning: ["Blæser ved rensning","%"],
+    boiler_temp: ["Boiler temperature","°C"],
+    boiler_temp_set: ["Boiler temperature setpoint","°C"],
+    boiler_temp_min: ["Minimum boiler temperature","°C"],
+    hotwater_temp: ["Hot water temperature","°C"],
+    hotwater_temp_set: ["Hot water setpoint","°C"],
+    smoke_temp: ["Flue gas temperature","°C"],
+    chute_temp: ["Chute temperature","°C"],
+    chute_temp_max: ["Maximum chute temperature","°C"],
+    outside_temp: ["Outdoor temperature","°C"],
+    indoor_temp: ["Indoor temperature","°C"],
+    power: ["Burner output","%"],
+    power_kW: ["Burner output","kW"],
+    min_power: ["Minimum burner output","%"],
+    max_power: ["Maximum burner output","%"],
+    blower_low: ["Blower low","%"],
+    blower_mid: ["Blower medium","%"],
+    blower_high: ["Blower high","%"],
+    blower_off_time: ["Blower off time","s"],
+    blower_corr_low: ["Blower correction low","%"],
+    blower_corr_mid: ["Blower correction medium","%"],
+    blower_corr_high: ["Blower correction high","%"],
+    blower_cleaning: ["Blower during cleaning","%"],
     regulator_P: ["Regulator P",""],
     regulator_I: ["Regulator I",""],
     regulator_D: ["Regulator D",""],
@@ -2046,34 +2778,34 @@ const DISPLAY = {
     oxygen_corr_low: ["Iltkorrektion lav","%"],
     oxygen_corr_mid: ["Iltkorrektion mellem","%"],
     oxygen_corr_interval: ["Iltkorrektionsinterval","s"],
-    feeder: ["Føder","%"],
-    feeder_time: ["Føderens driftstid","s"],
-    feeder_capacity: ["Føderkapacitet","g / 6 min"],
-    feeder_capacity_min: ["Minimum føderkapacitet",""],
-    feeder_capacity_max: ["Maksimum føderkapacitet",""],
-    feeder_low: ["Føder lav","%"],
-    feeder_high: ["Føder høj","%"],
-    feed_per_minute: ["Føder pr. minut","g/min"],
+    feeder: ["Feeder","%"],
+    feeder_time: ["Feeder runtime","s"],
+    feeder_capacity: ["Feeder capacity","g / 6 min"],
+    feeder_capacity_min: ["Minimum feeder capacity",""],
+    feeder_capacity_max: ["Maximum feeder capacity",""],
+    feeder_low: ["Feeder low","%"],
+    feeder_high: ["Feeder high","%"],
+    feed_per_minute: ["Feed per minute","g/min"],
     motor_time: ["Motortid","s"],
     motor_time_perm: ["Motortid permanent","s"],
     cleaning_interval: ["Renseinterval","min"],
-    cleaning_time: ["Rensetid","s"],
-    comp_clean_blower: ["Kompressor renseblæser","%"],
+    cleaning_time: ["Cleaning time","s"],
+    comp_clean_blower: ["Compressor cleaning blower","%"],
     comp_clean_interval: ["Kompressor renseinterval","min"],
-    comp_clean_time: ["Kompressor rensetid","s"],
+    comp_clean_time: ["Compressor cleaning time","s"],
     comp_clean_wait: ["Kompressor renseventetid","s"],
-    time_minutes: ["Styreenhedens tid",""],
+    time_minutes: ["Controller time",""],
     timer_heating_period: ["Varmeperiode",""],
-    timer_hotwater_period: ["Varmtvandsperiode",""],
-    ignition_count: ["Antal optændinger",""],
-    ignition_time: ["Optændingstid","s"],
+    timer_hotwater_period: ["Hot water period",""],
+    ignition_count: ["Ignition count",""],
+    ignition_time: ["Ignition time","s"],
     el_time: ["Driftstid","s"],
     el_time_perm: ["Driftstid permanent","s"],
-    consumption: ["Pilleforbrug","kg/h"],
+    consumption: ["Pellet consumption","kg/h"],
     alarm: ["Alarm",""],
-    mode: ["Driftstilstand",""],
-    model: ["Styreenhedsmodel",""],
-    version: ["Styreenhedsversion",""],
+    mode: ["Operating mode",""],
+    model: ["Controller model",""],
+    version: ["Controller version",""],
     language: ["Sprog",""],
     autocalculation: ["Automatisk beregning",""],
     flow: ["Flow",""],
@@ -2129,7 +2861,7 @@ function updateConnection(connected) {
     const text = el.querySelector(".connection-text");
 
     el.classList.toggle("connected",!!connected);
-    text.textContent = connected ? "Forbundet" : "Afbrudt";
+    text.textContent = connected ? "Connected" : "Disconnected";
 }
 
 async function api(path) {
@@ -2142,6 +2874,47 @@ async function api(path) {
 
     return response.json();
 }
+
+async function loadSystemStatus() {
+    try {
+        const data = await api("/status");
+        const el = document.getElementById("wifiSignal");
+
+        if (!el)
+            return;
+
+        if (
+            data.wifi &&
+            data.wifi.dbm !== null &&
+            data.wifi.dbm !== undefined
+        ) {
+            const dbm = Number(data.wifi.dbm);
+            const percent = data.wifi.percent;
+
+            el.textContent =
+                `📶 ${dbm} dBm`;
+
+            el.title =
+                `Raspberry Pi WiFi: ${percent}% (${dbm} dBm)` +
+                (data.wifi.interface
+                    ? ` • ${data.wifi.interface}`
+                    : "");
+        } else {
+            el.textContent = "📶 WIFI --";
+            el.title = "Raspberry Pi WiFi signal unavailable";
+        }
+
+    } catch(error) {
+        console.error("Status API:", error);
+
+        const el =
+            document.getElementById("wifiSignal");
+
+        if (el)
+            el.textContent = "📶 WIFI --";
+    }
+}
+
 
 async function loadLive() {
     try {
@@ -2161,9 +2934,34 @@ async function loadLive() {
 
         document.getElementById("lastUpdate").textContent = time;
 
-        updateDashboard();
-        renderLiveParameters();
-        renderEvents(data);
+        try {
+            updateDashboard();
+
+        // Refresh silo graph after current silo content is updated
+        if (typeof updateSiloForecast === "function") {
+            updateSiloForecast();
+        }
+        } catch(error) {
+            console.error("Dashboard error:", error);
+            document.getElementById("lastUpdate").textContent = "Dashboard error: " + error.message;
+            return;
+        }
+
+        try {
+            renderLiveParameters();
+        } catch(error) {
+            console.error("Live parameters error:", error);
+            document.getElementById("lastUpdate").textContent = "Live parameters error";
+            return;
+        }
+
+        try {
+            renderEvents(data);
+        } catch(error) {
+            console.error("Events error:", error);
+            document.getElementById("lastUpdate").textContent = "Events error";
+            return;
+        }
 
     } catch(error) {
         console.error("Live API:",error);
@@ -2186,7 +2984,7 @@ function updateDashboard() {
     const boiler = findVærdi(v,[
         "boiler_temp",
         "boiler_temperature",
-        "kedeltemperatur"
+        "boiler temperature"
     ]);
 
     const hotwater = findVærdi(v,[
@@ -2260,7 +3058,7 @@ function updateDashboard() {
     setVærdi("consumptionVærdi",consumption);
 
     /*
-     * Pillesilo
+     * Pellet silo
      *
      * magazine_content is supplied directly by the
      * pellet controller in kg.
@@ -2372,24 +3170,26 @@ function updateDashboard() {
         alarmText.toLowerCase() !== "none" &&
         alarmText.toLowerCase() !== "normal";
 
-    document.getElementById("burnerStatus").textContent =
-        alarmAktiv
-            ? "Alarm"
-            : status !== null
-                ? String(status)
-                : power !== null
-                    ? Number(power) > 0 ? "I drift" : "Stoppet"
-                    : "Forbundet";
+    const burnerStatusElement =
+        document.getElementById("burnerStatus");
 
-    document.getElementById("burnerStatusDetail").textContent =
-        `Live data • ${Object.keys(v).length} parametre`;
+    if (burnerStatusElement) {
+        burnerStatusElement.textContent =
+            alarmAktiv
+                ? "Alarm"
+                : status !== null
+                    ? String(status)
+                    : power !== null
+                        ? Number(power) > 0 ? "Running" : "Stopped"
+                        : "Connected";
+    }
 
-    const modeElement =
-        document.getElementById("burnerDriftstilstand");
+    const burnerStatusDetailElement =
+        document.getElementById("burnerStatusDetail");
 
-    if (modeElement) {
-        modeElement.textContent =
-            mode !== null ? String(mode) : "--";
+    if (burnerStatusDetailElement) {
+        burnerStatusDetailElement.textContent =
+            `Live data • ${Object.keys(v).length} parameters`;
     }
 
     const statusBoilerTempElement =
@@ -2409,6 +3209,45 @@ function updateDashboard() {
         statusHotWaterElement.textContent =
             hotwater !== null
                 ? Number(hotwater).toFixed(1)
+                : "--";
+    }
+
+    /* Outdoor temperature in top bar */
+    const topbarOutdoorEl =
+        document.getElementById("topbarOutdoorTemp");
+
+    if (topbarOutdoorEl) {
+        const n = Number(outdoor);
+
+        topbarOutdoorEl.textContent =
+            outdoor !== null && Number.isFinite(n)
+                ? `🌡️ Outdoor Temp ${n.toFixed(1)} °C`
+                : "🌡️ Outdoor Temp -- °C";
+    }
+
+    /* Outdoor temperature on burner card */
+    const statusOutdoorTempElement =
+        document.getElementById("statusOutdoorTemp");
+
+    if (statusOutdoorTempElement) {
+        const n = Number(outdoor);
+
+        statusOutdoorTempElement.textContent =
+            outdoor !== null && Number.isFinite(n)
+                ? n.toFixed(1)
+                : "--";
+    }
+
+    /* Boiler return temperature on burner card */
+    const returnEl =
+        document.getElementById("statusReturnTemp");
+
+    if (returnEl) {
+        const n = Number(ret);
+
+        returnEl.textContent =
+            ret !== null && Number.isFinite(n)
+                ? n.toFixed(1)
                 : "--";
     }
 
@@ -2439,8 +3278,11 @@ function updateDashboard() {
         alarmElement.textContent =
             alarmAktiv
                 ? String(alarm)
-                : "Ingen";
+                : "None";
     }
+
+    updateBurnerStatusColor();
+    updateBurnerControlButton();
 }
 
 function renderLiveParameters() {
@@ -2451,13 +3293,13 @@ function renderLiveParameters() {
         return;
 
     /*
-     * Live parametre vises i faste funktionelle grupper.
-     * Kun parametre som faktisk kommer fra controlleren vises.
+     * Live parameters are shown in fixed functional groups.
+     * Only parameters actually received from the controller are shown.
      */
 
     const groups = {
 
-        "Temperaturer": [
+        "Temperatures": [
             "boiler_temp",
             "boiler_temp_set",
             "boiler_temp_min",
@@ -2474,7 +3316,7 @@ function renderLiveParameters() {
             "indoor_temp"
         ],
 
-        "Brænder": [
+        "Burner": [
             "mode",
             "power",
             "power_kW",
@@ -2485,7 +3327,7 @@ function renderLiveParameters() {
             "regulator_D"
         ],
 
-        "Ilt": [
+        "Oxygen": [
             "oxygen",
             "oxygen_desired",
             "oxygen_low",
@@ -2504,7 +3346,7 @@ function renderLiveParameters() {
             "oxygen_corr_interval"
         ],
 
-        "Føder": [
+        "Feeder": [
             "feeder_time",
             "feeder_capacity",
             "feeder_capacity_min",
@@ -2516,7 +3358,7 @@ function renderLiveParameters() {
             "motor_time_perm"
         ],
 
-        "Blæser": [
+        "Blower": [
             "blower_low",
             "blower_mid",
             "blower_high",
@@ -2527,7 +3369,7 @@ function renderLiveParameters() {
             "blower_cleaning"
         ],
 
-        "Rensning": [
+        "Cleaning": [
             "cleaning_interval",
             "cleaning_time",
             "comp_clean_blower",
@@ -2536,7 +3378,7 @@ function renderLiveParameters() {
             "comp_clean_wait"
         ],
 
-        "Tider": [
+        "Timers": [
             "time_minutes",
             "timer_heating_period",
             "timer_heating_start_1",
@@ -2560,7 +3402,7 @@ function renderLiveParameters() {
             "version"
         ],
 
-        "Øvrige": [
+        "Other": [
             "ignition_count",
             "ignition_time",
             "el_time",
@@ -2618,7 +3460,7 @@ function renderLiveParameters() {
     });
 
     /*
-     * Fremtidige controller-parametre som endnu ikke er grupperet.
+     * Future controller parameters that are not yet grouped.
      */
 
     const ungrouped = Object.keys(liveData)
@@ -2635,7 +3477,7 @@ function renderLiveParameters() {
             <div class="live-parameter-group">
 
                 <div class="live-parameter-group-title">
-                    Øvrige parametre
+                    Other parameters
                 </div>
 
                 <div class="live-parameter-grid">
@@ -2667,68 +3509,180 @@ function renderLiveParameters() {
     container.innerHTML =
         html ||
         `<div style="color:var(--muted);">
-            Ingen live parametre tilgængelige
+            No live parameters available
         </div>`;
 }
 
+let lastLoggedAlarm = null;
+let lastLoggedErrors = {};
+
+async function writeFrontendLog(type, event, details = "") {
+
+    try {
+
+        const params = new URLSearchParams();
+
+        params.set("type", type);
+        params.set("event", event);
+
+        if (details)
+            params.set("details", details);
+
+        await fetch(
+            "/api/v1/log?" + params.toString(),
+            {
+                method:"POST",
+                cache:"no-store"
+            }
+        );
+
+    } catch(error) {
+
+        console.error(
+            "Could not write activity log:",
+            error
+        );
+    }
+}
+
+
 function renderEvents(data) {
 
-    const container = document.getElementById("eventList");
-    const events = [];
+    /*
+     * Events are now part of the permanent Log.
+     *
+     * IMPORTANT:
+     * renderEvents() runs with every live update.
+     * Therefore we only write when an error/alarm changes.
+     */
 
-    if (data.errors && Object.keys(data.errors).length) {
-        Object.entries(data.errors).forEach(([key,value]) => {
-            events.push({
-                type:"error",
-                icon:"⚠️",
-                text:`${niceName(key)}: ${value}`
-            });
-        });
-    }
+    const errors =
+        data.errors &&
+        Object.keys(data.errors).length
+            ? data.errors
+            : {};
 
-    const alarm = findVærdi(liveData,["alarm"]);
+    const currentErrors = {};
+
+    Object.entries(errors).forEach(
+        ([key, value]) => {
+
+            const text =
+                `${niceName(key)}: ${value}`;
+
+            currentErrors[key] = String(value);
+
+            if (
+                lastLoggedErrors[key] !==
+                currentErrors[key]
+            ) {
+
+                writeFrontendLog(
+                    "ERROR",
+                    niceName(key),
+                    String(value)
+                );
+            }
+        }
+    );
+
+
+    // Errors that disappeared
+    Object.keys(lastLoggedErrors).forEach(
+        key => {
+
+            if (
+                !Object.prototype.hasOwnProperty.call(
+                    currentErrors,
+                    key
+                )
+            ) {
+
+                writeFrontendLog(
+                    "ERROR",
+                    niceName(key),
+                    "Error cleared"
+                );
+            }
+        }
+    );
+
+
+    lastLoggedErrors =
+        currentErrors;
+
+
+    // --------------------------------------------------------
+    // ALARM
+    // --------------------------------------------------------
+
+    const alarm =
+        findVærdi(
+            liveData,
+            ["alarm"]
+        );
 
     const alarmText =
         alarm !== null
             ? String(alarm).trim()
             : "";
 
-    const alarmAktiv =
+    const alarmActive =
         alarmText !== "" &&
         alarmText !== "0" &&
         alarmText.toLowerCase() !== "ok" &&
         alarmText.toLowerCase() !== "none" &&
         alarmText.toLowerCase() !== "normal";
 
-    if (alarmAktiv) {
-        events.push({
-            type:"error",
-            icon:"🚨",
-            text:`Alarm: ${alarmText}`
-        });
+
+    const currentAlarm =
+        alarmActive
+            ? alarmText
+            : null;
+
+
+    if (lastLoggedAlarm === null) {
+
+        // Initial state: don't create a false
+        // "alarm cleared" entry.
+
+        if (currentAlarm) {
+
+            writeFrontendLog(
+                "ALARM",
+                "Alarm",
+                currentAlarm
+            );
+        }
+
+    } else if (
+        currentAlarm !==
+        lastLoggedAlarm
+    ) {
+
+        if (currentAlarm) {
+
+            writeFrontendLog(
+                "ALARM",
+                "Alarm",
+                currentAlarm
+            );
+
+        } else {
+
+            writeFrontendLog(
+                "ALARM",
+                "Alarm cleared",
+                lastLoggedAlarm
+            );
+        }
     }
 
-    if (!events.length) {
-        events.push({
-            type:"info",
-            icon:"🟢",
-            text:"Ingen aktive brænderalarmer"
-        });
-    }
 
-    container.innerHTML = events.map(event => `
-        <div class="event ${event.type}">
-            <div class="event-time">
-                ${data.timestamp ? new Date(data.timestamp).toLocaleTimeString([],{
-                    hour:"2-digit",
-                    minute:"2-digit"
-                }) : "--"}
-            </div>
-            <div class="event-icon">${event.icon}</div>
-            <div class="event-text">${esc(event.text)}</div>
-        </div>
-    `).join("");
+    lastLoggedAlarm =
+        currentAlarm;
 }
+
 
 async function loadStatus() {
 
@@ -2740,8 +3694,8 @@ async function loadStatus() {
             <div class="event info">
                 <div class="event-icon">🟢</div>
                 <div class="event-text">
-                    API forbundet<br>
-                    <small>${status.parameter_count} live parametre • ${status.history_rows} historikrækker</small>
+                    API connected<br>
+                    <small>${status.parameter_count} live parameters • ${status.history_rows} history rows</small>
                 </div>
             </div>
         `;
@@ -2751,7 +3705,7 @@ async function loadStatus() {
         document.getElementById("systemStatus").innerHTML = `
             <div class="event error">
                 <div class="event-icon">🔴</div>
-                <div class="event-text">API ikke tilgængelig</div>
+                <div class="event-text">API unavailable</div>
             </div>
         `;
     }
@@ -2771,9 +3725,113 @@ async function loadHistoryParameters() {
     }
 }
 
+function getSavedHistoryParameters() {
+
+    try {
+
+        const raw =
+            localStorage.getItem(
+                "woodyHistoryParameters"
+            );
+
+        if (!raw)
+            return null;
+
+        const parsed =
+            JSON.parse(raw);
+
+        if (!Array.isArray(parsed))
+            return null;
+
+        return parsed.filter(
+            parameter =>
+                historyParameters.includes(parameter)
+        );
+
+    } catch(error) {
+
+        console.error(
+            "History parameter storage:",
+            error
+        );
+
+        return null;
+    }
+}
+
+
+function saveHistoryParameters(selected) {
+
+    localStorage.setItem(
+        "woodyHistoryParameters",
+        JSON.stringify(selected)
+    );
+}
+
+
+function getSelectedHistoryParameters() {
+
+    const activePage =
+        document.querySelector(".page.active");
+
+    const dashboardActive =
+        activePage &&
+        activePage.id === "page-dashboard";
+
+    const selector =
+        dashboardActive
+            ? "#dashboardParameterList input:checked"
+            : "#historyParameterList input:checked";
+
+    return [
+        ...document.querySelectorAll(selector)
+    ].map(
+        input => input.dataset.parameter
+    );
+}
+
+
+function syncHistoryParameterCheckboxes(selected) {
+
+    const selectedSet =
+        new Set(selected);
+
+    document
+        .querySelectorAll(
+            "#historyParameterList input, " +
+            "#dashboardParameterList input"
+        )
+        .forEach(input => {
+
+            input.checked =
+                selectedSet.has(
+                    input.dataset.parameter
+                );
+        });
+}
+
+
+function historyParameterChanged() {
+
+    const selected =
+        getSelectedHistoryParameters();
+
+    saveHistoryParameters(selected);
+
+    syncHistoryParameterCheckboxes(
+        selected
+    );
+
+    updateHistoryChart();
+}
+
+
 function buildHistoryParameterList() {
 
-    const container = document.getElementById("historyParameterList");
+    const container =
+        document.getElementById(
+            "historyParameterList"
+        );
 
     const preferred = [
         "boiler_temp",
@@ -2791,34 +3849,55 @@ function buildHistoryParameterList() {
     ];
 
     const sorted = [
-        ...preferred.filter(p => historyParameters.includes(p)),
-        ...historyParameters.filter(p => !preferred.includes(p))
+        ...preferred.filter(
+            p => historyParameters.includes(p)
+        ),
+        ...historyParameters.filter(
+            p => !preferred.includes(p)
+        )
     ];
 
-    const html = sorted.map((key,index) => `
-        <label class="parameter">
-            <input type="checkbox"
-                data-parameter="${esc(key)}"
-                ${index < 4 ? "checked" : ""}
-                onchange="updateHistoryChart()">
-            <span class="parameter-name">${esc(niceName(key))}</span>
-            <span class="parameter-unit">${esc(unitFor(key))}</span>
-        </label>
-    `).join("");
+    let selected =
+        getSavedHistoryParameters();
 
-    container.innerHTML = html;
+    if (selected === null) {
+        selected =
+            sorted.slice(0, 4);
+    }
+
+    const selectedSet =
+        new Set(selected);
+
+    const html =
+        sorted.map(key => `
+            <label class="parameter">
+                <input type="checkbox"
+                    data-parameter="${esc(key)}"
+                    ${selectedSet.has(key) ? "checked" : ""}
+                    onchange="historyParameterChanged()">
+                <span class="parameter-name">${esc(niceName(key))}</span>
+                <span class="parameter-unit">${esc(unitFor(key))}</span>
+            </label>
+        `).join("");
+
+    if (container) {
+        container.innerHTML = html;
+    }
 
     const dashboardContainer =
-        document.getElementById("dashboardParameterList");
+        document.getElementById(
+            "dashboardParameterList"
+        );
 
     if (dashboardContainer) {
+
         dashboardContainer.innerHTML =
-            sorted.map((key,index) => `
+            sorted.map(key => `
                 <label class="parameter">
                     <input type="checkbox"
                         data-parameter="${esc(key)}"
-                        ${index < 4 ? "checked" : ""}
-                        onchange="updateHistoryChart()">
+                        ${selectedSet.has(key) ? "checked" : ""}
+                        onchange="historyParameterChanged()">
                     <span class="parameter-name">${esc(niceName(key))}</span>
                     <span class="parameter-unit">${esc(unitFor(key))}</span>
                 </label>
@@ -3262,7 +4341,7 @@ async function getHistoryExportRows() {
         )}`;
 
     /*
-     * Use the manually selected Fra/Til period when active.
+     * Use the manually selected From/To period when active.
      */
     if (historyStart && historyEnd) {
 
@@ -3605,7 +4684,7 @@ function applyHistoryDateRange() {
 
     if (!from || !to) {
 
-        alert("Select both Fra and Til.");
+        alert("Select both From and To.");
         return;
     }
 
@@ -3650,7 +4729,7 @@ function applyDashboardHistoryDateRange() {
         document.getElementById("dashboardHistoryTil").value;
 
     if (!from || !to) {
-        alert("Select both Fra and Til.");
+        alert("Select both From and To.");
         return;
     }
 
@@ -3733,34 +4812,22 @@ function clearHistoryDateRange() {
 
 function selectAllParameters() {
 
-    const activePage =
-        document.querySelector(".page.active");
+    syncHistoryParameterCheckboxes(
+        historyParameters
+    );
 
-    const selector =
-        activePage &&
-        activePage.id === "page-dashboard"
-            ? "#dashboardParameterList input"
-            : "#historyParameterList input";
-
-    document.querySelectorAll(selector)
-        .forEach(input => input.checked = true);
+    saveHistoryParameters(
+        historyParameters
+    );
 
     updateHistoryChart();
 }
 
 function clearAllParameters() {
 
-    const activePage =
-        document.querySelector(".page.active");
+    syncHistoryParameterCheckboxes([]);
 
-    const selector =
-        activePage &&
-        activePage.id === "page-dashboard"
-            ? "#dashboardParameterList input"
-            : "#historyParameterList input";
-
-    document.querySelectorAll(selector)
-        .forEach(input => input.checked = false);
+    saveHistoryParameters([]);
 
     updateHistoryChart();
 }
@@ -3842,7 +4909,7 @@ async function loadTimezoneSettings() {
         if (info) {
 
             info.textContent =
-                "Kunne ikke hente tidszoneindstillinger.";
+                "Could not load timezone settings.";
         }
     }
 }
@@ -3873,7 +4940,7 @@ function updateTimezoneInfo(data) {
         "";
 
     let text =
-        `Aktuel tidszone: ${timezone}`;
+        `Current timezone: ${timezone}`;
 
     if (offset)
         text += ` · UTC${offset}`;
@@ -3946,12 +5013,12 @@ async function saveTimezoneSettings() {
     } catch (error) {
 
         console.error(
-            "Gem tidszone:",
+            "Save timezone:",
             error
         );
 
         alert(
-            "Kunne ikke gemme tidszonen."
+            "Could not save timezone."
         );
     }
 }
@@ -3981,7 +5048,7 @@ async function loadPelletPrice() {
     } catch (error) {
 
         console.error(
-            "Pillepris:",
+            "Pellet price:",
             error
         );
     }
@@ -4041,7 +5108,7 @@ async function savePelletPrice() {
     } catch (error) {
 
         console.error(
-            "Gem pellet price:",
+            "Save pellet price:",
             error
         );
 
@@ -4214,7 +5281,7 @@ async function saveSiloCapacity() {
     } catch(error) {
 
         console.error(
-            "Gem silo capacity:",
+            "Save silo capacity:",
             error
         );
 
@@ -4285,7 +5352,7 @@ async function saveFeederSettings() {
     } catch (error) {
 
         console.error(
-            "Gem feeder settings:",
+            "Save feeder settings:",
             error
         );
 
@@ -4326,7 +5393,7 @@ function applyPelletDateRange() {
 
     if (!from || !to) {
 
-        alert("Select both Fra and Til.");
+        alert("Select both From and To.");
         return;
     }
 
@@ -4453,12 +5520,12 @@ function getPelletExportRows() {
                     ? date.toISOString()
                     : String(timestamp),
 
-            "Pilleforbrug (kg)":
+            "Pellet consumption (kg)":
                 Number.isFinite(Number(kg))
                     ? Number(kg)
                     : kg,
 
-            "Pillepris (kr/kg)":
+            "Pellet price (DKK/kg)":
                 price !== null &&
                 price !== undefined &&
                 Number.isFinite(Number(price))
@@ -4519,8 +5586,8 @@ function exportPelletCSV() {
 
     const headers = [
         "Tidspunkt",
-        "Pilleforbrug (kg)",
-        "Pillepris (kr/kg)",
+        "Pellet consumption (kg)",
+        "Pellet price (DKK/kg)",
         "Cost (DKK)"
     ];
 
@@ -4532,8 +5599,8 @@ function exportPelletCSV() {
 
         lines.push([
             row.Tidspunkt,
-            row["Pilleforbrug (kg)"],
-            row["Pillepris (kr/kg)"],
+            row["Pellet consumption (kg)"],
+            row["Pellet price (DKK/kg)"],
             row["Cost (DKK)"]
         ].map(value => {
 
@@ -4608,7 +5675,7 @@ function exportPelletExcel() {
     XLSX.utils.book_append_sheet(
         workbook,
         worksheet,
-        "Pilleforbrug"
+        "Pellet consumption"
     );
 
     XLSX.writeFile(
@@ -4618,165 +5685,631 @@ function exportPelletExcel() {
 }
 
 
+async function updatePelletStatistics() {
+
+    const dayElement =
+        document.getElementById("pelletStatsDay");
+
+    const weekElement =
+        document.getElementById("pelletStatsWeek");
+
+    const monthElement =
+        document.getElementById("pelletStatsMonth");
+
+    const yearElement =
+        document.getElementById("pelletStatsYear");
+
+    const maxConsumptionElement =
+        document.getElementById("pelletStatsMaxConsumption");
+
+    const maxConsumptionInfoElement =
+        document.getElementById("pelletStatsMaxConsumptionInfo");
+
+    const maxOutputElement =
+        document.getElementById("pelletStatsMaxOutput");
+
+    const maxOutputInfoElement =
+        document.getElementById("pelletStatsMaxOutputInfo");
+
+    const coverageElement =
+        document.getElementById("pelletStatsCoverage");
+
+
+    function formatKg(value, decimals = 1) {
+
+        if (
+            value === null ||
+            value === undefined ||
+            !Number.isFinite(Number(value))
+        ) {
+            return "--";
+        }
+
+        return (
+            Number(value).toLocaleString(
+                "en-GB",
+                {
+                    minimumFractionDigits: decimals,
+                    maximumFractionDigits: decimals
+                }
+            ) +
+            " kg"
+        );
+    }
+
+
+    function formatKw(value) {
+
+        if (
+            value === null ||
+            value === undefined ||
+            !Number.isFinite(Number(value))
+        ) {
+            return "--";
+        }
+
+        return (
+            Number(value).toLocaleString(
+                "en-GB",
+                {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }
+            ) +
+            " kW"
+        );
+    }
+
+
+    function formatTemp(value) {
+
+        if (
+            value === null ||
+            value === undefined ||
+            !Number.isFinite(Number(value))
+        ) {
+            return "--";
+        }
+
+        return (
+            Number(value).toLocaleString(
+                "en-GB",
+                {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1
+                }
+            ) +
+            " °C"
+        );
+    }
+
+
+    function formatDate(value) {
+
+        if (!value)
+            return "--";
+
+        const parts =
+            String(value).split("-");
+
+        if (parts.length !== 3)
+            return value;
+
+        const date =
+            new Date(
+                Number(parts[0]),
+                Number(parts[1]) - 1,
+                Number(parts[2])
+            );
+
+        return date.toLocaleDateString(
+            "en-GB",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            }
+        );
+    }
+
+
+    try {
+
+        const data =
+            await api(
+                "/statistics/daily?days=365"
+            );
+
+
+        const averages =
+            data.averages || {};
+
+
+        if (dayElement)
+            dayElement.textContent =
+                formatKg(
+                    averages.kg_per_day,
+                    2
+                );
+
+        if (weekElement)
+            weekElement.textContent =
+                formatKg(
+                    averages.kg_per_week,
+                    1
+                );
+
+        if (monthElement)
+            monthElement.textContent =
+                formatKg(
+                    averages.kg_per_month,
+                    1
+                );
+
+        if (yearElement)
+            yearElement.textContent =
+                formatKg(
+                    averages.kg_per_year,
+                    0
+                );
+
+
+        const maxConsumption =
+            data.max_consumption;
+
+        if (maxConsumption) {
+
+            if (maxConsumptionElement)
+                maxConsumptionElement.textContent =
+                    formatKg(
+                        maxConsumption.pellet_kg,
+                        2
+                    );
+
+            if (maxConsumptionInfoElement)
+                maxConsumptionInfoElement.textContent =
+                    formatDate(
+                        maxConsumption.date
+                    ) +
+                    " · Outdoor avg " +
+                    formatTemp(
+                        maxConsumption.outside_temp_avg
+                    );
+
+        } else {
+
+            if (maxConsumptionElement)
+                maxConsumptionElement.textContent =
+                    "--";
+
+            if (maxConsumptionInfoElement)
+                maxConsumptionInfoElement.textContent =
+                    "No completed day with pellet consumption yet";
+        }
+
+
+        const maxOutput =
+            data.max_output;
+
+        if (maxOutput) {
+
+            if (maxOutputElement)
+                maxOutputElement.textContent =
+                    formatKw(
+                        maxOutput.power_kw_avg
+                    );
+
+            if (maxOutputInfoElement)
+                maxOutputInfoElement.textContent =
+                    formatDate(
+                        maxOutput.date
+                    ) +
+                    " · Pellets " +
+                    formatKg(
+                        maxOutput.pellet_kg,
+                        2
+                    ) +
+                    " · Outdoor avg " +
+                    formatTemp(
+                        maxOutput.outside_temp_avg
+                    );
+
+        } else {
+
+            if (maxOutputElement)
+                maxOutputElement.textContent =
+                    "--";
+
+            if (maxOutputInfoElement)
+                maxOutputInfoElement.textContent =
+                    "No completed day with burner output yet";
+        }
+
+
+        const coverage =
+            data.coverage || {};
+
+        if (coverageElement) {
+
+            if (
+                coverage.first_date &&
+                coverage.last_date
+            ) {
+
+                coverageElement.textContent =
+                    "Historical statistics available from " +
+                    formatDate(
+                        coverage.first_date
+                    ) +
+                    " to " +
+                    formatDate(
+                        coverage.last_date
+                    ) +
+                    " · " +
+                    (
+                        coverage.completed_days_in_period || 0
+                    ) +
+                    " completed days used";
+
+            } else {
+
+                coverageElement.textContent =
+                    "Historical statistics: no data available";
+            }
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Daily statistics:",
+            error
+        );
+
+        [
+            dayElement,
+            weekElement,
+            monthElement,
+            yearElement,
+            maxConsumptionElement,
+            maxOutputElement
+        ].forEach(element => {
+
+            if (element)
+                element.textContent = "--";
+        });
+
+
+        if (maxConsumptionInfoElement)
+            maxConsumptionInfoElement.textContent =
+                "Statistics unavailable";
+
+        if (maxOutputInfoElement)
+            maxOutputInfoElement.textContent =
+                "Statistics unavailable";
+
+        if (coverageElement)
+            coverageElement.textContent =
+                "Historical statistics unavailable";
+    }
+}
+
+
 async function updatePelletChart() {
+
+    updatePelletStatistics();
+
+
 
     try {
 
         let url = "/consumption/pellets";
 
         if (consumptionStart && consumptionEnd) {
-            url += `?start=${encodeURIComponent(consumptionStart)}&end=${encodeURIComponent(consumptionEnd)}`;
+            url +=
+                `?start=${encodeURIComponent(consumptionStart)}` +
+                `&end=${encodeURIComponent(consumptionEnd)}`;
         } else {
             url += `?hours=${consumptionHours}`;
         }
 
         const result = await api(url);
-        const rows = Array.isArray(result.data) ? result.data : [];
+        const rows = Array.isArray(result.data)
+            ? result.data
+            : [];
 
-        const totalElement = document.getElementById("pelletTiltal");
-        const averageElement = document.getElementById("pelletAverage");
-        const costElement = document.getElementById("pelletCost");
-
-        const labels = [];
-        const values = [];
-        const intervalPrices = [];
-        const intervalCosts = [];
-
-        for (const row of rows) {
-            const timestamp = new Date(row.timestamp);
-            const kg = Number(row.kg);
-            const price = row.price == null ? null : Number(row.price);
-            const cost = row.cost == null ? null : Number(row.cost);
-
-            if (!Number.isFinite(timestamp.getTime()) || !Number.isFinite(kg))
-                continue;
-
-            labels.push(timestamp);
-            values.push(kg);
-            intervalPrices.push(price);
-            intervalCosts.push(cost);
-        }
-
-        const totalKg = Number(result.total_kg) || 0;
-        const totalCost = Number(result.total_cost) || 0;
-        const averageKg = Number(result.average_kg_per_day) || 0;
-        const kgPerSecond = Number(result.kg_per_second) || 0;
-        const gramPerSecond = kgPerSecond * 1000;
-
-        const pelletPrices = intervalPrices.filter(
-            value => value !== null && Number.isFinite(value)
-        );
 
         /*
          * --------------------------------------------------------
-         * CHART AGGREGATION
-         *
-         * Keep the chart responsive for long periods.
-         * The total remains based on the original intervals.
+         * SUMMARY
          * --------------------------------------------------------
          */
 
-        let chartLabels = labels;
-        let chartVærdis = values;
-        let chartPrices = intervalPrices;
-        let chartCosts = intervalCosts;
+        const totalElement =
+            document.getElementById("pelletTiltal");
+
+        const averageElement =
+            document.getElementById("pelletAverage");
+
+        const costElement =
+            document.getElementById("pelletCost");
 
 
-        if (labels.length > 1000) {
+        const totalKg =
+            Number(result.total_kg);
 
-            const step =
-                Math.ceil(
-                    labels.length / 1000
+        const averageKg =
+            Number(result.average_kg_per_day);
+
+        const totalCost =
+            Number(result.total_cost);
+
+
+        if (totalElement) {
+            totalElement.textContent =
+                Number.isFinite(totalKg)
+                    ? totalKg.toLocaleString(
+                        "en-GB",
+                        {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }
+                    ) + " kg"
+                    : "--";
+        }
+
+
+        if (averageElement) {
+            averageElement.textContent =
+                Number.isFinite(averageKg)
+                    ? averageKg.toLocaleString(
+                        "en-GB",
+                        {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }
+                    ) + " kg/dag"
+                    : "--";
+        }
+
+
+        if (costElement) {
+            costElement.textContent =
+                Number.isFinite(totalCost)
+                    ? totalCost.toLocaleString(
+                        "en-GB",
+                        {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }
+                    ) + " kr"
+                    : "--";
+        }
+
+
+        /*
+         * --------------------------------------------------------
+         * DETERMINE DISPLAY PERIOD
+         *
+         * <= 48 hours : one bar per hour
+         * > 48 hours  : one bar per day
+         * ~1 year     : one bar per month
+         * --------------------------------------------------------
+         */
+
+        let periodHours = Number(consumptionHours);
+
+        if (consumptionStart && consumptionEnd) {
+
+            const startTime =
+                new Date(consumptionStart).getTime();
+
+            const endTime =
+                new Date(consumptionEnd).getTime();
+
+            periodHours =
+                (endTime - startTime) /
+                3600000;
+        }
+
+
+        let aggregationMode = "hour";
+
+        if (periodHours > 48) {
+            aggregationMode = "day";
+        }
+
+        if (periodHours >= 8000) {
+            aggregationMode = "month";
+        }
+
+
+        /*
+         * --------------------------------------------------------
+         * AGGREGATE DATA
+         * --------------------------------------------------------
+         */
+
+        const buckets = new Map();
+
+
+        function getBucket(timestamp) {
+
+            /*
+             * API timestamp represents the END of the consumption
+             * interval. Subtract 1 ms so 08:00-09:00 belongs to
+             * the 08:00 hour / correct day.
+             */
+
+            const d =
+                new Date(timestamp.getTime() - 1);
+
+
+            if (aggregationMode === "month") {
+
+                return new Date(
+                    d.getFullYear(),
+                    d.getMonth(),
+                    1,
+                    0,
+                    0,
+                    0,
+                    0
                 );
-
-            chartLabels = [];
-            chartVærdis = [];
-            chartPrices = [];
-            chartCosts = [];
+            }
 
 
-            for (
-                let i = 0;
-                i < labels.length;
-                i += step
+            if (aggregationMode === "day") {
+
+                return new Date(
+                    d.getFullYear(),
+                    d.getMonth(),
+                    d.getDate(),
+                    0,
+                    0,
+                    0,
+                    0
+                );
+            }
+
+
+            return new Date(
+                d.getFullYear(),
+                d.getMonth(),
+                d.getDate(),
+                d.getHours(),
+                0,
+                0,
+                0
+            );
+        }
+
+
+        for (const row of rows) {
+
+            const timestamp =
+                new Date(row.timestamp);
+
+            const kg =
+                Number(row.kg);
+
+            const price =
+                row.price == null
+                    ? null
+                    : Number(row.price);
+
+            const cost =
+                row.cost == null
+                    ? null
+                    : Number(row.cost);
+
+
+            if (
+                !Number.isFinite(timestamp.getTime()) ||
+                !Number.isFinite(kg)
+            ) {
+                continue;
+            }
+
+
+            const bucketDate =
+                getBucket(timestamp);
+
+            const key =
+                bucketDate.getTime();
+
+
+            if (!buckets.has(key)) {
+
+                buckets.set(
+                    key,
+                    {
+                        timestamp: bucketDate,
+                        kg: 0,
+                        cost: 0,
+                        hasCost: false,
+                        weightedPrice: 0,
+                        weightedKg: 0
+                    }
+                );
+            }
+
+
+            const bucket =
+                buckets.get(key);
+
+
+            bucket.kg += kg;
+
+
+            if (
+                cost !== null &&
+                Number.isFinite(cost)
             ) {
 
-                let sumKg = 0;
-                let sumCost = 0;
-
-                let weightedPrice = 0;
-                let weightedKg = 0;
+                bucket.cost += cost;
+                bucket.hasCost = true;
+            }
 
 
-                for (
-                    let j = i;
-                    j < Math.min(
-                        i + step,
-                        values.length
-                    );
-                    j++
-                ) {
+            if (
+                price !== null &&
+                Number.isFinite(price) &&
+                kg > 0
+            ) {
 
-                    const kg =
-                        values[j];
+                bucket.weightedPrice +=
+                    price * kg;
 
-                    const price =
-                        intervalPrices[j];
-
-                    const cost =
-                        intervalCosts[j];
-
-
-                    sumKg += kg;
-
-
-                    if (
-                        price !== null &&
-                        Number.isFinite(price) &&
-                        kg > 0
-                    ) {
-
-                        weightedPrice +=
-                            kg * price;
-
-                        weightedKg += kg;
-                    }
-
-
-                    if (
-                        cost !== null &&
-                        Number.isFinite(cost)
-                    ) {
-
-                        sumCost += cost;
-                    }
-                }
-
-
-                chartLabels.push(
-                    labels[i]
-                );
-
-                chartVærdis.push(
-                    sumKg
-                );
-
-                chartPrices.push(
-                    weightedKg > 0
-                        ? weightedPrice / weightedKg
-                        : null
-                );
-
-                chartCosts.push(
-                    sumCost
-                );
+                bucket.weightedKg +=
+                    kg;
             }
         }
 
 
+        const aggregated =
+            Array.from(buckets.values())
+                .sort(
+                    (a, b) =>
+                        a.timestamp -
+                        b.timestamp
+                );
+
+
+        const chartLabels =
+            aggregated.map(
+                item => item.timestamp
+            );
+
+
+        const chartVærdis =
+            aggregated.map(
+                item => item.kg
+            );
+
+
+        const chartPrices =
+            aggregated.map(
+                item =>
+                    item.weightedKg > 0
+                        ? item.weightedPrice /
+                          item.weightedKg
+                        : null
+            );
+
+
+        const chartCosts =
+            aggregated.map(
+                item =>
+                    item.hasCost
+                        ? item.cost
+                        : null
+            );
+
+
         /*
          * --------------------------------------------------------
-         * SAVE DATA FOR EXPORT
+         * EXPORT = EXACTLY THE SAME DATA AS THE CHART
          * --------------------------------------------------------
          */
 
@@ -4795,15 +6328,12 @@ async function updatePelletChart() {
 
         /*
          * --------------------------------------------------------
-         * DRAW CHART
+         * CHART
          * --------------------------------------------------------
          */
 
         const canvas =
-            document.getElementById(
-                "pelletChart"
-            );
-
+            document.getElementById("pelletChart");
 
         if (!canvas) {
             throw new Error(
@@ -4812,137 +6342,223 @@ async function updatePelletChart() {
         }
 
 
-        const ctx =
-            canvas.getContext("2d");
-
-
         if (pelletChart) {
             pelletChart.destroy();
+            pelletChart = null;
         }
 
 
+        const datasetLabel =
+            aggregationMode === "hour"
+                ? "Pellet consumption per hour"
+                : aggregationMode === "day"
+                    ? "Pellet consumption per day"
+                    : "Pellet consumption per month";
+
+
         pelletChart =
-            new Chart(ctx, {
+            new Chart(
+                canvas.getContext("2d"),
+                {
 
-                type: "bar",
+                    type: "bar",
 
-                data: {
+                    data: {
 
-                    labels:
-                        chartLabels,
+                        labels:
+                            chartLabels,
 
-                    datasets: [{
+                        datasets: [{
+                            label:
+                                datasetLabel,
 
-                        label:
-                            "Pilleforbrug (kg)",
+                            data:
+                                chartVærdis,
 
-                        data:
-                            chartVærdis,
-
-                        borderWidth:
-                            0
-                    }]
-                },
-
-
-                options: {
-
-                    responsive:
-                        true,
-
-                    maintainAspectRatio:
-                        false,
-
-
-                    interaction: {
-
-                        mode:
-                            "index",
-
-                        intersect:
-                            false
+                            borderWidth:
+                                0
+                        }]
                     },
 
 
-                    plugins: {
+                    options: {
 
-                        legend: {
+                        responsive:
+                            true,
 
-                            labels: {
+                        maintainAspectRatio:
+                            false,
 
-                                color:
-                                    "#f2f4f7"
-                            }
+                        interaction: {
+                            mode:
+                                "index",
+                            intersect:
+                                false
                         },
 
 
-                        zoom: {
+                        plugins: {
 
-                            pan: {
+                            legend: {
 
-                                enabled:
-                                    true,
-
-                                mode:
-                                    "x"
+                                labels: {
+                                    color:
+                                        "#f2f4f7"
+                                }
                             },
+
 
                             zoom: {
 
-                                wheel: {
-
+                                pan: {
                                     enabled:
-                                        true
+                                        true,
+                                    mode:
+                                        "x"
                                 },
 
-                                pinch: {
+                                zoom: {
 
-                                    enabled:
-                                        true
-                                },
+                                    wheel: {
+                                        enabled:
+                                            true
+                                    },
 
-                                mode:
-                                    "x"
-                            }
-                        },
+                                    pinch: {
+                                        enabled:
+                                            true
+                                    },
+
+                                    mode:
+                                        "x"
+                                }
+                            },
 
 
-                        tooltip: {
+                            tooltip: {
 
-                            callbacks: {
+                                callbacks: {
 
-                                label:
-                                    function(context) {
+                                    title:
+                                        function(context) {
 
-                                        const index =
-                                            context.dataIndex;
+                                            if (!context.length)
+                                                return "";
 
-                                        const kg =
-                                            Number(
-                                                chartVærdis[index]
+                                            const index =
+                                                context[0].dataIndex;
+
+                                            const date =
+                                                chartLabels[index];
+
+
+                                            if (
+                                                aggregationMode ===
+                                                "month"
+                                            ) {
+
+                                                return date.toLocaleDateString(
+                                                    "en-GB",
+                                                    {
+                                                        month:
+                                                            "long",
+                                                        year:
+                                                            "numeric"
+                                                    }
+                                                );
+                                            }
+
+
+                                            if (
+                                                aggregationMode ===
+                                                "day"
+                                            ) {
+
+                                                return date.toLocaleDateString(
+                                                    "en-GB",
+                                                    {
+                                                        weekday:
+                                                            "short",
+                                                        day:
+                                                            "2-digit",
+                                                        month:
+                                                            "2-digit",
+                                                        year:
+                                                            "numeric"
+                                                    }
+                                                );
+                                            }
+
+
+                                            return date.toLocaleString(
+                                                "en-GB",
+                                                {
+                                                    day:
+                                                        "2-digit",
+                                                    month:
+                                                        "2-digit",
+                                                    year:
+                                                        "numeric",
+                                                    hour:
+                                                        "2-digit",
+                                                    minute:
+                                                        "2-digit"
+                                                }
                                             );
-
-                                        const price =
-                                            chartPrices[index];
-
-                                        const cost =
-                                            chartCosts[index];
+                                        },
 
 
-                                        let text =
-                                            kg.toFixed(3) +
-                                            " kg";
+                                    label:
+                                        function(context) {
+
+                                            const index =
+                                                context.dataIndex;
+
+                                            const kg =
+                                                Number(
+                                                    chartVærdis[index]
+                                                );
+
+                                            const price =
+                                                chartPrices[index];
+
+                                            const cost =
+                                                chartCosts[index];
 
 
-                                        if (
-                                            price !== null &&
-                                            Number.isFinite(price)
-                                        ) {
+                                            let text =
+                                                kg.toLocaleString(
+                                                    "en-GB",
+                                                    {
+                                                        minimumFractionDigits:
+                                                            2,
 
-                                            text +=
-                                                " × " +
-                                                price.toFixed(2) +
-                                                " kr/kg";
+                                                        maximumFractionDigits:
+                                                            3
+                                                    }
+                                                ) +
+                                                " kg";
+
+
+                                            if (
+                                                price !== null &&
+                                                Number.isFinite(price)
+                                            ) {
+
+                                                text +=
+                                                    " × " +
+                                                    price.toLocaleString(
+                                                        "en-GB",
+                                                        {
+                                                            minimumFractionDigits:
+                                                                2,
+
+                                                            maximumFractionDigits:
+                                                                2
+                                                        }
+                                                    ) +
+                                                    " kr/kg";
+                                            }
 
 
                                             if (
@@ -4952,318 +6568,133 @@ async function updatePelletChart() {
 
                                                 text +=
                                                     " = " +
-                                                    cost.toFixed(2) +
+                                                    cost.toLocaleString(
+                                                        "en-GB",
+                                                        {
+                                                            minimumFractionDigits:
+                                                                2,
+
+                                                            maximumFractionDigits:
+                                                                2
+                                                        }
+                                                    ) +
                                                     " kr";
                                             }
+
+
+                                            return text;
                                         }
-
-
-                                        return text;
-                                    }
-                            }
-                        }
-                    },
-
-
-                    scales: {
-
-                        x: {
-
-                            type:
-                                "time",
-
-                            time: {
-
-                                tooltipFormat:
-                                    "dd/MM/yyyy HH:mm",
-
-                                displayFormats: {
-
-                                    hour:
-                                        "HH:mm",
-
-                                    day:
-                                        "dd/MM",
-
-                                    month:
-                                        "MMM yyyy"
                                 }
-                            },
-
-
-                            ticks: {
-
-                                color:
-                                    "#8d98a7",
-
-                                maxTicksLimit:
-                                    10,
-
-                                autoSkip:
-                                    true,
-
-                                callback:
-                                    function(value) {
-
-                                        const chart =
-                                            this.chart;
-
-                                        const scale =
-                                            chart.scales.x;
-
-                                        const min =
-                                            scale.min;
-
-                                        const max =
-                                            scale.max;
-
-
-                                        const visibleHours =
-                                            (
-                                                max - min
-                                            ) / 3600000;
-
-
-                                        const date =
-                                            new Date(
-                                                value
-                                            );
-
-
-                                        if (
-                                            !Number.isFinite(
-                                                date.getTime()
-                                            )
-                                        ) {
-                                            return "";
-                                        }
-
-
-                                        if (
-                                            visibleHours <= 24
-                                        ) {
-
-                                            return date.toLocaleTimeString(
-                                                "da-DK",
-                                                {
-                                                    hour:
-                                                        "2-digit",
-
-                                                    minute:
-                                                        "2-digit"
-                                                }
-                                            );
-                                        }
-
-
-                                        if (
-                                            visibleHours <= 72
-                                        ) {
-
-                                            return (
-                                                date.toLocaleDateString(
-                                                    "da-DK",
-                                                    {
-                                                        day:
-                                                            "2-digit",
-
-                                                        month:
-                                                            "2-digit"
-                                                    }
-                                                ) +
-                                                "\n" +
-                                                date.toLocaleTimeString(
-                                                    "da-DK",
-                                                    {
-                                                        hour:
-                                                            "2-digit",
-
-                                                        minute:
-                                                            "2-digit"
-                                                    }
-                                                )
-                                            );
-                                        }
-
-
-                                        if (
-                                            visibleHours <=
-                                            24 * 31
-                                        ) {
-
-                                            return date.toLocaleDateString(
-                                                "da-DK",
-                                                {
-                                                    day:
-                                                        "2-digit",
-
-                                                    month:
-                                                        "2-digit"
-                                                }
-                                            );
-                                        }
-
-
-                                        return date.toLocaleDateString(
-                                            "da-DK",
-                                            {
-                                                month:
-                                                    "short",
-
-                                                year:
-                                                    "numeric"
-                                            }
-                                        );
-                                    }
-                            },
-
-
-                            grid: {
-
-                                display:
-                                    true,
-
-                                color:
-                                    function(context) {
-
-                                        const value =
-                                            context.tick?.value ??
-                                            context.value;
-
-                                        const date =
-                                            new Date(
-                                                value
-                                            );
-
-
-                                        if (
-                                            date.getHours() === 0 &&
-                                            date.getMinutes() === 0
-                                        ) {
-
-                                            return "rgba(255,255,255,.18)";
-                                        }
-
-
-                                        return "rgba(255,255,255,.04)";
-                                    },
-
-
-                                lineWidth:
-                                    function(context) {
-
-                                        const value =
-                                            context.tick?.value ??
-                                            context.value;
-
-                                        const date =
-                                            new Date(
-                                                value
-                                            );
-
-
-                                        if (
-                                            date.getHours() === 0 &&
-                                            date.getMinutes() === 0
-                                        ) {
-                                            return 2;
-                                        }
-
-
-                                        return 1;
-                                    }
                             }
                         },
 
 
-                        y: {
+                        scales: {
 
-                            title: {
+                            x: {
 
-                                display:
+                                type:
+                                    "time",
+
+                                time: {
+
+                                    unit:
+                                        aggregationMode,
+
+                                    displayFormats: {
+
+                                        hour:
+                                            "HH:mm",
+
+                                        day:
+                                            "dd/MM",
+
+                                        month:
+                                            "MMM yyyy"
+                                    }
+                                },
+
+
+                                ticks: {
+
+                                    color:
+                                        "#8d98a7",
+
+                                    autoSkip:
+                                        true,
+
+                                    maxTicksLimit:
+                                        aggregationMode === "month"
+                                            ? 12
+                                            : 14
+                                },
+
+
+                                grid: {
+                                    color:
+                                        "rgba(255,255,255,0.06)"
+                                }
+                            },
+
+
+                            y: {
+
+                                beginAtZero:
                                     true,
 
-                                text:
-                                    "kg",
+                                ticks: {
 
-                                color:
-                                    "#8d98a7"
-                            },
+                                    color:
+                                        "#8d98a7",
+
+                                    callback:
+                                        function(value) {
+
+                                            return (
+                                                Number(value)
+                                                    .toLocaleString(
+                                                        "en-GB"
+                                                    ) +
+                                                " kg"
+                                            );
+                                        }
+                                },
 
 
-                            ticks: {
-
-                                color:
-                                    "#8d98a7"
-                            },
-
-
-                            grid: {
-
-                                color:
-                                    "rgba(255,255,255,.05)"
+                                grid: {
+                                    color:
+                                        "rgba(255,255,255,0.06)"
+                                }
                             }
                         }
                     }
                 }
-            });
-
-
-        /*
-         * --------------------------------------------------------
-         * SUMMARY
-         * --------------------------------------------------------
-         */
-
-        totalElement.textContent =
-            `${totalKg.toFixed(2)} kg`;
-
-
-        averageElement.textContent =
-            `${averageKg.toFixed(2)} kg`;
-
-
-        const hasPrice =
-            pelletPrices.length > 0 &&
-            intervalCosts.some(
-                cost =>
-                    cost !== null &&
-                    Number.isFinite(cost)
             );
 
 
-        costElement.textContent =
-            hasPrice
-                ? `${totalCost.toFixed(2)} kr`
-                : "--";
-
-
-        /*
-         * Diagnostic information in browser console.
-         *
-         * This makes it easy to verify the calculation.
-         */
-
         console.log(
-            "Pellet calculation:",
+            "Pellet consumption:",
             {
-                feederGramsPerSecond:
-                    gramPerSecond,
+                periodHours:
+                    periodHours,
 
-                feederKgPerSecond:
-                    kgPerSecond,
+                aggregation:
+                    aggregationMode,
 
-                dataPoints:
-                    labels.length,
+                sourceRows:
+                    rows.length,
+
+                chartBars:
+                    aggregated.length,
 
                 totalKg:
                     totalKg,
 
-                periodHours:
-                    periodHours,
-
                 averageKgPerDay:
-                    averageKg
+                    averageKg,
+
+                totalCost:
+                    totalCost
             }
         );
 
@@ -5271,26 +6702,407 @@ async function updatePelletChart() {
     } catch (error) {
 
         console.error(
-            "Pilleforbrug API:",
+            "Pellet consumption:",
             error
         );
 
 
-        document.getElementById(
-            "pelletTiltal"
-        ).textContent = "--";
+        const totalElement =
+            document.getElementById("pelletTiltal");
+
+        const averageElement =
+            document.getElementById("pelletAverage");
+
+        const costElement =
+            document.getElementById("pelletCost");
 
 
-        document.getElementById(
-            "pelletAverage"
-        ).textContent = "--";
+        if (totalElement)
+            totalElement.textContent = "--";
 
+        if (averageElement)
+            averageElement.textContent = "--";
 
-        document.getElementById(
-            "pelletCost"
-        ).textContent = "--";
+        if (costElement)
+            costElement.textContent = "--";
     }
 }
+
+
+function updateAutoUpdateButtons() {
+
+    const historyButton =
+        document.getElementById(
+            "historyAutoUpdateButton"
+        );
+
+    const pelletButton =
+        document.getElementById(
+            "pelletAutoUpdateButton"
+        );
+
+    if (historyButton) {
+
+        historyButton.textContent =
+            "Auto update: " +
+            (historyAutoUpdate ? "On" : "Off");
+
+        historyButton.classList.toggle(
+            "active",
+            historyAutoUpdate
+        );
+    }
+
+    if (pelletButton) {
+
+        pelletButton.textContent =
+            "Auto update: " +
+            (pelletAutoUpdate ? "On" : "Off");
+
+        pelletButton.classList.toggle(
+            "active",
+            pelletAutoUpdate
+        );
+    }
+}
+
+
+function toggleHistoryAutoUpdate() {
+
+    historyAutoUpdate =
+        !historyAutoUpdate;
+
+    localStorage.setItem(
+        "woodyHistoryAutoUpdate",
+        historyAutoUpdate
+            ? "true"
+            : "false"
+    );
+
+    updateAutoUpdateButtons();
+
+    if (
+        historyAutoUpdate &&
+        !historyStart &&
+        !historyEnd
+    ) {
+        updateHistoryChart();
+    }
+}
+
+
+function togglePelletAutoUpdate() {
+
+    pelletAutoUpdate =
+        !pelletAutoUpdate;
+
+    localStorage.setItem(
+        "woodyPelletAutoUpdate",
+        pelletAutoUpdate
+            ? "true"
+            : "false"
+    );
+
+    updateAutoUpdateButtons();
+
+    if (
+        pelletAutoUpdate &&
+        !consumptionStart &&
+        !consumptionEnd
+    ) {
+        updatePelletChart();
+    }
+}
+
+
+async function runGraphAutoUpdate() {
+
+    const activePage =
+        document.querySelector(
+            ".page.active"
+        );
+
+    if (!activePage)
+        return;
+
+    if (
+        activePage.id === "page-dashboard" &&
+        historyAutoUpdate &&
+        !historyStart &&
+        !historyEnd &&
+        !historyAutoUpdateRunning
+    ) {
+
+        historyAutoUpdateRunning = true;
+
+        try {
+
+            await updateHistoryChart();
+
+        } finally {
+
+            historyAutoUpdateRunning = false;
+        }
+    }
+
+    if (
+        activePage.id === "page-consumption" &&
+        pelletAutoUpdate &&
+        !consumptionStart &&
+        !consumptionEnd &&
+        !pelletAutoUpdateRunning
+    ) {
+
+        pelletAutoUpdateRunning = true;
+
+        try {
+
+            await updatePelletChart();
+
+        } finally {
+
+            pelletAutoUpdateRunning = false;
+        }
+    }
+}
+
+
+
+function formatActivityTime(timestamp) {
+
+    try {
+
+        return new Date(timestamp).toLocaleString(
+            "da-DK",
+            {
+                day:"2-digit",
+                month:"2-digit",
+                year:"numeric",
+                hour:"2-digit",
+                minute:"2-digit",
+                second:"2-digit"
+            }
+        );
+
+    } catch {
+
+        return timestamp;
+    }
+}
+
+
+async function loadActivityLog() {
+
+    const container =
+        document.getElementById("activityLog");
+
+    if (!container)
+        return;
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/v1/log?limit=500",
+                {
+                    cache:"no-store"
+                }
+            );
+
+        const result =
+            await response.json();
+
+        if (!response.ok)
+            throw new Error(
+                result.detail ||
+                response.statusText
+            );
+
+        const filter =
+            document.getElementById(
+                "logFilter"
+            )?.value || "";
+
+        const entries =
+            (result.entries || [])
+                .filter(
+                    item =>
+                        !filter ||
+                        item.type === filter
+                );
+
+        if (!entries.length) {
+
+            container.innerHTML = `
+                <div style="
+                    padding:30px;
+                    text-align:center;
+                    color:var(--muted);
+                ">
+                    No activity recorded
+                </div>
+            `;
+
+            return;
+        }
+
+        container.innerHTML =
+            entries.map(item => {
+
+                const payload =
+                    item.payload
+                    ? `
+                        <div style="
+                            margin-top:8px;
+                            padding:8px 10px;
+                            border-radius:7px;
+                            background:#151b22;
+                            color:#aeb8c4;
+                            font-family:monospace;
+                            font-size:11px;
+                            word-break:break-all;
+                        ">
+                            Payload: ${esc(item.payload)}
+                        </div>
+                    `
+                    : "";
+
+                const response =
+                    item.response
+                    ? `
+                        <div style="
+                            margin-top:4px;
+                            color:var(--muted);
+                            font-family:monospace;
+                            font-size:11px;
+                        ">
+                            Response: ${esc(item.response)}
+                        </div>
+                    `
+                    : "";
+
+                return `
+                    <div style="
+                        padding:13px 4px;
+                        border-bottom:1px solid var(--border);
+                    ">
+
+                        <div style="
+                            display:flex;
+                            gap:12px;
+                            align-items:baseline;
+                            flex-wrap:wrap;
+                        ">
+
+                            <span style="
+                                min-width:145px;
+                                color:var(--muted);
+                                font-size:11px;
+                            ">
+                                ${esc(
+                                    formatActivityTime(
+                                        item.timestamp
+                                    )
+                                )}
+                            </span>
+
+                            <span style="
+                                font-size:10px;
+                                font-weight:700;
+                                letter-spacing:.05em;
+                                opacity:.7;
+                            ">
+                                ${esc(item.type)}
+                            </span>
+
+                            <strong style="
+                                font-size:13px;
+                            ">
+                                ${esc(item.event)}
+                            </strong>
+
+                        </div>
+
+                        ${
+                            item.details
+                            ? `
+                                <div style="
+                                    margin-top:4px;
+                                    color:var(--muted);
+                                    font-size:12px;
+                                ">
+                                    ${esc(item.details)}
+                                </div>
+                            `
+                            : ""
+                        }
+
+                        ${payload}
+                        ${response}
+
+                    </div>
+                `;
+
+            }).join("");
+
+    } catch(error) {
+
+        console.error(
+            "Activity log:",
+            error
+        );
+
+        container.innerHTML = `
+            <div style="
+                padding:20px;
+                color:#f87171;
+            ">
+                Log error: ${esc(error.message)}
+            </div>
+        `;
+    }
+}
+
+
+async function clearActivityLog() {
+
+    if (!confirm(
+        "Clear the complete activity log?"
+    ))
+        return;
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/v1/log",
+                {
+                    method:"DELETE"
+                }
+            );
+
+        if (!response.ok) {
+
+            const result =
+                await response.json();
+
+            throw new Error(
+                result.detail ||
+                response.statusText
+            );
+        }
+
+        await loadActivityLog();
+
+    } catch(error) {
+
+        alert(
+            "Could not clear log: " +
+            error.message
+        );
+    }
+}
+
 
 function showPage(page) {
 
@@ -5311,29 +7123,1008 @@ function showPage(page) {
     if (page === "dashboard")
         setTimeout(updateHistoryChart,50);
 
-    if (page === "history")
-        setTimeout(updateHistoryChart,50);
-
     if (page === "consumption")
         setTimeout(updatePelletChart,50);
+
+    if (page === "log")
+        setTimeout(loadActivityLog,50);
 }
+
+
+
+/* ============================================================
+   SILO FORECAST
+   ============================================================ */
+
+let siloForecastChart = null;
+let siloForecastBusy = false;
+
+function siloNumber(value) {
+    const n = Number(
+        String(value ?? "")
+            .replace(",", ".")
+            .replace(/[^\d.-]/g, "")
+    );
+
+    return Number.isFinite(n) ? n : null;
+}
+
+
+function extractPelletTotal(result) {
+
+    if (!result)
+        return null;
+
+    // Woody Monitor API returns hourly pellet consumption
+    // as result.data = [{timestamp, kg, price, cost}, ...]
+    if (Array.isArray(result.data)) {
+
+        const total = result.data.reduce(
+            (sum, row) => {
+                const kg = Number(row?.kg);
+                return sum +
+                    (Number.isFinite(kg) && kg > 0 ? kg : 0);
+            },
+            0
+        );
+
+        return total > 0 ? total : null;
+    }
+
+    const direct =
+        Number(
+            result.kg ??
+            result.total_kg ??
+            result.consumption_kg ??
+            result.total
+        );
+
+    return Number.isFinite(direct) && direct > 0
+        ? direct
+        : null;
+}
+
+
+async function getSevenDayPelletConsumption() {
+
+    const urls = [
+        "/consumption/pellets?hours=168",
+        "/consumption/pellets/hourly?hours=168"
+    ];
+
+    for (const url of urls) {
+
+        try {
+
+            const response = await fetch(
+                API + url,
+                { cache: "no-store" }
+            );
+
+            if (!response.ok)
+                continue;
+
+            const result =
+                await response.json();
+
+            const total =
+                extractPelletTotal(result);
+
+            if (
+                total !== null &&
+                Number.isFinite(total) &&
+                total > 0
+            ) {
+                return total;
+            }
+
+        } catch(error) {
+            console.debug(
+                "Silo forecast source:",
+                url,
+                error
+            );
+        }
+    }
+
+    return null;
+}
+
+
+function formatSiloDate(date) {
+
+    return date.toLocaleDateString(
+        undefined,
+        {
+            day: "2-digit",
+            month: "short"
+        }
+    );
+}
+
+
+async function updateSiloForecast() {
+
+    if (siloForecastBusy)
+        return;
+
+    const canvas =
+        document.getElementById(
+            "siloForecastChart"
+        );
+
+    const contentEl =
+        document.getElementById(
+            "magazineContent"
+        );
+
+    if (!canvas || !contentEl)
+        return;
+
+    const currentKg =
+        siloNumber(
+            contentEl.textContent
+        );
+
+    if (
+        currentKg === null ||
+        currentKg < 0
+    )
+        return;
+
+    siloForecastBusy = true;
+
+    try {
+
+        const sevenDayKg =
+            await getSevenDayPelletConsumption();
+
+        const daily =
+            sevenDayKg !== null
+                ? sevenDayKg / 7
+                : null;
+
+        const dailyEl =
+            document.getElementById(
+                "siloDailyConsumption"
+            );
+
+        const emptyEl =
+            document.getElementById(
+                "siloEmptyDate"
+            );
+
+        if (
+            daily === null ||
+            !Number.isFinite(daily) ||
+            daily <= 0
+        ) {
+
+            if (dailyEl)
+                dailyEl.textContent = "--";
+
+            if (emptyEl)
+                emptyEl.textContent = "--";
+
+            if (siloForecastChart) {
+                siloForecastChart.destroy();
+                siloForecastChart = null;
+            }
+
+            return;
+        }
+
+        if (dailyEl)
+            dailyEl.textContent =
+                daily.toFixed(1);
+
+        const daysToEmpty =
+            currentKg / daily;
+
+        const emptyDate =
+            new Date();
+
+        emptyDate.setTime(
+            emptyDate.getTime() +
+            daysToEmpty * 86400000
+        );
+
+        if (emptyEl) {
+            emptyEl.textContent =
+                emptyDate.toLocaleDateString(
+                    undefined,
+                    {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric"
+                    }
+                );
+        }
+
+        /*
+         * Build forecast points.
+         * Keep enough points for a smooth curve without
+         * creating hundreds of Chart.js labels.
+         */
+        const totalDays =
+            Math.max(
+                1,
+                Math.ceil(daysToEmpty)
+            );
+
+        const pointCount =
+            Math.min(
+                30,
+                Math.max(8, totalDays + 1)
+            );
+
+        const labels = [];
+        const forecast = [];
+
+        for (
+            let i = 0;
+            i < pointCount;
+            i++
+        ) {
+
+            const fraction =
+                pointCount === 1
+                    ? 0
+                    : i / (pointCount - 1);
+
+            const day =
+                fraction * totalDays;
+
+            const date =
+                new Date(
+                    Date.now() +
+                    day * 86400000
+                );
+
+            const kg =
+                Math.max(
+                    0,
+                    currentKg -
+                    daily * day
+                );
+
+            labels.push(
+                formatSiloDate(date)
+            );
+
+            forecast.push(
+                Number(kg.toFixed(1))
+            );
+        }
+
+        /*
+         * Guarantee final point is 0 kg.
+         */
+        forecast[
+            forecast.length - 1
+        ] = 0;
+
+        if (siloForecastChart) {
+            siloForecastChart.destroy();
+            siloForecastChart = null;
+        }
+
+        siloForecastChart =
+            new Chart(
+                canvas.getContext("2d"),
+                {
+                    type: "line",
+
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label:
+                                    "Estimated silo content",
+                                data:
+                                    forecast,
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                pointHoverRadius: 4,
+                                tension: 0.2,
+                                fill: false
+                            }
+                        ]
+                    },
+
+                    options: {
+
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+
+                        interaction: {
+                            intersect: false,
+                            mode: "index"
+                        },
+
+                        plugins: {
+
+                            legend: {
+                                display: false
+                            },
+
+                            tooltip: {
+                                callbacks: {
+                                    label(context) {
+                                        return (
+                                            context.parsed.y
+                                                .toFixed(1) +
+                                            " kg"
+                                        );
+                                    }
+                                }
+                            }
+                        },
+
+                        scales: {
+
+                            x: {
+                                grid: {
+                                    color:
+                                        "rgba(255,255,255,.035)"
+                                },
+                                ticks: {
+                                    maxTicksLimit: 7
+                                }
+                            },
+
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: "kg"
+                                },
+                                grid: {
+                                    color:
+                                        "rgba(255,255,255,.045)"
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+
+    } catch(error) {
+
+        console.error(
+            "Silo forecast:",
+            error
+        );
+
+    } finally {
+
+        siloForecastBusy = false;
+    }
+}
+
+
+
+
+let burnerCommandBusy = false;
+
+function burnerIsRunning(mode) {
+
+    const value =
+        String(mode || "").trim().toLowerCase();
+
+    const stoppedModes = [
+        "stopped",
+        "shut off",
+        "summer stop"
+    ];
+
+    return !stoppedModes.includes(value);
+}
+
+
+
+function updateBurnerStatusColor() {
+
+    const element =
+        document.getElementById("burnerStatus");
+
+    if (!element)
+        return;
+
+    const status =
+        String(element.textContent || "")
+            .trim()
+            .toLowerCase();
+
+    element.classList.remove(
+        "status-stopped",
+        "status-running",
+        "status-other"
+    );
+
+    if (
+        status === "stopped" ||
+        status === "shut off"
+    ) {
+        element.classList.add(
+            "status-stopped"
+        );
+
+    } else if (status === "running") {
+
+        element.classList.add(
+            "status-running"
+        );
+
+    } else {
+
+        element.classList.add(
+            "status-other"
+        );
+    }
+}
+
+
+function updateBurnerControlButton() {
+
+    const button =
+        document.getElementById("burnerControlButton");
+
+    if (!button)
+        return;
+
+    const mode =
+        findVærdi(liveData, ["mode"]);
+
+    if (
+        mode === null ||
+        mode === undefined ||
+        mode === ""
+    ) {
+        button.disabled = true;
+        button.textContent = "--";
+        button.className =
+            "burner-control-button";
+        return;
+    }
+
+    const running =
+        burnerIsRunning(mode);
+
+    button.disabled =
+        burnerCommandBusy;
+
+    button.className =
+        "burner-control-button " +
+        (running ? "stop" : "start");
+
+    if (burnerCommandBusy) {
+        button.textContent =
+            "PLEASE WAIT";
+    } else if (running) {
+        button.textContent =
+            "■ STOP";
+    } else {
+        button.textContent =
+            "▶ START";
+    }
+}
+
+
+async function toggleBurner() {
+
+    if (burnerCommandBusy)
+        return;
+
+    const mode =
+        findVærdi(liveData, ["mode"]);
+
+    if (
+        mode === null ||
+        mode === undefined
+    )
+        return;
+
+    const running =
+        burnerIsRunning(mode);
+
+    const action =
+        running ? "stop" : "start";
+
+    if (running) {
+        if (!confirm("Stop the pellet burner?"))
+            return;
+    }
+
+    burnerCommandBusy = true;
+    updateBurnerControlButton();
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/v1/controller/burner/${action}`,
+                {
+                    method: "POST",
+                    cache: "no-store"
+                }
+            );
+
+        const result =
+            await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                result.detail ||
+                `${response.status} ${response.statusText}`
+            );
+        }
+
+        /*
+         * Knappen ændres ikke kunstigt.
+         * Den følger controllerens rigtige mode.
+         */
+        setTimeout(
+            () => loadLive(),
+            1200
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Burner command:",
+            error
+        );
+
+        alert(
+            "Burner command failed: " +
+            error.message
+        );
+
+    } finally {
+
+        burnerCommandBusy = false;
+
+        setTimeout(
+            updateBurnerControlButton,
+            1500
+        );
+    }
+}
+
+
+
+// ============================================================
+// CONTROLLER SETTINGS
+// ============================================================
+
+const controllerNames = {
+
+    boiler_temp_set: "Boiler temperature",
+    boiler_temp_min: "Minimum boiler temperature",
+    boiler_temp_diff_down: "Boiler difference down",
+    boiler_temp_diff_up: "Boiler difference up",
+
+    hotwater_temp_set: "Hot water temperature",
+    hotwater_temp_diff: "Hot water difference",
+    chute_temp_max: "Maximum chute temperature",
+
+    min_power: "Minimum power",
+    max_power: "Maximum power",
+
+    regulator_P: "Regulator P",
+    regulator_I: "Regulator I",
+    regulator_D: "Regulator D",
+
+    feeder_low: "Feeder low",
+    feeder_high: "Feeder high",
+    feed_per_minute: "Feed per minute",
+    feeder_capacity: "Feeder capacity",
+    feeder_capacity_min: "Minimum feeder capacity",
+    feeder_capacity_max: "Maximum feeder capacity",
+
+    blower_low: "Blower low",
+    blower_mid: "Blower medium",
+    blower_high: "Blower high",
+    blower_cleaning: "Cleaning blower",
+    blower_off_time: "Blower off time",
+
+    blower_corr_low: "Blower correction low",
+    blower_corr_mid: "Blower correction medium",
+    blower_corr_high: "Blower correction high",
+
+    oxygen_regulation: "Oxygen regulation",
+    oxygen_low: "Oxygen low",
+    oxygen_mid: "Oxygen medium",
+    oxygen_high: "Oxygen high",
+    oxygen_gain: "Oxygen gain",
+
+    oxygen_corr_10: "Oxygen correction 10%",
+    oxygen_corr_50: "Oxygen correction 50%",
+    oxygen_corr_100: "Oxygen correction 100%",
+    oxygen_corr_interval: "Oxygen correction interval",
+
+    oxygen_regulation_P: "Oxygen regulator P",
+    oxygen_regulation_D: "Oxygen regulator D",
+
+    cleaning_interval: "Cleaning interval",
+    cleaning_time: "Cleaning time",
+
+    comp_clean_interval: "Compressor cleaning interval",
+    comp_clean_time: "Compressor cleaning time",
+    comp_clean_blower: "Compressor cleaning blower",
+    comp_clean_wait: "Compressor cleaning wait",
+
+    time_minutes: "Controller time",
+
+    timer_heating_period: "Heating period",
+    timer_heating_start_1: "Heating start 1",
+    timer_heating_start_2: "Heating start 2",
+    timer_heating_start_3: "Heating start 3",
+    timer_heating_start_4: "Heating start 4",
+
+    timer_hotwater_period: "Hot water period",
+    timer_hotwater_start_1: "Hot water start 1",
+    timer_hotwater_start_2: "Hot water start 2",
+    timer_hotwater_start_3: "Hot water start 3",
+
+    autocalculation: "Automatic calculation",
+    light_required: "Required light",
+    language: "Language"
+};
+
+
+const controllerGroups = {
+
+    Temperatures: "Temperatures",
+    Power: "Power / regulation",
+    Feeder: "Feeder",
+    Blower: "Blower",
+    Oxygen: "Oxygen",
+    Cleaning: "Cleaning",
+    Timers: "Timers",
+    System: "System"
+};
+
+
+function controllerIsTime(parameter) {
+
+    return (
+        parameter === "time_minutes" ||
+        parameter.startsWith("timer_")
+    );
+}
+
+
+function controllerInput(item) {
+
+    const id =
+        `controller-${item.id}`;
+
+    if (controllerIsTime(item.id)) {
+
+        return `
+            <input
+                id="${id}"
+                class="controller-setting-input"
+                type="text"
+                value="${item.value}"
+                placeholder="HH;MM"
+                inputmode="numeric"
+            >
+        `;
+    }
+
+    return `
+        <input
+            id="${id}"
+            class="controller-setting-input"
+            type="number"
+            value="${item.value}"
+            min="${item.min}"
+            max="${item.max}"
+            step="${item.step}"
+        >
+    `;
+}
+
+
+function renderControllerSettings(result) {
+
+    const container =
+        document.getElementById("controllerSettings");
+
+    const status =
+        document.getElementById("controllerSettingsStatus");
+
+    if (!container)
+        return;
+
+    const settings =
+        Array.isArray(result.settings)
+            ? result.settings
+            : [];
+
+    const groups = {};
+
+    settings.forEach(item => {
+
+        if (!groups[item.group])
+            groups[item.group] = [];
+
+        groups[item.group].push(item);
+    });
+
+    let html = "";
+
+    Object.entries(groups).forEach(
+        ([group, items]) => {
+
+            html += `
+                <div class="controller-settings-group">
+
+                    <div class="controller-settings-group-title">
+                        ${controllerGroups[group] || group}
+                    </div>
+            `;
+
+            items.forEach(item => {
+
+                const name =
+                    controllerNames[item.id] ||
+                    item.name ||
+                    item.id;
+
+                html += `
+                    <div class="controller-setting-row">
+
+                        <div>
+                            <div class="controller-setting-name">
+                                ${name}
+                            </div>
+
+                            <div
+                                id="controller-info-${item.id}"
+                                class="controller-setting-info"
+                            >
+                                Range: ${item.min} – ${item.max}
+                            </div>
+                        </div>
+
+                        ${controllerInput(item)}
+
+                        <button
+                            id="controller-save-${item.id}"
+                            class="btn controller-setting-save"
+                            type="button"
+                            onclick="saveControllerSetting('${item.id}')"
+                        >
+                            Save
+                        </button>
+
+                    </div>
+                `;
+            });
+
+            html += "</div>";
+        }
+    );
+
+    container.innerHTML = html;
+
+    if (status) {
+        status.textContent =
+            `${settings.length} editable controller settings`;
+    }
+}
+
+
+async function loadControllerSettings() {
+
+    const status =
+        document.getElementById(
+            "controllerSettingsStatus"
+        );
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/v1/controller/settings",
+                {
+                    cache:"no-store"
+                }
+            );
+
+        const result =
+            await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                result.detail ||
+                `${response.status} ${response.statusText}`
+            );
+        }
+
+        renderControllerSettings(result);
+
+    } catch(error) {
+
+        console.error(
+            "Controller settings:",
+            error
+        );
+
+        if (status) {
+
+            status.textContent =
+                "Could not load controller settings: " +
+                error.message;
+
+            status.classList.add(
+                "controller-setting-error"
+            );
+        }
+    }
+}
+
+
+async function saveControllerSetting(parameter) {
+
+    const input =
+        document.getElementById(
+            `controller-${parameter}`
+        );
+
+    const button =
+        document.getElementById(
+            `controller-save-${parameter}`
+        );
+
+    const info =
+        document.getElementById(
+            `controller-info-${parameter}`
+        );
+
+    if (!input)
+        return;
+
+    let value =
+        String(input.value).trim();
+
+    if (!value) {
+
+        if (info)
+            info.textContent =
+                "Value is required";
+
+        return;
+    }
+
+    /*
+     * Timer values are entered as HH;MM.
+     * PellMon transformations.py converts these to minutes
+     * before the serial payload is generated.
+     */
+    if (controllerIsTime(parameter)) {
+
+        if (!/^\d{1,2}[;:]\d{2}$/.test(value)) {
+
+            if (info)
+                info.textContent =
+                    "Use HH;MM";
+
+            return;
+        }
+
+        value =
+            value.replace(":", ";");
+    }
+
+    button.disabled = true;
+    button.textContent = "...";
+
+    if (info)
+        info.textContent =
+            "Sending...";
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/v1/controller/settings/${encodeURIComponent(parameter)}?value=${encodeURIComponent(value)}`,
+                {
+                    method:"POST",
+                    cache:"no-store"
+                }
+            );
+
+        const result =
+            await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                result.detail ||
+                `${response.status} ${response.statusText}`
+            );
+        }
+
+        if (
+            result.value !== null &&
+            result.value !== undefined
+        ) {
+            input.value =
+                result.value;
+        }
+
+        if (info) {
+
+            info.textContent =
+                `Saved ✓ · Controller: ${result.value ?? value}`;
+
+            info.className =
+                "controller-setting-info controller-setting-success";
+        }
+
+        await loadLive();
+
+    } catch(error) {
+
+        console.error(
+            "Controller setting:",
+            error
+        );
+
+        if (info) {
+
+            info.textContent =
+                "Not saved · " +
+                error.message;
+
+            info.className =
+                "controller-setting-info controller-setting-error";
+        }
+
+    } finally {
+
+        button.disabled = false;
+        button.textContent = "Save";
+    }
+}
+
+
 
 async function initialize() {
 
     await loadLive();
 
+    await loadControllerSettings();
+
     await loadStatus();
 
     await loadHistoryParameters();
 
+    await updateSiloForecast();
+
     await loadTimezoneSettings();
+
+    updateAutoUpdateButtons();
 
     await updatePelletChart();
 }
 
 initialize();
 
+loadSystemStatus();
+setInterval(loadSystemStatus, 30000);
+
 setInterval(loadLive,5000);
+setInterval(runGraphAutoUpdate,60000);
+setInterval(updateSiloForecast,60000);
+setInterval(loadActivityLog,10000);
 
 loadPelletPrice();
 loadFeederSettings();
@@ -5343,3 +8134,26 @@ loadSiloCapacity();
 
 </body>
 </html>
+
+<style>
+/* Slightly larger top navigation */
+.top-nav .nav-btn {
+    font-size: 17px !important;
+    font-weight: 650 !important;
+}
+</style>
+
+<style id="mobile-nav-size">
+@media (max-width: 700px) {
+    .topbar .top-nav .nav-btn,
+    .topbar .top-nav .nav-btn span {
+        font-size: 12px !important;
+        padding-left: 7px !important;
+        padding-right: 7px !important;
+    }
+
+    .topbar .top-nav {
+        gap: 2px !important;
+    }
+}
+</style>

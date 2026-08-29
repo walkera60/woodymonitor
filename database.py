@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 
-DB_PATH = Path(__file__).resolve().parent / "data" / "woody.db"
+DB_PATH = Path(str(Path(__file__).resolve().parent / "data" / "woody.db"))
 
 
 class Database:
@@ -79,6 +79,38 @@ class Database:
                         feeder_seconds REAL NOT NULL,
                         kg REAL NOT NULL
                     )
+                """)
+
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS daily_stats (
+                        local_date TEXT PRIMARY KEY,
+                        timezone TEXT NOT NULL,
+                        pellet_kg REAL NOT NULL DEFAULT 0,
+                        outside_temp_avg REAL,
+                        power_avg REAL,
+                        power_max REAL,
+                        power_kw_avg REAL,
+                        power_kw_max REAL,
+                        updated_at TEXT NOT NULL
+                    )
+                """)
+
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS activity_log (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        event TEXT NOT NULL,
+                        details TEXT,
+                        payload TEXT,
+                        response TEXT
+                    )
+                """)
+
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS
+                    idx_activity_log_time
+                    ON activity_log(timestamp)
                 """)
 
                 conn.commit()
@@ -400,6 +432,140 @@ class Database:
             finally:
                 conn.close()
 
+    def upsert_daily_stats(
+        self,
+        local_date,
+        timezone_name,
+        pellet_kg,
+        outside_temp_avg=None,
+        power_avg=None,
+        power_max=None,
+        power_kw_avg=None,
+        power_kw_max=None
+    ):
+
+        updated_at = datetime.now(
+            timezone.utc
+        ).isoformat()
+
+        with self.lock:
+
+            conn = self._connect()
+
+            try:
+
+                conn.execute(
+                    """
+                    INSERT INTO daily_stats (
+                        local_date,
+                        timezone,
+                        pellet_kg,
+                        outside_temp_avg,
+                        power_avg,
+                        power_max,
+                        power_kw_avg,
+                        power_kw_max,
+                        updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+
+                    ON CONFLICT(local_date)
+                    DO UPDATE SET
+                        timezone = excluded.timezone,
+                        pellet_kg = excluded.pellet_kg,
+                        outside_temp_avg = excluded.outside_temp_avg,
+                        power_avg = excluded.power_avg,
+                        power_max = excluded.power_max,
+                        power_kw_avg = excluded.power_kw_avg,
+                        power_kw_max = excluded.power_kw_max,
+                        updated_at = excluded.updated_at
+                    """,
+                    (
+                        str(local_date),
+                        str(timezone_name),
+                        float(pellet_kg or 0),
+                        outside_temp_avg,
+                        power_avg,
+                        power_max,
+                        power_kw_avg,
+                        power_kw_max,
+                        updated_at
+                    )
+                )
+
+                conn.commit()
+
+            finally:
+                conn.close()
+
+
+    def get_daily_stats(
+        self,
+        start_date=None,
+        end_date=None
+    ):
+
+        with self.lock:
+
+            conn = self._connect()
+
+            try:
+
+                sql = """
+                    SELECT
+                        local_date,
+                        timezone,
+                        pellet_kg,
+                        outside_temp_avg,
+                        power_avg,
+                        power_max,
+                        power_kw_avg,
+                        power_kw_max,
+                        updated_at
+                    FROM daily_stats
+                """
+
+                conditions = []
+                params = []
+
+                if start_date is not None:
+                    conditions.append(
+                        "local_date >= ?"
+                    )
+                    params.append(
+                        str(start_date)
+                    )
+
+                if end_date is not None:
+                    conditions.append(
+                        "local_date <= ?"
+                    )
+                    params.append(
+                        str(end_date)
+                    )
+
+                if conditions:
+                    sql += (
+                        " WHERE " +
+                        " AND ".join(conditions)
+                    )
+
+                sql += " ORDER BY local_date ASC"
+
+                rows = conn.execute(
+                    sql,
+                    params
+                ).fetchall()
+
+                return [
+                    dict(row)
+                    for row in rows
+                ]
+
+            finally:
+                conn.close()
+
+
     def cleanup_measurement_history(self, cutoff):
         with self.lock:
             conn = self._connect()
@@ -463,6 +629,98 @@ class Database:
 
             finally:
                 conn.close()
+
+
+    def add_activity(
+        self,
+        event_type,
+        event,
+        details=None,
+        payload=None,
+        response=None
+    ):
+
+        timestamp = datetime.now(
+            timezone.utc
+        ).isoformat()
+
+        with self.lock:
+
+            conn = self._connect()
+
+            try:
+
+                conn.execute("""
+                    INSERT INTO activity_log
+                    (
+                        timestamp,
+                        type,
+                        event,
+                        details,
+                        payload,
+                        response
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    timestamp,
+                    str(event_type),
+                    str(event),
+                    None if details is None else str(details),
+                    None if payload is None else str(payload),
+                    None if response is None else str(response)
+                ))
+
+                conn.commit()
+
+            finally:
+                conn.close()
+
+
+    def get_activity(self, limit=500):
+
+        with self.lock:
+
+            conn = self._connect()
+
+            try:
+
+                rows = conn.execute("""
+                    SELECT
+                        id,
+                        timestamp,
+                        type,
+                        event,
+                        details,
+                        payload,
+                        response
+                    FROM activity_log
+                    ORDER BY id DESC
+                    LIMIT ?
+                """, (int(limit),)).fetchall()
+
+                return [dict(row) for row in rows]
+
+            finally:
+                conn.close()
+
+
+    def clear_activity(self):
+
+        with self.lock:
+
+            conn = self._connect()
+
+            try:
+
+                conn.execute(
+                    "DELETE FROM activity_log"
+                )
+
+                conn.commit()
+
+            finally:
+                conn.close()
+
 
     def count(self):
 
