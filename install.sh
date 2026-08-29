@@ -84,7 +84,8 @@ SERVICE_FILE="/etc/systemd/system/woody-monitor.service"
 sudo tee "$SERVICE_FILE" >/dev/null <<SERVICE
 [Unit]
 Description=Woody Monitor - Scotte/PellMon pellet burner
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
