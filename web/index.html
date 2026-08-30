@@ -1322,6 +1322,7 @@ body { padding-bottom:20px; }
     border-radius: 4px;
 }
 
+
 .burner-metrics {
     display: grid;
     grid-template-columns: repeat(2,minmax(0,1fr));
@@ -1330,52 +1331,70 @@ body { padding-bottom:20px; }
     border-radius: 12px;
     background: rgba(255,255,255,.075);
     border: 1px solid rgba(255,255,255,.07);
+    height: 290px;
+    grid-template-rows: repeat(5,minmax(0,1fr));
 }
 
 .burner-metric {
-    min-height: 105px;
-    padding: 18px;
+    min-height: 0;
+    padding: 8px 12px;
     display: flex;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
     background: rgba(8,19,30,.88);
 }
 
 .burner-metric-icon {
-    width: 32px;
-    flex: 0 0 32px;
-    font-size: 22px;
+    width: 28px;
+    flex: 0 0 28px;
+    font-size: 19px;
     text-align: center;
 }
 
 .burner-metric-label {
     color: var(--muted);
-    font-size: 13px;
-    margin-bottom: 7px;
+    font-size: 12px;
+    margin-bottom: 4px;
 }
 
 .burner-metric-value {
-    font-size: 24px;
+    font-size: 21px;
     line-height: 1;
     font-weight: 750;
     color: #66a6ff;
 }
 
 .burner-metric-value small {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
 }
 
 .burner-metric-value.temperature {
-    color: #83cf55;
+    color: #ff5b5b;
 }
 
 .burner-metric-value.power {
-    color: #9a68e8;
+    color: #2ed573;
 }
 
 .burner-metric-value.power-kw {
-    color: #5799f5;
+    color: #2ed573;
+}
+
+.burner-metric-value.return-temp {
+    color: #9b7bff;
+}
+
+.burner-metric.boiler-temp-metric .burner-metric-icon {
+    color: #ff5b5b;
+}
+
+.burner-metric.power-metric .burner-metric-icon {
+    color: #2ed573;
+}
+
+.burner-metric.return-temp-metric .burner-metric-icon {
+    color: #9b7bff;
 }
 
 .burner-metric-value.hotwater {
@@ -1384,6 +1403,14 @@ body { padding-bottom:20px; }
 
 .burner-metric-value.outdoor {
     color: #60a7f8;
+}
+
+.burner-metric-value.flow {
+    color: #32c5ff;
+}
+
+.burner-metric-value.flue {
+    color: #ff9f43;
 }
 
 .alarm-value {
@@ -1463,8 +1490,8 @@ body { padding-bottom:20px; }
 }
 
 .silo-forecast-footer {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 20px;
     padding-top: 10px;
     margin-top: 8px;
@@ -1514,7 +1541,7 @@ body { padding-bottom:20px; }
     }
 
     .silo-forecast-footer {
-        flex-direction: column;
+        grid-template-columns: 1fr;
         gap: 5px;
     }
 }
@@ -3479,6 +3506,476 @@ strong {
 
 </style>
 
+
+<style id="silo-footer-2x2-fix">
+@media (min-width:761px) {
+
+    .silo-forecast-footer {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px 28px !important;
+        width: 100% !important;
+        align-items: start;
+    }
+
+    .silo-forecast-footer > div {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 4px !important;
+        align-items: flex-start !important;
+        text-align: left !important;
+        white-space: nowrap;
+        transform: none !important;
+    }
+
+    .silo-forecast-footer strong {
+        display: block;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+}
+</style>
+
+
+<style id="burner-cleaning-position">
+.burner-modern-card {
+    position: relative;
+}
+
+.burner-cleaning-bottom {
+    position: absolute;
+    left: 16px;
+    bottom: 14px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.burner-cleaning-button {
+    padding: 7px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.burner-cleaning-button:hover {
+    border-color: var(--muted);
+}
+
+#burnerCleaningStatus {
+    color: var(--muted);
+    font-size: 11px;
+}
+</style>
+
+
+<style id="burner-chute-light">
+.burner-metric-value.chute {
+    color: #ff9f43;
+}
+
+.burner-metric-value.light {
+    color: #ffd43b;
+}
+
+/* Burner illustration follows the full five-row metric height */
+.burner-visual {
+    height: 290px !important;
+    min-height: 290px !important;
+}
+</style>
+
+
+<style id="burner-10-metric-height">
+.burner-visual {
+    height: 290px !important;
+    min-height: 290px !important;
+}
+</style>
+
+
+<style id="mobile-cleaning-fix">
+@media (max-width: 760px) {
+    .burner-modern-card {
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 12px;
+    }
+
+    .burner-modern-header {
+        order: 1;
+    }
+
+    .burner-modern-body {
+        order: 2;
+    }
+
+    .burner-cleaning-bottom {
+        position: static !important;
+        order: 3;
+        margin-top: 10px;
+        padding: 0 4px 4px 4px;
+    }
+}
+</style>
+
+
+<style id="advanced-timer-ui-style">
+
+.advanced-timer-burner-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    background: rgba(46,213,115,.14);
+    border: 1px solid rgba(46,213,115,.38);
+    color: #2ed573;
+    font-size: 10px;
+    font-weight: 750;
+    letter-spacing: .5px;
+    vertical-align: middle;
+}
+
+.advanced-timer-card {
+    grid-column: 1 / -1;
+}
+
+.advanced-timer-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    margin-bottom: 14px;
+}
+
+.advanced-timer-master {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.advanced-timer-master input {
+    width: 20px;
+    height: 20px;
+}
+
+.advanced-timer-master-label {
+    font-weight: 700;
+}
+
+.advanced-timer-state {
+    font-size: 12px;
+    font-weight: 750;
+    padding: 5px 9px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+}
+
+.advanced-timer-state.on {
+    color: #2ed573;
+    border-color: rgba(46,213,115,.4);
+    background: rgba(46,213,115,.1);
+}
+
+.advanced-timer-state.off {
+    color: var(--muted);
+}
+
+.advanced-timer-current {
+    color: var(--muted);
+    font-size: 12px;
+    margin-left: auto;
+}
+
+.advanced-timer-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.advanced-timer-mobile-day {
+    display: none;
+    margin-bottom: 12px;
+}
+
+.advanced-timer-mobile-day select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #202934;
+    color: var(--text);
+    font-size: 16px;
+}
+
+.advanced-timer-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.advanced-timer-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.advanced-timer-table th,
+.advanced-timer-table td {
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 4px;
+    text-align: center;
+}
+
+.advanced-timer-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.advanced-timer-table th:last-child,
+.advanced-timer-table td:last-child {
+    border-right: 0;
+}
+
+.advanced-timer-table th {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 8px 4px;
+}
+
+.advanced-timer-hour {
+    width: 68px;
+    color: var(--muted);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.advanced-timer-cell {
+    width: 100%;
+    min-height: 34px;
+    padding: 7px 3px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.advanced-timer-cell.on {
+    color: #2ed573;
+    background: rgba(46,213,115,.13);
+    border-color: rgba(46,213,115,.25);
+}
+
+.advanced-timer-cell.off {
+    color: #ff6b6b;
+    background: rgba(255,91,91,.12);
+    border-color: rgba(255,91,91,.22);
+}
+
+.advanced-timer-cell.current {
+    outline: 2px solid #fbbf24;
+    outline-offset: -2px;
+}
+
+.advanced-timer-cell:disabled {
+    opacity: .55;
+    cursor: wait;
+}
+
+@media (max-width:760px) {
+
+    .advanced-timer-current {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .advanced-timer-mobile-day {
+        display: block;
+    }
+
+    .advanced-timer-table {
+        min-width: 0;
+    }
+
+    .advanced-timer-table th.day-column,
+    .advanced-timer-table td.day-column {
+        display: none;
+    }
+
+    .advanced-timer-table th.day-column.mobile-selected,
+    .advanced-timer-table td.day-column.mobile-selected {
+        display: table-cell;
+    }
+
+    .advanced-timer-hour {
+        width: 82px;
+    }
+
+    .advanced-timer-cell {
+        min-height: 42px;
+        font-size: 12px;
+    }
+}
+
+</style>
+
+
+<style id="weather-compensation-ui">
+
+.weather-curve-panel {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+}
+
+.weather-curve-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.weather-curve-summary {
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.weather-curve-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.weather-curve-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.weather-curve-table th,
+.weather-curve-table td {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.weather-curve-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.weather-curve-table th {
+    color: var(--muted);
+    font-size: 11px;
+    text-align: left;
+}
+
+.weather-curve-table input {
+    width: 76px;
+    padding: 7px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: #202934;
+    color: var(--text);
+}
+
+.weather-curve-active {
+    background: rgba(46,213,115,.08);
+}
+
+.weather-curve-active td:first-child {
+    color: #2ed573;
+    font-weight: 750;
+}
+
+.weather-curve-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.weather-curve-note {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.weather-curve-schedule {
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.weather-curve-active .weather-curve-schedule {
+    color: #2ed573;
+}
+
+@media (max-width:760px) {
+
+    .weather-curve-table input {
+        width: 64px;
+    }
+
+    .weather-curve-table th,
+    .weather-curve-table td {
+        padding: 8px 6px;
+    }
+}
+
+</style>
+
+
+<style id="collapsible-settings-style">
+
+.collapsible-card-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+.collapsible-card-header:hover {
+    opacity: .92;
+}
+
+.collapsible-card-toggle {
+    margin-left: auto;
+    min-width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.collapsible-card-content {
+    overflow: hidden;
+}
+
+.collapsible-card-content.collapsed {
+    display: none;
+}
+
+</style>
+
 </head>
 
 <body>
@@ -3553,7 +4050,19 @@ strong {
 
 
 <div>
-                        <div class="card-title">Burner</div>
+                        <div class="card-title">Burner
+        <span id="advancedTimerBurnerBadge"
+              class="advanced-timer-burner-badge"
+              style="display:none;">
+            ⏱ TIMER
+        </span>
+
+        <span id="weatherCompensationBurnerBadge"
+              class="advanced-timer-burner-badge"
+              style="display:none;">
+            🌡 AUTO
+        </span>
+    </div>
 
 <div id="burnerStatus"
      class="burner-status-under-title">
@@ -3566,10 +4075,12 @@ strong {
 
 
                     <div class="burner-alarm-control-row"><div class="burner-header-alarm">
-                        <span class="alarm-check">✓</span>
-                        <span>Alarm</span>
+                        <span id="burnerAlarmIcon" class="alarm-check">✓</span>
+                        <span id="burnerAlarmLabel">Alarm</span>
                         <span id="burnerAlarm">None</span>
-                    </div><div class="burner-control-wrapper">
+                    </div>
+
+                    <div class="burner-control-wrapper">
     <button
                         id="burnerControlButton"
                         class="burner-control-button"
@@ -3591,6 +4102,18 @@ strong {
 
 
 
+<div class="burner-cleaning-bottom">
+    <button
+        id="burnerCleaningButton"
+        class="burner-cleaning-button"
+        type="button"
+        onclick="registerCleaning()"
+    >
+        Cleaning
+    </button>
+    <span id="burnerCleaningStatus">--</span>
+</div>
+
 <div class="burner-modern-body">
 
                 <div class="burner-visual">
@@ -3608,12 +4131,13 @@ strong {
                         </div>
 
                         <div class="burner-auger"></div>
+
                     </div>
                 </div>
 
                 <div class="burner-metrics">
 
-                    <div class="burner-metric">
+                    <div class="burner-metric boiler-temp-metric">
                         <div class="burner-metric-icon">🌡️</div>
                         <div>
                             <div class="burner-metric-label">
@@ -3639,7 +4163,7 @@ strong {
                         </div>
                     </div>
 
-                    <div class="burner-metric">
+                    <div class="burner-metric power-metric">
                         <div class="burner-metric-icon">⚡</div>
                         <div>
                             <div class="burner-metric-label">
@@ -3652,7 +4176,7 @@ strong {
                         </div>
                     </div>
 
-                    <div class="burner-metric">
+                    <div class="burner-metric power-metric">
                         <div class="burner-metric-icon">⚡</div>
                         <div>
                             <div class="burner-metric-label">
@@ -3665,13 +4189,13 @@ strong {
                         </div>
                     </div>
 
-                    <div class="burner-metric">
+                    <div class="burner-metric return-temp-metric">
                         <div class="burner-metric-icon">↩️</div>
                         <div>
                             <div class="burner-metric-label">
                                 Return temp
                             </div>
-                            <div class="burner-metric-value outdoor">
+                            <div class="burner-metric-value return-temp">
                                 <span id="statusReturnTemp">--</span>
                                 <small>°C</small>
                             </div>
@@ -3687,6 +4211,58 @@ strong {
                             <div class="burner-metric-value outdoor">
                                 <span id="statusOutdoorTemp">--</span>
                                 <small>°C</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="burner-metric">
+                        <div class="burner-metric-icon">💧</div>
+                        <div>
+                            <div class="burner-metric-label">
+                                Flow
+                            </div>
+                            <div class="burner-metric-value flow">
+                                <span id="statusFlow">--</span>
+                                <small>l/min</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="burner-metric">
+                        <div class="burner-metric-icon">♨</div>
+                        <div>
+                            <div class="burner-metric-label">
+                                Flue temp
+                            </div>
+                            <div class="burner-metric-value flue">
+                                <span id="statusFlueTemp">--</span>
+                                <small>°C</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="burner-metric">
+                        <div class="burner-metric-icon">🌡️</div>
+                        <div>
+                            <div class="burner-metric-label">
+                                Chute temp
+                            </div>
+                            <div class="burner-metric-value chute">
+                                <span id="statusChuteTemp">--</span>
+                                <small>°C</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="burner-metric">
+                        <div class="burner-metric-icon">☀</div>
+                        <div>
+                            <div class="burner-metric-label">
+                                Light
+                            </div>
+                            <div class="burner-metric-value light">
+                                <span id="statusLight">--</span>
+                                <small>%</small>
                             </div>
                         </div>
                     </div>
@@ -3752,13 +4328,22 @@ strong {
 
                         <div>
                             Average consumption:
-                            <strong id="siloDailyConsumption">--</strong>
-                            kg/day
+                            <strong><span id="siloDailyConsumption">--</span> kg/day</strong>
+                        </div>
+
+                        <div>
+                            Last refill:
+                            <strong id="siloLastRefill">--</strong>
                         </div>
 
                         <div>
                             Estimated empty:
                             <strong id="siloEmptyDate">--</strong>
+                        </div>
+
+                        <div>
+                            Days remaining:
+                            <strong id="siloDaysRemaining">--</strong>
                         </div>
 
                     </div>
@@ -4387,6 +4972,33 @@ strong {
 
             </div>
 
+            <div style="padding:12px 0;border-top:1px solid var(--border);">
+                <div style="display:flex;align-items:center;gap:10px;">
+
+                    <span>Cleaning interval</span>
+
+                    <input
+                        id="cleaningInterval"
+                        type="number"
+                        value="30"
+                        min="1"
+                        max="3650"
+                        step="1"
+                        style="margin-left:auto;width:90px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+
+                    <span>days</span>
+
+                    <button
+                        class="btn"
+                        onclick="saveCleaningInterval()"
+                    >
+                        Save
+                    </button>
+
+                </div>
+            </div>
+
         </div>
 
     </div>
@@ -4798,6 +5410,18 @@ function updateDashboard() {
         "return_temperature"
     ]);
 
+    const chute = findVærdi(v,[
+        "chute_temp"
+    ]);
+
+    const flow = findVærdi(v,[
+        "flow"
+    ]);
+
+    const light = findVærdi(v,[
+        "light"
+    ]);
+
     const outdoor = findVærdi(v,[
         "outside_temp",
         "outdoor_temp",
@@ -4833,6 +5457,8 @@ function updateDashboard() {
     setVærdi("flueGasTemp",flue);
     setVærdi("returnTemp",ret);
     setVærdi("outdoorTemp",outdoor);
+    setVærdi("statusFlow",flow);
+    setVærdi("statusFlueTemp",flue);
     setVærdi("draft",draft);
     setVærdi("fan",fan);
     setVærdi("consumptionVærdi",consumption);
@@ -4982,6 +5608,26 @@ function updateDashboard() {
                 : "--";
     }
 
+    const statusChuteTempElement =
+        document.getElementById("statusChuteTemp");
+
+    if (statusChuteTempElement) {
+        statusChuteTempElement.textContent =
+            chute !== null
+                ? Number(chute).toFixed(1)
+                : "--";
+    }
+
+    const statusLightElement =
+        document.getElementById("statusLight");
+
+    if (statusLightElement) {
+        statusLightElement.textContent =
+            light !== null
+                ? Number(light).toFixed(0)
+                : "--";
+    }
+
     const statusHotWaterElement =
         document.getElementById("statusHotWater");
 
@@ -5059,11 +5705,1649 @@ function updateDashboard() {
             alarmAktiv
                 ? String(alarm)
                 : "None";
+
+        alarmElement.style.color = "";
     }
+
+    updateCleaningStatus();
 
     updateBurnerStatusColor();
     updateBurnerControlButton();
 }
+
+
+let cleaningSettings = {
+    last_cleaning: null,
+    interval_days: 30
+};
+
+
+function cleaningDaysSince() {
+
+    if (!cleaningSettings.last_cleaning)
+        return null;
+
+    const last =
+        new Date(cleaningSettings.last_cleaning);
+
+    if (Number.isNaN(last.getTime()))
+        return null;
+
+    return Math.floor(
+        (Date.now() - last.getTime()) / 86400000
+    );
+}
+
+
+function updateCleaningStatus() {
+
+    const statusEl =
+        document.getElementById(
+            "burnerCleaningStatus"
+        );
+
+    const alarmEl =
+        document.getElementById(
+            "burnerAlarm"
+        );
+
+    const days =
+        cleaningDaysSince();
+
+    if (statusEl) {
+
+        statusEl.textContent =
+            days === null
+                ? "Not registered"
+                : `${days} day${days === 1 ? "" : "s"} ago`;
+    }
+
+    if (!alarmEl)
+        return;
+
+    const currentAlarm =
+        alarmEl.textContent.trim();
+
+    const controllerAlarmActive =
+        currentAlarm !== "" &&
+        currentAlarm !== "None" &&
+        currentAlarm !== "Cleaning due" &&
+        currentAlarm !== "⚠ Cleaning due";
+
+    const alarmIcon =
+        document.getElementById("burnerAlarmIcon");
+
+    const alarmLabel =
+        document.getElementById("burnerAlarmLabel");
+
+    if (controllerAlarmActive) {
+
+        alarmEl.style.color = "#ff5b5b";
+
+        if (alarmIcon) {
+            alarmIcon.textContent = "⚠";
+            alarmIcon.style.display = "";
+            alarmIcon.style.color = "#ff5b5b";
+        }
+
+        if (alarmLabel) {
+            alarmLabel.style.display = "";
+            alarmLabel.style.color = "#ff5b5b";
+        }
+
+    } else if (
+        days !== null &&
+        days >= Number(cleaningSettings.interval_days)
+    ) {
+
+        alarmEl.textContent = "Cleaning due";
+        alarmEl.style.color = "#fbbf24";
+
+        if (alarmIcon) {
+            alarmIcon.textContent = "⚠";
+            alarmIcon.style.display = "";
+            alarmIcon.style.color = "#fbbf24";
+        }
+
+        if (alarmLabel)
+            alarmLabel.style.display = "none";
+
+    } else {
+
+        alarmEl.textContent = "None";
+        alarmEl.style.color = "";
+
+        if (alarmIcon) {
+            alarmIcon.textContent = "✓";
+            alarmIcon.style.display = "";
+            alarmIcon.style.color = "";
+        }
+
+        if (alarmLabel) {
+            alarmLabel.style.display = "";
+            alarmLabel.style.color = "";
+        }
+    }
+}
+
+
+async function loadCleaningSettings() {
+
+    try {
+
+        const response =
+            await fetch(
+                API + "/settings/cleaning",
+                { cache: "no-store" }
+            );
+
+        if (!response.ok)
+            throw new Error(response.statusText);
+
+        cleaningSettings =
+            await response.json();
+
+        const intervalInput =
+            document.getElementById(
+                "cleaningInterval"
+            );
+
+        if (intervalInput) {
+            intervalInput.value =
+                cleaningSettings.interval_days;
+        }
+
+        updateCleaningStatus();
+
+    } catch(error) {
+
+        console.error(
+            "Cleaning settings:",
+            error
+        );
+    }
+}
+
+
+
+async function saveCleaningInterval() {
+
+    const input =
+        document.getElementById(
+            "cleaningInterval"
+        );
+
+    const days =
+        Number(input?.value);
+
+    if (
+        !Number.isInteger(days) ||
+        days < 1 ||
+        days > 3650
+    ) {
+        alert(
+            "Cleaning interval must be between 1 and 3650 days."
+        );
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/cleaning?interval_days=" +
+                encodeURIComponent(days),
+                {
+                    method: "POST",
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(response.statusText);
+
+        cleaningSettings =
+            await response.json();
+
+        input.value =
+            cleaningSettings.interval_days;
+
+        updateCleaningStatus();
+
+    } catch(error) {
+
+        console.error(
+            "Save cleaning interval:",
+            error
+        );
+
+        alert(
+            "Could not save cleaning interval."
+        );
+    }
+}
+
+
+async function registerCleaning() {
+
+    if (
+        !confirm(
+            "Register burner cleaning now?"
+        )
+    )
+        return;
+
+    try {
+
+        const response =
+            await fetch(
+                API + "/cleaning",
+                {
+                    method: "POST",
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(response.statusText);
+
+        cleaningSettings =
+            await response.json();
+
+        updateCleaningStatus();
+
+        writeFrontendLog(
+            "BURNER",
+            "Cleaning",
+            "Burner cleaning registered"
+        );
+
+    } catch(error) {
+
+        console.error(
+            "Register cleaning:",
+            error
+        );
+
+        alert(
+            "Could not register cleaning."
+        );
+    }
+}
+
+
+
+
+
+function makeSettingsCardCollapsible(
+    card,
+    storageKey
+) {
+
+    if (!card || card.dataset.collapsibleReady)
+        return;
+
+    const header =
+        card.querySelector(":scope > .card-header");
+
+    if (!header)
+        return;
+
+    const children =
+        Array.from(card.children);
+
+    const content =
+        document.createElement("div");
+
+    content.className =
+        "collapsible-card-content";
+
+    for (const child of children) {
+
+        if (child !== header)
+            content.appendChild(child);
+    }
+
+    card.appendChild(content);
+
+    header.classList.add(
+        "collapsible-card-header"
+    );
+
+    const toggle =
+        document.createElement("button");
+
+    toggle.type = "button";
+    toggle.className =
+        "collapsible-card-toggle";
+
+    toggle.setAttribute(
+        "aria-label",
+        "Expand or collapse"
+    );
+
+    header.appendChild(toggle);
+
+    let collapsed = false;
+
+    try {
+        collapsed =
+            localStorage.getItem(storageKey) ===
+            "collapsed";
+    } catch (_) {}
+
+    function render() {
+
+        content.classList.toggle(
+            "collapsed",
+            collapsed
+        );
+
+        toggle.textContent =
+            collapsed ? "▶" : "▼";
+
+        toggle.setAttribute(
+            "aria-expanded",
+            collapsed ? "false" : "true"
+        );
+    }
+
+    function changeState(event) {
+
+        if (event)
+            event.stopPropagation();
+
+        collapsed = !collapsed;
+
+        try {
+            localStorage.setItem(
+                storageKey,
+                collapsed
+                    ? "collapsed"
+                    : "expanded"
+            );
+        } catch (_) {}
+
+        render();
+    }
+
+    header.addEventListener(
+        "click",
+        changeState
+    );
+
+    toggle.addEventListener(
+        "click",
+        changeState
+    );
+
+    card.dataset.collapsibleReady = "1";
+
+    render();
+}
+
+
+function initializeCollapsibleSettingsCards() {
+
+    // Advanced Timer is generated dynamically.
+    const advancedTimer =
+        document.getElementById(
+            "advancedTimerCard"
+        );
+
+    if (advancedTimer) {
+        makeSettingsCardCollapsible(
+            advancedTimer,
+            "woodyAdvancedTimerCollapsed"
+        );
+    }
+
+    // Controller Parameters is static HTML.
+    const titles =
+        Array.from(
+            document.querySelectorAll(
+                ".card-title"
+            )
+        );
+
+    const controllerTitle =
+        titles.find(
+            element =>
+                element.textContent
+                    .trim()
+                    .toLowerCase() ===
+                "controller parameters"
+        );
+
+    if (controllerTitle) {
+
+        const controllerCard =
+            controllerTitle.closest(".card");
+
+        makeSettingsCardCollapsible(
+            controllerCard,
+            "woodyControllerParametersCollapsed"
+        );
+    }
+}
+
+
+
+let weatherCompensationSettings = null;
+
+
+function updateWeatherCompensationBadge() {
+
+    const timerBadge =
+        document.getElementById(
+            "advancedTimerBurnerBadge"
+        );
+
+    const weatherBadge =
+        document.getElementById(
+            "weatherCompensationBurnerBadge"
+        );
+
+    if (!weatherBadge)
+        return;
+
+    const timerActive =
+        !!advancedTimerSettings?.enabled;
+
+    const weatherActive =
+        timerActive &&
+        !!weatherCompensationSettings?.enabled;
+
+    if (!weatherActive) {
+
+        weatherBadge.style.display = "none";
+
+        if (timerBadge) {
+            timerBadge.style.display =
+                timerActive
+                    ? "inline-flex"
+                    : "none";
+        }
+
+        return;
+    }
+
+    if (timerBadge)
+        timerBadge.style.display = "none";
+
+    const hours =
+        Number(
+            weatherCompensationSettings
+                .target_on_hours
+        );
+
+    const curve =
+        weatherCompensationSettings
+            .active_curve;
+
+    let text;
+
+    if (hours <= 0) {
+
+        text = "🌡 AUTO OFF";
+
+    } else if (curve) {
+
+        text =
+            `🌡 AUTO C${curve} · ${hours}h/day`;
+
+    } else {
+
+        text =
+            `🌡 AUTO ${hours}h/day`;
+    }
+
+    weatherBadge.textContent = text;
+
+    weatherBadge.style.display =
+        "inline-flex";
+}
+
+
+
+const weatherHourPriority = [
+    6, 7, 8,
+    17, 18, 19,
+    5, 9,
+    16, 20,
+    4, 10,
+    15, 21,
+    3, 11,
+    14, 22,
+    2, 12,
+    13, 23,
+    1, 0
+];
+
+
+function weatherCurveRunHours(hours) {
+
+    hours = Math.max(
+        0,
+        Math.min(
+            24,
+            Number(hours) || 0
+        )
+    );
+
+    return new Set(
+        weatherHourPriority.slice(
+            0,
+            hours
+        )
+    );
+}
+
+
+function weatherCurveScheduleText(hours) {
+
+    const selected =
+        weatherCurveRunHours(hours);
+
+    if (!selected.size)
+        return "OFF";
+
+    if (selected.size >= 24)
+        return "00:00–24:00";
+
+    const periods = [];
+
+    let start = null;
+
+    for (let hour = 0; hour <= 24; hour++) {
+
+        const on =
+            hour < 24 &&
+            selected.has(hour);
+
+        if (on && start === null) {
+
+            start = hour;
+
+        } else if (!on && start !== null) {
+
+            periods.push(
+                `${String(start).padStart(2, "0")}:00–` +
+                `${String(hour).padStart(2, "0")}:00`
+            );
+
+            start = null;
+        }
+    }
+
+    return periods.join(" · ");
+}
+
+
+function updateWeatherCurveSchedule(index) {
+
+    const input =
+        document.getElementById(
+            `weatherCurveHours${index}`
+        );
+
+    const schedule =
+        document.getElementById(
+            `weatherCurveSchedule${index}`
+        );
+
+    if (!input || !schedule)
+        return;
+
+    schedule.textContent =
+        weatherCurveScheduleText(
+            input.value
+        );
+}
+
+
+function renderWeatherCompensationSettings() {
+
+    const data =
+        weatherCompensationSettings;
+
+    if (!data)
+        return;
+
+    const master =
+        document.getElementById(
+            "weatherCompensationMaster"
+        );
+
+    if (master)
+        master.checked =
+            !!data.enabled;
+
+    const summary =
+        document.getElementById(
+            "weatherCompensationSummary"
+        );
+
+    if (summary) {
+
+        if (!data.available) {
+
+            summary.textContent =
+                "Outdoor temperature unavailable";
+
+        } else {
+
+            const curve =
+                data.active_curve
+                    ? `Curve ${data.active_curve}`
+                    : "OFF";
+
+            summary.textContent =
+                `Outdoor ${Number(
+                    data.current_outside_temp
+                ).toFixed(1)} °C · ` +
+                `6h average ${Number(
+                    data.average_outside_temp
+                ).toFixed(1)} °C · ` +
+                `Control ${Number(
+                    data.effective_outside_temp
+                ).toFixed(1)} °C · ` +
+                `${curve} · ` +
+                `${data.target_on_hours} h/day`;
+        }
+    }
+
+    const rows =
+        document.getElementById(
+            "weatherCurveRows"
+        );
+
+    const curves =
+        data.settings?.curves;
+
+    if (!rows || !Array.isArray(curves))
+        return;
+
+    rows.innerHTML =
+        curves.map(
+            (curve, index) => {
+
+                const previous =
+                    index === 0
+                        ? null
+                        : curves[index - 1].to_temp;
+
+                const range =
+                    index === 0
+                        ? "≤"
+                        : `>${Number(
+                            previous
+                        ).toFixed(1)} to`;
+
+                const active =
+                    data.active_curve === index + 1
+                        ? " weather-curve-active"
+                        : "";
+
+                return `
+                    <tr class="${active}">
+
+                        <td>
+                            Curve ${index + 1}
+                        </td>
+
+                        <td>
+                            ${range}
+
+                            <input
+                                id="weatherCurveTemp${index + 1}"
+                                type="number"
+                                step="0.5"
+                                value="${curve.to_temp}"
+                            >
+
+                            °C
+                        </td>
+
+                        <td>
+
+                            <input
+                                id="weatherCurveHours${index + 1}"
+                                type="number"
+                                min="0"
+                                max="24"
+                                step="1"
+                                value="${curve.hours}"
+                                oninput="updateWeatherCurveSchedule(${index + 1})"
+                            >
+
+                            h
+                        </td>
+
+                        <td
+                            id="weatherCurveSchedule${index + 1}"
+                            class="weather-curve-schedule">
+                            ${weatherCurveScheduleText(curve.hours)}
+                        </td>
+
+                    </tr>
+                `;
+            }
+        ).join("");
+}
+
+
+async function loadWeatherCompensationStatus() {
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/weather-compensation",
+                {
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                "Could not load Weather Compensation"
+            );
+
+        weatherCompensationSettings =
+            await response.json();
+
+        renderWeatherCompensationSettings();
+
+        bindWeatherCompensationControls();
+
+        updateWeatherCompensationBadge();
+
+    } catch (error) {
+
+        console.error(
+            "Weather Compensation load failed:",
+            error
+        );
+    }
+}
+
+
+async function toggleWeatherCompensation(event) {
+
+    const enabled =
+        event.target.checked;
+
+    const message =
+        enabled
+            ? "Enable Weather Compensation?"
+            : "Disable Weather Compensation?";
+
+    if (!confirm(message)) {
+
+        event.target.checked =
+            !enabled;
+
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/weather-compensation/enabled?enabled=" +
+                encodeURIComponent(enabled),
+                {
+                    method: "POST"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                await response.text()
+            );
+
+        await loadWeatherCompensationStatus();
+
+    } catch (error) {
+
+        event.target.checked =
+            !enabled;
+
+        alert(
+            "Weather Compensation could not be changed."
+        );
+    }
+}
+
+
+async function saveWeatherCurves() {
+
+    const params =
+        new URLSearchParams();
+
+    for (let i = 1; i <= 5; i++) {
+
+        const temp =
+            document.getElementById(
+                `weatherCurveTemp${i}`
+            );
+
+        const hours =
+            document.getElementById(
+                `weatherCurveHours${i}`
+            );
+
+        if (!temp || !hours)
+            return;
+
+        params.set(
+            `curve${i}_to`,
+            temp.value
+        );
+
+        params.set(
+            `curve${i}_hours`,
+            hours.value
+        );
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/weather-compensation/config?" +
+                params.toString(),
+                {
+                    method: "POST"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                await response.text()
+            );
+
+        weatherCompensationSettings =
+            await response.json();
+
+        renderWeatherCompensationSettings();
+
+        updateWeatherCompensationBadge();
+
+    } catch (error) {
+
+        alert(
+            "Weather Compensation curves could not be saved."
+        );
+
+        console.error(error);
+    }
+}
+
+
+function bindWeatherCompensationControls() {
+
+    const master =
+        document.getElementById(
+            "weatherCompensationMaster"
+        );
+
+    if (
+        master &&
+        !master.dataset.bound
+    ) {
+
+        master.dataset.bound = "1";
+
+        master.addEventListener(
+            "change",
+            toggleWeatherCompensation
+        );
+    }
+
+    const save =
+        document.getElementById(
+            "saveWeatherCurves"
+        );
+
+    if (
+        save &&
+        !save.dataset.bound
+    ) {
+
+        save.dataset.bound = "1";
+
+        save.addEventListener(
+            "click",
+            saveWeatherCurves
+        );
+    }
+}
+
+
+
+let advancedTimerSettings = null;
+
+const ADVANCED_TIMER_DAYS = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday"
+];
+
+const ADVANCED_TIMER_DAY_NAMES = {
+    monday: "Monday",
+    tuesday: "Tuesday",
+    wednesday: "Wednesday",
+    thursday: "Thursday",
+    friday: "Friday",
+    saturday: "Saturday",
+    sunday: "Sunday"
+};
+
+let advancedTimerMobileDay = "monday";
+
+
+function ensureAdvancedTimerCard() {
+
+    if (document.getElementById("advancedTimerCard"))
+        return;
+
+    const titles =
+        Array.from(
+            document.querySelectorAll(".card-title")
+        );
+
+    const controllerTitle =
+        titles.find(
+            element =>
+                element.textContent
+                    .trim()
+                    .toLowerCase() ===
+                "controller parameters"
+        );
+
+    if (!controllerTitle)
+        return;
+
+    const controllerCard =
+        controllerTitle.closest(".card");
+
+    if (!controllerCard)
+        return;
+
+    const card =
+        document.createElement("div");
+
+    card.id = "advancedTimerCard";
+    card.className =
+        "card advanced-timer-card";
+
+    card.innerHTML = `
+        <div class="card-header">
+            <div>
+                <div class="card-title">
+                    Advanced Timer
+                </div>
+                <div class="card-subtitle">
+                    Weekly burner schedule with hourly ON/OFF control
+                </div>
+            </div>
+        </div>
+
+        <div class="advanced-timer-top">
+
+            <label class="advanced-timer-master">
+                <input
+                    id="advancedTimerMaster"
+                    type="checkbox"
+                >
+                <span class="advanced-timer-master-label">
+                    Advanced Timer
+                </span>
+            </label>
+
+            <span
+                id="advancedTimerState"
+                class="advanced-timer-state off">
+                OFF
+            </span>
+
+            <div
+                id="advancedTimerCurrent"
+                class="advanced-timer-current">
+                --
+            </div>
+
+        </div>
+
+        <div class="advanced-timer-actions">
+            <button
+                class="btn"
+                type="button"
+                id="advancedTimerAllOn">
+                Set all ON
+            </button>
+
+            <button
+                class="btn"
+                type="button"
+                id="advancedTimerAllOff">
+                Set all OFF
+            </button>
+        </div>
+
+        <div class="advanced-timer-mobile-day">
+            <select id="advancedTimerDaySelect">
+                ${ADVANCED_TIMER_DAYS.map(
+                    day =>
+                        `<option value="${day}">
+                            ${ADVANCED_TIMER_DAY_NAMES[day]}
+                        </option>`
+                ).join("")}
+            </select>
+        </div>
+
+        <div
+            id="advancedTimerGrid"
+            class="advanced-timer-table-wrap">
+        </div>
+
+
+        <div class="weather-curve-panel">
+
+            <div class="weather-curve-header">
+
+                <div>
+                    <div class="card-title">
+                        Weather Compensation
+                    </div>
+
+                    <div class="card-subtitle">
+                        Outdoor temperature based burner schedule
+                    </div>
+                </div>
+
+                <label class="advanced-timer-master">
+                    <input
+                        id="weatherCompensationMaster"
+                        type="checkbox"
+                    >
+                    <span>
+                        Weather Compensation
+                    </span>
+                </label>
+
+            </div>
+
+            <div
+                id="weatherCompensationSummary"
+                class="weather-curve-summary">
+                --
+            </div>
+
+            <div class="weather-curve-table-wrap">
+
+                <table class="weather-curve-table">
+
+                    <thead>
+                        <tr>
+                            <th>Curve</th>
+                            <th>Temperature range</th>
+                            <th>ON hours/day</th>
+                            <th>Run schedule</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="weatherCurveRows">
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <div class="weather-curve-actions">
+
+                <button
+                    id="saveWeatherCurves"
+                    type="button"
+                    class="btn">
+                    Save curves
+                </button>
+
+                <span class="weather-curve-note">
+                    Above Curve 5: burner OFF
+                </span>
+
+            </div>
+
+        </div>
+    `;
+
+    controllerCard.parentNode.insertBefore(
+        card,
+        controllerCard
+    );
+
+
+    makeSettingsCardCollapsible(
+        card,
+        "woodyAdvancedTimerCollapsed"
+    );
+
+    document
+        .getElementById("advancedTimerMaster")
+        .addEventListener(
+            "change",
+            toggleAdvancedTimerMaster
+        );
+
+    document
+        .getElementById("advancedTimerAllOn")
+        .addEventListener(
+            "click",
+            () => resetAdvancedTimer("on")
+        );
+
+    document
+        .getElementById("advancedTimerAllOff")
+        .addEventListener(
+            "click",
+            () => resetAdvancedTimer("off")
+        );
+
+    const daySelect =
+        document.getElementById(
+            "advancedTimerDaySelect"
+        );
+
+    daySelect.addEventListener(
+        "change",
+        () => {
+            advancedTimerMobileDay =
+                daySelect.value;
+
+            renderAdvancedTimer();
+        }
+    );
+}
+
+
+function updateAdvancedTimerBadge() {
+
+    const badge =
+        document.getElementById(
+            "advancedTimerBurnerBadge"
+        );
+
+    if (!badge)
+        return;
+
+    badge.style.display =
+        advancedTimerSettings?.enabled
+            ? "inline-flex"
+            : "none";
+
+    updateWeatherCompensationBadge();
+}
+
+
+function advancedTimerCurrentParts() {
+
+    if (!advancedTimerSettings?.local_time)
+        return null;
+
+    const d =
+        new Date(
+            advancedTimerSettings.local_time
+        );
+
+    if (Number.isNaN(d.getTime()))
+        return null;
+
+    // Backend local_time already represents the configured
+    // Woody Monitor timezone. Day/hour are also supplied
+    // visually from this timestamp.
+    const weekday =
+        d.toLocaleDateString(
+            "en-GB",
+            {
+                weekday: "long",
+                timeZone:
+                    advancedTimerSettings.timezone
+            }
+        ).toLowerCase();
+
+    const hour =
+        Number(
+            new Intl.DateTimeFormat(
+                "en-GB",
+                {
+                    hour: "2-digit",
+                    hour12: false,
+                    timeZone:
+                        advancedTimerSettings.timezone
+                }
+            ).format(d)
+        );
+
+    return {
+        day: weekday,
+        hour: hour
+    };
+}
+
+
+function renderAdvancedTimer() {
+
+    ensureAdvancedTimerCard();
+
+    if (!advancedTimerSettings)
+        return;
+
+    const master =
+        document.getElementById(
+            "advancedTimerMaster"
+        );
+
+    const state =
+        document.getElementById(
+            "advancedTimerState"
+        );
+
+    const current =
+        document.getElementById(
+            "advancedTimerCurrent"
+        );
+
+    if (master)
+        master.checked =
+            !!advancedTimerSettings.enabled;
+
+    if (state) {
+
+        state.textContent =
+            advancedTimerSettings.enabled
+                ? "ON"
+                : "OFF";
+
+        state.className =
+            "advanced-timer-state " +
+            (
+                advancedTimerSettings.enabled
+                    ? "on"
+                    : "off"
+            );
+    }
+
+    const now =
+        advancedTimerCurrentParts();
+
+    if (current && now) {
+
+        const value =
+            advancedTimerSettings
+                .schedule[now.day]?.[now.hour];
+
+        current.textContent =
+            `Current: ${
+                ADVANCED_TIMER_DAY_NAMES[now.day]
+            } ${String(now.hour).padStart(2,"0")}:00 — ${
+                value ? "ON" : "OFF"
+            }`;
+    }
+
+    const grid =
+        document.getElementById(
+            "advancedTimerGrid"
+        );
+
+    if (!grid)
+        return;
+
+    let html = `
+        <table class="advanced-timer-table">
+            <thead>
+                <tr>
+                    <th class="advanced-timer-hour">
+                        Time
+                    </th>
+    `;
+
+    for (const day of ADVANCED_TIMER_DAYS) {
+
+        const selected =
+            day === advancedTimerMobileDay
+                ? " mobile-selected"
+                : "";
+
+        html += `
+            <th class="day-column${selected}">
+                ${ADVANCED_TIMER_DAY_NAMES[day]}
+            </th>
+        `;
+    }
+
+    html += `
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    for (let hour = 0; hour < 24; hour++) {
+
+        html += `
+            <tr>
+                <td class="advanced-timer-hour">
+                    ${String(hour).padStart(2,"0")}:00
+                    –
+                    ${String((hour + 1) % 24).padStart(2,"0")}:00
+                </td>
+        `;
+
+        for (const day of ADVANCED_TIMER_DAYS) {
+
+            const enabled =
+                !!advancedTimerSettings
+                    .schedule[day][hour];
+
+            const selected =
+                day === advancedTimerMobileDay
+                    ? " mobile-selected"
+                    : "";
+
+            const isCurrent =
+                now &&
+                now.day === day &&
+                now.hour === hour;
+
+            html += `
+                <td class="day-column${selected}">
+                    <button
+                        type="button"
+                        class="advanced-timer-cell ${
+                            enabled ? "on" : "off"
+                        } ${
+                            isCurrent ? "current" : ""
+                        }"
+                        data-day="${day}"
+                        data-hour="${hour}">
+                        ${enabled ? "ON" : "OFF"}
+                    </button>
+                </td>
+            `;
+        }
+
+        html += `</tr>`;
+    }
+
+    html += `
+            </tbody>
+        </table>
+    `;
+
+    grid.innerHTML = html;
+
+    grid
+        .querySelectorAll(
+            ".advanced-timer-cell"
+        )
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () =>
+                    toggleAdvancedTimerHour(
+                        button
+                    )
+            );
+        });
+
+    updateAdvancedTimerBadge();
+}
+
+
+async function loadAdvancedTimerSettings() {
+
+    ensureAdvancedTimerCard();
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/advanced-timer",
+                {
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                "Could not load Advanced Timer"
+            );
+
+        advancedTimerSettings =
+            await response.json();
+
+        const now =
+            advancedTimerCurrentParts();
+
+        if (now && ADVANCED_TIMER_DAYS.includes(now.day)) {
+            advancedTimerMobileDay =
+                now.day;
+
+            const select =
+                document.getElementById(
+                    "advancedTimerDaySelect"
+                );
+
+            if (select)
+                select.value =
+                    advancedTimerMobileDay;
+        }
+
+        renderAdvancedTimer();
+
+    } catch (error) {
+
+        console.error(
+            "Advanced Timer load failed:",
+            error
+        );
+    }
+}
+
+
+async function toggleAdvancedTimerMaster(event) {
+
+    if (!advancedTimerSettings)
+        return;
+
+    const requested =
+        event.target.checked;
+
+    const message =
+        requested
+            ? "Enable Advanced Timer? The current hourly setting will be applied immediately."
+            : "Disable Advanced Timer? Automatic burner control will stop.";
+
+    if (!confirm(message)) {
+
+        event.target.checked =
+            !requested;
+
+        return;
+    }
+
+    event.target.disabled = true;
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/advanced-timer/enabled?enabled=" +
+                encodeURIComponent(requested),
+                {
+                    method: "POST"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                await response.text()
+            );
+
+        advancedTimerSettings =
+            await response.json();
+
+        // Refresh timezone/local time metadata.
+        await loadAdvancedTimerSettings();
+
+    } catch (error) {
+
+        alert(
+            "Advanced Timer could not be changed."
+        );
+
+        event.target.checked =
+            !requested;
+
+    } finally {
+
+        event.target.disabled = false;
+    }
+}
+
+
+async function toggleAdvancedTimerHour(button) {
+
+    if (!advancedTimerSettings)
+        return;
+
+    const day =
+        button.dataset.day;
+
+    const hour =
+        Number(button.dataset.hour);
+
+    const current =
+        !!advancedTimerSettings
+            .schedule[day][hour];
+
+    const next =
+        !current;
+
+    button.disabled = true;
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/advanced-timer/hour" +
+                "?day=" +
+                encodeURIComponent(day) +
+                "&hour=" +
+                encodeURIComponent(hour) +
+                "&enabled=" +
+                encodeURIComponent(next),
+                {
+                    method: "POST"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                await response.text()
+            );
+
+        const result =
+            await response.json();
+
+        advancedTimerSettings.schedule =
+            result.schedule;
+
+        advancedTimerSettings.last_slot =
+            result.last_slot;
+
+        advancedTimerSettings.last_action =
+            result.last_action;
+
+        renderAdvancedTimer();
+
+    } catch (error) {
+
+        alert(
+            "Timer setting could not be saved."
+        );
+
+        button.disabled = false;
+    }
+}
+
+
+async function resetAdvancedTimer(state) {
+
+    const upper =
+        state.toUpperCase();
+
+    if (
+        !confirm(
+            `Set all 168 timer fields to ${upper}?`
+        )
+    )
+        return;
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/advanced-timer/reset?state=" +
+                encodeURIComponent(state),
+                {
+                    method: "POST"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                await response.text()
+            );
+
+        const result =
+            await response.json();
+
+        advancedTimerSettings.schedule =
+            result.schedule;
+
+        advancedTimerSettings.last_slot =
+            result.last_slot;
+
+        advancedTimerSettings.last_action =
+            result.last_action;
+
+        renderAdvancedTimer();
+
+    } catch (error) {
+
+        alert(
+            "Advanced Timer reset failed."
+        );
+    }
+}
+
+
 
 let editableControllerSettings = new Map();
 
@@ -5703,7 +7987,11 @@ async function loadHistoryParameters() {
     try {
         const result = await api("/history/parameters");
 
-        historyParameters = result.parameters || [];
+        historyParameters =
+            (result.parameters || []).filter(
+                parameter =>
+                    parameter !== "magazine_content"
+            );
 
         buildHistoryParameterList();
 
@@ -9725,6 +12013,20 @@ function formatSiloDate(date) {
 }
 
 
+function formatSiloDateTime(date) {
+
+    return date.toLocaleString(
+        undefined,
+        {
+            day: "2-digit",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit"
+        }
+    );
+}
+
+
 async function getSiloHistory() {
 
     try {
@@ -9885,6 +12187,11 @@ async function updateSiloForecast() {
                 "siloEmptyDate"
             );
 
+        const lastRefillEl =
+            document.getElementById(
+                "siloLastRefill"
+            );
+
         if (
             daily === null ||
             !Number.isFinite(daily) ||
@@ -9896,6 +12203,9 @@ async function updateSiloForecast() {
 
             if (emptyEl)
                 emptyEl.textContent = "--";
+
+            if (lastRefillEl)
+                lastRefillEl.textContent = "--";
 
             if (siloForecastChart) {
                 siloForecastChart.destroy();
@@ -9912,6 +12222,138 @@ async function updateSiloForecast() {
         const now =
             new Date();
 
+
+        /*
+         * Find the most recent manual Magazine content change.
+         *
+         * magazine_content is normally stored repeatedly with
+         * the same value. A real change therefore marks the
+         * beginning of a new silo period.
+         */
+        let anchorIndex = -1;
+
+        for (
+            let i = 1;
+            i < siloHistory.length;
+            i++
+        ) {
+
+            const previous =
+                siloHistory[i - 1].kg;
+
+            const current =
+                siloHistory[i].kg;
+
+            if (
+                Number.isFinite(previous) &&
+                Number.isFinite(current) &&
+                Math.abs(current - previous) >= 0.1
+            ) {
+                anchorIndex = i;
+            }
+        }
+
+
+        /*
+         * If no change has yet been recorded, use the oldest
+         * available Magazine content measurement.
+         */
+        if (
+            anchorIndex < 0 &&
+            siloHistory.length
+        ) {
+            anchorIndex = 0;
+        }
+
+
+        let anchorDate =
+            anchorIndex >= 0
+                ? siloHistory[anchorIndex].date
+                : now;
+
+        let anchorKg =
+            anchorIndex >= 0
+                ? siloHistory[anchorIndex].kg
+                : currentKg;
+
+
+        /*
+         * Protect against invalid timestamps.
+         */
+        if (
+            !(anchorDate instanceof Date) ||
+            Number.isNaN(anchorDate.getTime())
+        ) {
+            anchorDate = now;
+        }
+
+
+        /*
+         * History displayed in the chart begins at the fixed
+         * Magazine content anchor.
+         */
+        let actualRows =
+            anchorIndex >= 0
+                ? siloHistory.slice(anchorIndex)
+                : [];
+
+        actualRows =
+            reduceSiloHistoryPoints(
+                actualRows,
+                40
+            );
+
+
+        /*
+         * Make sure the first point is exactly the anchor.
+         */
+        if (
+            !actualRows.length ||
+            actualRows[0].date.getTime() !==
+                anchorDate.getTime()
+        ) {
+            actualRows.unshift({
+                date: anchorDate,
+                kg: anchorKg
+            });
+        }
+
+
+        /*
+         * Add the current live value at the current time.
+         */
+        if (
+            !actualRows.length ||
+            Math.abs(
+                actualRows[
+                    actualRows.length - 1
+                ].date.getTime() -
+                now.getTime()
+            ) > 30000
+        ) {
+
+            actualRows.push({
+                date: now,
+                kg: currentKg
+            });
+
+        } else {
+
+            actualRows[
+                actualRows.length - 1
+            ] = {
+                date: now,
+                kg: currentKg
+            };
+        }
+
+
+        /*
+         * Estimated empty date is calculated from NOW and the
+         * current live silo content.
+         *
+         * The graph start remains fixed at anchorDate.
+         */
         const daysToEmpty =
             currentKg / daily;
 
@@ -9920,6 +12362,17 @@ async function updateSiloForecast() {
                 now.getTime() +
                 daysToEmpty * 86400000
             );
+
+        const daysRemainingEl =
+            document.getElementById(
+                "siloDaysRemaining"
+            );
+
+        if (daysRemainingEl) {
+            daysRemainingEl.textContent =
+                Math.ceil(daysToEmpty);
+        }
+
 
         if (emptyEl) {
 
@@ -9934,65 +12387,66 @@ async function updateSiloForecast() {
                 );
         }
 
+
         /*
-         * Find the most recent refill.
-         *
-         * Until Woody Monitor has observed its first real
-         * refill, use the oldest available magazine-content
-         * measurement as the start of the graph.
+         * The anchor is the latest Magazine content update.
          */
-        let actualRows =
-            siloHistory;
+        if (lastRefillEl) {
 
-        if (actualRows.length) {
-
-            const refillIndex =
-                findLastSiloRefillIndex(
-                    actualRows
+            const savedAnchorTimestamp =
+                localStorage.getItem(
+                    "woodySiloForecastAnchorTimestamp"
                 );
 
-            if (refillIndex >= 0)
-                actualRows =
-                    actualRows.slice(
-                        refillIndex
+            const savedAnchorDate =
+                savedAnchorTimestamp
+                    ? new Date(savedAnchorTimestamp)
+                    : null;
+
+            if (
+                savedAnchorDate &&
+                !Number.isNaN(
+                    savedAnchorDate.getTime()
+                )
+            ) {
+
+                lastRefillEl.textContent =
+                    formatSiloDateTime(
+                        savedAnchorDate
                     );
 
-            actualRows =
-                reduceSiloHistoryPoints(
-                    actualRows
-                );
+            } else {
+
+                lastRefillEl.textContent =
+                    formatSiloDateTime(
+                        anchorDate
+                    );
+            }
         }
+
 
         /*
-         * Add a current point so the historical line always
-         * finishes exactly at the live silo content.
+         * Chart.js data uses real timestamps.
+         *
+         * This is important: the horizontal position is now
+         * determined by actual elapsed time, not by the number
+         * of samples.
          */
-        if (
-            !actualRows.length ||
-            Math.abs(
-                actualRows[
-                    actualRows.length - 1
-                ].date.getTime() -
-                now.getTime()
-            ) > 30000
-        ) {
-            actualRows = [
-                ...actualRows,
-                {
-                    date: now,
-                    kg: currentKg
-                }
-            ];
-        } else {
+        const actualData =
+            actualRows.map(
+                row => ({
+                    x: row.date.getTime(),
+                    y: Number(
+                        row.kg.toFixed(1)
+                    )
+                })
+            );
 
-            actualRows[
-                actualRows.length - 1
-            ] = {
-                date: now,
-                kg: currentKg
-            };
-        }
 
+        /*
+         * Forecast begins exactly at Today/current live value
+         * and ends exactly at the estimated empty date.
+         */
         const forecastPointCount =
             Math.min(
                 30,
@@ -10002,48 +12456,15 @@ async function updateSiloForecast() {
                 )
             );
 
-        const labels = [];
-        const actual = [];
-        const forecast = [];
+        const forecastData = [];
 
-        /*
-         * Historical section:
-         * last refill / oldest measurement -> today.
-         */
-        for (const row of actualRows) {
+        forecastData.push({
+            x: now.getTime(),
+            y: Number(
+                currentKg.toFixed(1)
+            )
+        });
 
-            labels.push(
-                formatSiloDate(
-                    row.date
-                )
-            );
-
-            actual.push(
-                Number(
-                    row.kg.toFixed(1)
-                )
-            );
-
-            forecast.push(null);
-        }
-
-        const todayIndex =
-            labels.length - 1;
-
-        /*
-         * Let the forecast begin at the current live value
-         * so the two lines meet at Today.
-         */
-        forecast[
-            todayIndex
-        ] = Number(
-            currentKg.toFixed(1)
-        );
-
-        /*
-         * Forecast:
-         * today -> calculated empty date.
-         */
         for (
             let i = 1;
             i < forecastPointCount;
@@ -10054,45 +12475,43 @@ async function updateSiloForecast() {
                 i /
                 (forecastPointCount - 1);
 
-            const milliseconds =
-                fraction *
-                daysToEmpty *
-                86400000;
-
-            const date =
-                new Date(
-                    now.getTime() +
-                    milliseconds
-                );
+            const timestamp =
+                now.getTime() +
+                (
+                    emptyDate.getTime() -
+                    now.getTime()
+                ) *
+                fraction;
 
             const kg =
                 Math.max(
                     0,
-                    currentKg -
-                    daily *
-                    daysToEmpty *
-                    fraction
+                    currentKg *
+                    (1 - fraction)
                 );
 
-            labels.push(
-                formatSiloDate(date)
-            );
-
-            actual.push(null);
-
-            forecast.push(
-                Number(
+            forecastData.push({
+                x: timestamp,
+                y: Number(
                     kg.toFixed(1)
                 )
-            );
+            });
         }
 
-        forecast[
-            forecast.length - 1
-        ] = 0;
+        forecastData[
+            forecastData.length - 1
+        ] = {
+            x: emptyDate.getTime(),
+            y: 0
+        };
+
 
         /*
-         * Draw a vertical marker at Today.
+         * Vertical Today marker.
+         *
+         * Because the X axis is linear time, Today moves
+         * naturally from the fixed Magazine content date
+         * toward Estimated empty.
          */
         const todayMarker = {
 
@@ -10108,15 +12527,20 @@ async function updateSiloForecast() {
 
                 if (
                     !xScale ||
-                    !chartArea ||
-                    todayIndex < 0
+                    !chartArea
                 )
                     return;
 
                 const x =
                     xScale.getPixelForValue(
-                        todayIndex
+                        now.getTime()
                     );
+
+                if (
+                    x < chartArea.left ||
+                    x > chartArea.right
+                )
+                    return;
 
                 const ctx =
                     chart.ctx;
@@ -10162,10 +12586,12 @@ async function updateSiloForecast() {
             }
         };
 
+
         if (siloForecastChart) {
             siloForecastChart.destroy();
             siloForecastChart = null;
         }
+
 
         siloForecastChart =
             new Chart(
@@ -10174,13 +12600,14 @@ async function updateSiloForecast() {
                     type: "line",
 
                     data: {
-                        labels,
+
                         datasets: [
                             {
                                 label:
                                     "Actual silo content",
                                 data:
-                                    actual,
+                                    actualData,
+                                parsing: false,
                                 borderWidth: 2,
                                 pointRadius: 0,
                                 pointHoverRadius: 4,
@@ -10192,7 +12619,8 @@ async function updateSiloForecast() {
                                 label:
                                     "Estimated silo content",
                                 data:
-                                    forecast,
+                                    forecastData,
+                                parsing: false,
                                 borderWidth: 2,
                                 borderDash: [6, 4],
                                 pointRadius: 0,
@@ -10216,7 +12644,7 @@ async function updateSiloForecast() {
 
                         interaction: {
                             intersect: false,
-                            mode: "index"
+                            mode: "nearest"
                         },
 
                         plugins: {
@@ -10226,7 +12654,25 @@ async function updateSiloForecast() {
                             },
 
                             tooltip: {
+
                                 callbacks: {
+
+                                    title(items) {
+
+                                        if (
+                                            !items ||
+                                            !items.length
+                                        )
+                                            return "";
+
+                                        const timestamp =
+                                            items[0].parsed.x;
+
+                                        return formatSiloDateTime(
+                                            new Date(timestamp)
+                                        );
+                                    },
+
                                     label(context) {
 
                                         if (
@@ -10249,21 +12695,42 @@ async function updateSiloForecast() {
                         scales: {
 
                             x: {
+
+                                type: "linear",
+
+                                min:
+                                    anchorDate.getTime(),
+
+                                max:
+                                    emptyDate.getTime(),
+
                                 grid: {
                                     color:
                                         "rgba(255,255,255,.035)"
                                 },
+
                                 ticks: {
-                                    maxTicksLimit: 7
+
+                                    maxTicksLimit: 7,
+
+                                    callback(value) {
+
+                                        return formatSiloDate(
+                                            new Date(value)
+                                        );
+                                    }
                                 }
                             },
 
                             y: {
+
                                 beginAtZero: true,
+
                                 title: {
                                     display: true,
                                     text: "kg"
                                 },
+
                                 grid: {
                                     color:
                                         "rgba(255,255,255,.045)"
@@ -10855,6 +13322,18 @@ async function saveControllerSetting(parameter) {
                 result.value ?? value;
         }
 
+        if (parameter === "magazine_content") {
+            localStorage.setItem(
+                "woodySiloForecastAnchorTimestamp",
+                new Date().toISOString()
+            );
+
+            localStorage.setItem(
+                "woodySiloForecastAnchorKg",
+                String(result.value ?? value)
+            );
+        }
+
         if (info) {
 
             info.textContent =
@@ -10911,7 +13390,10 @@ async function initialize() {
         loadLive(),
         loadControllerSettings(),
         loadStatus(),
-        loadTimezoneSettings()
+        loadTimezoneSettings(),
+        loadCleaningSettings(),
+        loadAdvancedTimerSettings(),
+        loadWeatherCompensationStatus()
     ];
 
     updateAutoUpdateButtons();
@@ -11561,6 +14043,18 @@ if (
     loadAboutInfo();
 }
 
+
+setInterval(
+    loadWeatherCompensationStatus,
+    30000
+);
+
+
+document.addEventListener(
+    "DOMContentLoaded",
+    initializeCollapsibleSettingsCards
+);
+
 </script>
 
 </body>
@@ -11622,6 +14116,17 @@ if (
 
     .top-nav {
         order: 4;
+    }
+}
+</style>
+
+
+<style id="silo-footer-alignment-fix">
+@media (min-width:761px) {
+    .silo-forecast-footer > div:last-child {
+        justify-self: start;
+        transform: translateX(-18px);
+        white-space: nowrap;
     }
 }
 </style>

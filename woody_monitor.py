@@ -590,6 +590,248 @@ def get_silo_settings():
         return dict(silo_settings)
 
 
+
+# ============================================================
+# CLEANING SETTINGS
+# ============================================================
+
+CLEANING_SETTINGS_FILE = str(
+    BASE_DIR / "data" / "cleaning_settings.json"
+)
+
+DEFAULT_CLEANING_INTERVAL_DAYS = 30
+
+cleaning_settings_lock = threading.Lock()
+
+cleaning_settings = {
+    "last_cleaning": None,
+    "interval_days": DEFAULT_CLEANING_INTERVAL_DAYS
+}
+
+
+def load_cleaning_settings():
+
+    global cleaning_settings
+
+    try:
+
+        path = Path(CLEANING_SETTINGS_FILE)
+
+        if not path.exists():
+            return
+
+        with path.open("r") as f:
+            data = json.load(f)
+
+        interval_days = int(
+            data.get(
+                "interval_days",
+                DEFAULT_CLEANING_INTERVAL_DAYS
+            )
+        )
+
+        last_cleaning = data.get(
+            "last_cleaning"
+        )
+
+        if 1 <= interval_days <= 3650:
+            cleaning_settings["interval_days"] = interval_days
+
+        if (
+            last_cleaning is None or
+            isinstance(last_cleaning, str)
+        ):
+            cleaning_settings["last_cleaning"] = last_cleaning
+
+        logger.info(
+            "Loaded cleaning settings: %s / %d days",
+            cleaning_settings["last_cleaning"],
+            cleaning_settings["interval_days"]
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Could not load cleaning settings"
+        )
+
+
+def save_cleaning_settings():
+
+    path = Path(CLEANING_SETTINGS_FILE)
+
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    temporary = path.with_suffix(".tmp")
+
+    with temporary.open("w") as f:
+        json.dump(
+            cleaning_settings,
+            f,
+            indent=2
+        )
+
+    temporary.replace(path)
+
+
+def get_cleaning_settings():
+
+    with cleaning_settings_lock:
+        return dict(cleaning_settings)
+
+
+# ============================================================
+# ADVANCED TIMER
+# ============================================================
+
+ADVANCED_TIMER_FILE = str(
+    BASE_DIR / "data" / "advanced_timer.json"
+)
+
+advanced_timer_lock = threading.Lock()
+
+ADVANCED_TIMER_DAYS = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+]
+
+
+def default_advanced_timer_schedule():
+
+    return {
+        day: [True] * 24
+        for day in ADVANCED_TIMER_DAYS
+    }
+
+
+advanced_timer_settings = {
+    "enabled": False,
+    "schedule": default_advanced_timer_schedule(),
+    "last_slot": None,
+    "last_action": None,
+}
+
+
+def validate_advanced_timer_schedule(schedule):
+
+    if not isinstance(schedule, dict):
+        return False
+
+    for day in ADVANCED_TIMER_DAYS:
+
+        hours = schedule.get(day)
+
+        if (
+            not isinstance(hours, list)
+            or len(hours) != 24
+        ):
+            return False
+
+        if not all(
+            isinstance(value, bool)
+            for value in hours
+        ):
+            return False
+
+    return True
+
+
+def load_advanced_timer_settings():
+
+    try:
+
+        path = Path(ADVANCED_TIMER_FILE)
+
+        if not path.exists():
+            return
+
+        with path.open("r") as f:
+            data = json.load(f)
+
+        schedule = data.get("schedule")
+
+        if validate_advanced_timer_schedule(schedule):
+            advanced_timer_settings["schedule"] = schedule
+
+        advanced_timer_settings["enabled"] = bool(
+            data.get("enabled", False)
+        )
+
+        advanced_timer_settings["last_slot"] = data.get(
+            "last_slot"
+        )
+
+        advanced_timer_settings["last_action"] = data.get(
+            "last_action"
+        )
+
+        logger.info(
+            "Loaded advanced timer: enabled=%s",
+            advanced_timer_settings["enabled"]
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Could not load advanced timer settings"
+        )
+
+
+def save_advanced_timer_settings():
+
+    path = Path(ADVANCED_TIMER_FILE)
+
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    temporary = path.with_suffix(".tmp")
+
+    with temporary.open("w") as f:
+
+        json.dump(
+            advanced_timer_settings,
+            f,
+            indent=2
+        )
+
+    temporary.replace(path)
+
+
+def get_advanced_timer_settings():
+
+    with advanced_timer_lock:
+
+        return {
+            "enabled":
+                advanced_timer_settings["enabled"],
+
+            "schedule": {
+                day: list(
+                    advanced_timer_settings[
+                        "schedule"
+                    ][day]
+                )
+                for day in ADVANCED_TIMER_DAYS
+            },
+
+            "last_slot":
+                advanced_timer_settings["last_slot"],
+
+            "last_action":
+                advanced_timer_settings["last_action"],
+        }
+
+
 # ============================================================
 # TIMEZONE SETTINGS
 # ============================================================
@@ -2390,6 +2632,55 @@ def set_silo_settings(
 
 
 
+
+# ============================================================
+# API: CLEANING
+# ============================================================
+
+@app.get("/api/v1/settings/cleaning")
+def get_cleaning_settings_api():
+
+    return get_cleaning_settings()
+
+
+@app.post("/api/v1/settings/cleaning")
+def set_cleaning_interval(
+    interval_days: int = Query(..., ge=1, le=3650)
+):
+
+    with cleaning_settings_lock:
+
+        cleaning_settings["interval_days"] = interval_days
+
+        save_cleaning_settings()
+
+    logger.info(
+        "Cleaning interval changed: %d days",
+        interval_days
+    )
+
+    return get_cleaning_settings()
+
+
+@app.post("/api/v1/cleaning")
+def register_cleaning():
+
+    with cleaning_settings_lock:
+
+        cleaning_settings["last_cleaning"] = (
+            datetime.now(timezone.utc).isoformat()
+        )
+
+        save_cleaning_settings()
+
+    logger.info(
+        "Burner cleaning registered: %s",
+        cleaning_settings["last_cleaning"]
+    )
+
+    return get_cleaning_settings()
+
+
 # ============================================================
 # API: CONTROLLER SETTINGS / COMMANDS
 # ============================================================
@@ -2803,6 +3094,936 @@ def controller_burner_command(action: str):
         "action": action.lower(),
         "command": command,
     }
+
+
+
+# ============================================================
+# ADVANCED TIMER ENGINE
+# ============================================================
+
+advanced_timer_thread_started = False
+
+
+def advanced_timer_burner_is_running():
+
+    with state_lock:
+        values = dict(live_data.get("values", {}))
+
+    mode = str(
+        values.get("mode", "")
+    ).strip().lower()
+
+    if not mode:
+        return None
+
+    stopped_modes = {
+        "stopped",
+        "shut off",
+        "summer stop"
+    }
+
+    return mode not in stopped_modes
+
+
+def execute_advanced_timer_action(action):
+
+    global burner
+
+    if burner is None:
+        logger.warning(
+            "Advanced timer: controller not connected"
+        )
+        return False
+
+    commands = {
+        "start": "burner_on",
+        "stop": "burner_off"
+    }
+
+    command = commands.get(
+        str(action).lower()
+    )
+
+    if command is None:
+        return False
+
+    try:
+
+        database = burner.getDataBase()
+
+        if command not in database:
+            logger.warning(
+                "Advanced timer: command not supported: %s",
+                command
+            )
+            return False
+
+        response = burner.setItem(
+            command,
+            "0"
+        )
+
+        if str(response) != "OK":
+
+            logger.warning(
+                "Advanced timer command rejected: %s -> %s",
+                command,
+                response
+            )
+
+            return False
+
+        logger.info(
+            "Advanced timer sent: %s",
+            command
+        )
+
+        db.add_activity(
+            "CONTROLLER",
+            "Advanced timer " + action.lower(),
+            f"Command: {command}",
+            payload=getattr(
+                burner,
+                "last_write_payload_hex",
+                None
+            ),
+            response=getattr(
+                burner,
+                "last_write_response",
+                None
+            ) or str(response)
+        )
+
+        return True
+
+    except Exception:
+
+        logger.exception(
+            "Advanced timer command failed: %s",
+            command
+        )
+
+        return False
+
+
+def advanced_timer_loop():
+
+    global advanced_timer_thread_started
+
+    if advanced_timer_thread_started:
+        return
+
+    advanced_timer_thread_started = True
+
+    logger.info(
+        "Advanced timer engine started"
+    )
+
+    last_checked_slot = None
+
+    while True:
+
+        try:
+
+            now = local_now()
+
+            slot = (
+                now.strftime("%Y-%m-%d"),
+                now.hour
+            )
+
+            with advanced_timer_lock:
+
+                enabled = bool(
+                    advanced_timer_settings["enabled"]
+                )
+
+                day = ADVANCED_TIMER_DAYS[
+                    now.weekday()
+                ]
+
+                desired_on = bool(
+                    advanced_timer_settings[
+                        "schedule"
+                    ][day][now.hour]
+                )
+
+                stored_slot = (
+                    advanced_timer_settings[
+                        "last_slot"
+                    ]
+                )
+
+            if not enabled:
+
+                last_checked_slot = None
+
+                if stored_slot is not None:
+
+                    with advanced_timer_lock:
+
+                        advanced_timer_settings[
+                            "last_slot"
+                        ] = None
+
+                        advanced_timer_settings[
+                            "last_action"
+                        ] = None
+
+                        save_advanced_timer_settings()
+
+                time.sleep(2)
+
+                continue
+
+            slot_key = (
+                f"{slot[0]}-{slot[1]:02d}"
+            )
+
+            if (
+                last_checked_slot == slot_key
+                and stored_slot == slot_key
+            ):
+
+                time.sleep(2)
+                continue
+
+            running = (
+                advanced_timer_burner_is_running()
+            )
+
+            if running is None:
+
+                time.sleep(2)
+                continue
+
+            action = (
+                "start"
+                if desired_on
+                else "stop"
+            )
+
+            should_command = (
+                (desired_on and not running)
+                or
+                (not desired_on and running)
+            )
+
+            success = True
+
+            if should_command:
+
+                success = execute_advanced_timer_action(
+                    action
+                )
+
+            with advanced_timer_lock:
+
+                advanced_timer_settings[
+                    "last_slot"
+                ] = slot_key
+
+                advanced_timer_settings[
+                    "last_action"
+                ] = (
+                    action
+                    if should_command and success
+                    else "none"
+                )
+
+                save_advanced_timer_settings()
+
+            last_checked_slot = slot_key
+
+            logger.info(
+                "Advanced timer: %s %02d:00 desired=%s running=%s action=%s",
+                day,
+                now.hour,
+                desired_on,
+                running,
+                action if should_command else "none"
+            )
+
+        except Exception:
+
+            logger.exception(
+                "Advanced timer loop error"
+            )
+
+        time.sleep(2)
+
+
+
+# ============================================================
+# WEATHER COMPENSATION
+# ============================================================
+
+WEATHER_COMPENSATION_FILE = str(
+    BASE_DIR / "data" / "weather_compensation.json"
+)
+
+weather_compensation_lock = threading.Lock()
+
+weather_compensation_settings = {
+    "enabled": False,
+    "history_hours": 6.0,
+    "history_weight": 0.70,
+    "curves": [
+        {
+            "from_temp": None,
+            "to_temp": 5.0,
+            "hours": 24
+        },
+        {
+            "from_temp": 5.0,
+            "to_temp": 8.0,
+            "hours": 20
+        },
+        {
+            "from_temp": 8.0,
+            "to_temp": 11.0,
+            "hours": 16
+        },
+        {
+            "from_temp": 11.0,
+            "to_temp": 14.0,
+            "hours": 10
+        },
+        {
+            "from_temp": 14.0,
+            "to_temp": 17.0,
+            "hours": 4
+        }
+    ],
+    "off_above": 17.0
+}
+
+WEATHER_HOUR_PRIORITY = [
+    6, 7, 8,
+    17, 18, 19,
+    5, 9,
+    16, 20,
+    4, 10,
+    15, 21,
+    3, 11,
+    14, 22,
+    2, 12,
+    13, 23,
+    1, 0
+]
+
+
+def load_weather_compensation_settings():
+
+    try:
+
+        path = Path(
+            WEATHER_COMPENSATION_FILE
+        )
+
+        if not path.exists():
+            return
+
+        with path.open("r") as f:
+            data = json.load(f)
+
+        weather_compensation_settings["enabled"] = bool(
+            data.get("enabled", False)
+        )
+
+        weather_compensation_settings["history_hours"] = float(
+            data.get("history_hours", 6.0)
+        )
+
+        weather_compensation_settings["history_weight"] = float(
+            data.get("history_weight", 0.70)
+        )
+
+        curves = data.get("curves")
+
+        if (
+            isinstance(curves, list)
+            and len(curves) == 5
+        ):
+
+            valid = True
+            parsed = []
+
+            for curve in curves:
+
+                try:
+                    parsed.append({
+                        "from_temp": (
+                            None
+                            if curve.get("from_temp") is None
+                            else float(curve["from_temp"])
+                        ),
+                        "to_temp": float(
+                            curve["to_temp"]
+                        ),
+                        "hours": int(
+                            curve["hours"]
+                        )
+                    })
+                except Exception:
+                    valid = False
+                    break
+
+            if valid:
+                weather_compensation_settings[
+                    "curves"
+                ] = parsed
+
+        if "off_above" in data:
+            weather_compensation_settings[
+                "off_above"
+            ] = float(data["off_above"])
+
+        logger.info(
+            "Loaded weather compensation: enabled=%s",
+            weather_compensation_settings["enabled"]
+        )
+
+    except Exception:
+        logger.exception(
+            "Could not load weather compensation settings"
+        )
+
+def save_weather_compensation_settings():
+
+    path = Path(
+        WEATHER_COMPENSATION_FILE
+    )
+
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    temporary = path.with_suffix(".tmp")
+
+    with temporary.open("w") as f:
+        json.dump(
+            weather_compensation_settings,
+            f,
+            indent=2
+        )
+
+    temporary.replace(path)
+
+
+def get_weather_temperature_data():
+
+    end_dt = datetime.now(
+        timezone.utc
+    )
+
+    with weather_compensation_lock:
+        history_hours = float(
+            weather_compensation_settings[
+                "history_hours"
+            ]
+        )
+
+    start_dt = end_dt - timedelta(
+        hours=history_hours
+    )
+
+    rows = db.get_history(
+        ["outside_temp"],
+        start_dt.isoformat(),
+        end_dt.isoformat(),
+        bucket_seconds=900
+    )
+
+    values = []
+
+    for row in rows:
+        try:
+            values.append(
+                float(row["value"])
+            )
+        except (TypeError, ValueError, KeyError):
+            pass
+
+    average_temp = (
+        sum(values) / len(values)
+        if values
+        else None
+    )
+
+    current_temp = None
+
+    try:
+        current_temp = float(
+            live_data
+            .get("values", {})
+            .get("outside_temp")
+        )
+    except (TypeError, ValueError, AttributeError):
+        pass
+
+    if current_temp is None and values:
+        current_temp = values[-1]
+
+    return (
+        current_temp,
+        average_temp,
+        len(values)
+    )
+
+
+def calculate_weather_compensation():
+
+    with weather_compensation_lock:
+        settings = {
+            "enabled": bool(
+                weather_compensation_settings[
+                    "enabled"
+                ]
+            ),
+            "history_hours": float(
+                weather_compensation_settings[
+                    "history_hours"
+                ]
+            ),
+            "history_weight": float(
+                weather_compensation_settings[
+                    "history_weight"
+                ]
+            ),
+            "curves": [
+                dict(curve)
+                for curve in weather_compensation_settings[
+                    "curves"
+                ]
+            ],
+            "off_above": float(
+                weather_compensation_settings[
+                    "off_above"
+                ]
+            )
+        }
+
+    current_temp, average_temp, sample_count = (
+        get_weather_temperature_data()
+    )
+
+    if (
+        current_temp is None
+        and average_temp is None
+    ):
+        return {
+            "available": False,
+            "enabled": settings["enabled"],
+            "reason": "No outdoor temperature data"
+        }
+
+    if average_temp is None:
+        effective_temp = current_temp
+
+    elif current_temp is None:
+        effective_temp = average_temp
+
+    else:
+
+        weight = settings[
+            "history_weight"
+        ]
+
+        effective_temp = (
+            average_temp * weight
+            +
+            current_temp * (1.0 - weight)
+        )
+
+    target_hours = 0
+    active_curve = None
+
+    for index, curve in enumerate(
+        settings["curves"],
+        start=1
+    ):
+
+        lower = curve[
+            "from_temp"
+        ]
+
+        upper = curve[
+            "to_temp"
+        ]
+
+        if lower is None:
+
+            matches = (
+                effective_temp <= upper
+            )
+
+        else:
+
+            matches = (
+                effective_temp > lower
+                and
+                effective_temp <= upper
+            )
+
+        if matches:
+
+            target_hours = int(
+                curve["hours"]
+            )
+
+            active_curve = index
+            break
+
+    if effective_temp > settings[
+        "off_above"
+    ]:
+        target_hours = 0
+        active_curve = None
+
+    target_hours = max(
+        0,
+        min(24, target_hours)
+    )
+
+    timer = get_advanced_timer_settings()
+
+    effective_schedule = {}
+
+    for day in ADVANCED_TIMER_DAYS:
+
+        manual = timer[
+            "schedule"
+        ][day]
+
+        allowed_hours = [
+            hour
+            for hour in WEATHER_HOUR_PRIORITY
+            if manual[hour]
+        ]
+
+        selected = set(
+            allowed_hours[:target_hours]
+        )
+
+        effective_schedule[day] = [
+            bool(
+                manual[hour]
+                and hour in selected
+            )
+            for hour in range(24)
+        ]
+
+    active_range = None
+
+    if active_curve is not None:
+
+        curve = settings[
+            "curves"
+        ][active_curve - 1]
+
+        active_range = {
+            "from_temp": curve[
+                "from_temp"
+            ],
+            "to_temp": curve[
+                "to_temp"
+            ],
+            "hours": curve[
+                "hours"
+            ]
+        }
+
+    return {
+        "available": True,
+        "enabled": settings["enabled"],
+        "current_outside_temp": (
+            round(current_temp, 2)
+            if current_temp is not None
+            else None
+        ),
+        "average_outside_temp": (
+            round(average_temp, 2)
+            if average_temp is not None
+            else None
+        ),
+        "effective_outside_temp": round(
+            effective_temp,
+            2
+        ),
+        "history_hours": settings[
+            "history_hours"
+        ],
+        "history_samples": sample_count,
+        "active_curve": active_curve,
+        "active_range": active_range,
+        "target_on_hours": target_hours,
+        "off_above": settings[
+            "off_above"
+        ],
+        "effective_schedule":
+            effective_schedule,
+        "timezone":
+            get_timezone_name(),
+        "generated_at":
+            local_now().isoformat()
+    }
+
+
+
+@app.get("/api/v1/settings/weather-compensation")
+def get_weather_compensation_api():
+
+    result = calculate_weather_compensation()
+
+    with weather_compensation_lock:
+        result["settings"] = dict(
+            weather_compensation_settings
+        )
+
+    return result
+
+
+@app.post("/api/v1/settings/weather-compensation/enabled")
+def set_weather_compensation_enabled(
+    enabled: bool = Query(...)
+):
+
+    with weather_compensation_lock:
+
+        weather_compensation_settings[
+            "enabled"
+        ] = enabled
+
+        save_weather_compensation_settings()
+
+    db.add_activity(
+        "SETTING",
+        "Weather compensation",
+        "Enabled" if enabled else "Disabled"
+    )
+
+    return calculate_weather_compensation()
+
+
+@app.post("/api/v1/settings/weather-compensation/config")
+def set_weather_compensation_config(
+    curve1_to: float = Query(...),
+    curve1_hours: int = Query(..., ge=0, le=24),
+    curve2_to: float = Query(...),
+    curve2_hours: int = Query(..., ge=0, le=24),
+    curve3_to: float = Query(...),
+    curve3_hours: int = Query(..., ge=0, le=24),
+    curve4_to: float = Query(...),
+    curve4_hours: int = Query(..., ge=0, le=24),
+    curve5_to: float = Query(...),
+    curve5_hours: int = Query(..., ge=0, le=24)
+):
+
+    limits = [
+        float(curve1_to),
+        float(curve2_to),
+        float(curve3_to),
+        float(curve4_to),
+        float(curve5_to)
+    ]
+
+    if limits != sorted(limits):
+        raise HTTPException(
+            status_code=400,
+            detail="Temperature limits must increase from Curve 1 to Curve 5"
+        )
+
+    if len(set(limits)) != len(limits):
+        raise HTTPException(
+            status_code=400,
+            detail="Temperature limits must be unique"
+        )
+
+    hours = [
+        int(curve1_hours),
+        int(curve2_hours),
+        int(curve3_hours),
+        int(curve4_hours),
+        int(curve5_hours)
+    ]
+
+    curves = []
+
+    previous = None
+
+    for limit, run_hours in zip(
+        limits,
+        hours
+    ):
+
+        curves.append({
+            "from_temp": previous,
+            "to_temp": limit,
+            "hours": run_hours
+        })
+
+        previous = limit
+
+    with weather_compensation_lock:
+
+        weather_compensation_settings[
+            "curves"
+        ] = curves
+
+        weather_compensation_settings[
+            "off_above"
+        ] = limits[-1]
+
+        save_weather_compensation_settings()
+
+    db.add_activity(
+        "SETTING",
+        "Weather compensation curves",
+        "Temperature curves updated"
+    )
+
+    result = calculate_weather_compensation()
+
+    with weather_compensation_lock:
+        result["settings"] = {
+            "enabled":
+                weather_compensation_settings[
+                    "enabled"
+                ],
+            "history_hours":
+                weather_compensation_settings[
+                    "history_hours"
+                ],
+            "history_weight":
+                weather_compensation_settings[
+                    "history_weight"
+                ],
+            "curves": [
+                dict(curve)
+                for curve in
+                weather_compensation_settings[
+                    "curves"
+                ]
+            ],
+            "off_above":
+                weather_compensation_settings[
+                    "off_above"
+                ]
+        }
+
+    return result
+
+
+# ============================================================
+# API: ADVANCED TIMER
+# ============================================================
+
+@app.get("/api/v1/settings/advanced-timer")
+def get_advanced_timer_api():
+
+    result = get_advanced_timer_settings()
+
+    now = local_now()
+
+    result["local_time"] = now.isoformat()
+    result["timezone"] = get_timezone_name()
+
+    return result
+
+
+@app.post("/api/v1/settings/advanced-timer/enabled")
+def set_advanced_timer_enabled(
+    enabled: bool = Query(...)
+):
+
+    with advanced_timer_lock:
+
+        advanced_timer_settings["enabled"] = enabled
+
+        # Force evaluation of the current hour when the
+        # timer is enabled later.
+        advanced_timer_settings["last_slot"] = None
+        advanced_timer_settings["last_action"] = None
+
+        save_advanced_timer_settings()
+
+    db.add_activity(
+        "SETTING",
+        "Advanced timer",
+        "Enabled" if enabled else "Disabled"
+    )
+
+    return get_advanced_timer_settings()
+
+
+@app.post("/api/v1/settings/advanced-timer/hour")
+def set_advanced_timer_hour(
+    day: str = Query(...),
+    hour: int = Query(..., ge=0, le=23),
+    enabled: bool = Query(...)
+):
+
+    day = day.strip().lower()
+
+    if day not in ADVANCED_TIMER_DAYS:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid weekday"
+        )
+
+    with advanced_timer_lock:
+
+        advanced_timer_settings[
+            "schedule"
+        ][day][hour] = enabled
+
+        # Re-evaluate immediately if the changed hour
+        # is the currently active timer slot.
+        advanced_timer_settings["last_slot"] = None
+
+        save_advanced_timer_settings()
+
+    return get_advanced_timer_settings()
+
+
+@app.post("/api/v1/settings/advanced-timer/reset")
+def reset_advanced_timer(
+    state: str = Query(...)
+):
+
+    state = state.strip().lower()
+
+    if state not in ("on", "off"):
+
+        raise HTTPException(
+            status_code=400,
+            detail="State must be on or off"
+        )
+
+    value = state == "on"
+
+    with advanced_timer_lock:
+
+        advanced_timer_settings["schedule"] = {
+            day: [value] * 24
+            for day in ADVANCED_TIMER_DAYS
+        }
+
+        advanced_timer_settings["last_slot"] = None
+        advanced_timer_settings["last_action"] = None
+
+        save_advanced_timer_settings()
+
+    db.add_activity(
+        "SETTING",
+        "Advanced timer",
+        "All hours set to " + state.upper()
+    )
+
+    return get_advanced_timer_settings()
 
 
 # ============================================================
@@ -3571,6 +4792,9 @@ def history_parameters():
 def startup():
 
     load_timezone_settings()
+    load_cleaning_settings()
+    load_advanced_timer_settings()
+    load_weather_compensation_settings()
 
     try:
         backfill_daily_stats()
@@ -3593,6 +4817,13 @@ def startup():
     )
 
     network_monitor.start()
+
+    advanced_timer = threading.Thread(
+        target=advanced_timer_loop,
+        daemon=True
+    )
+
+    advanced_timer.start()
 
     # Tell systemd that Woody Monitor has completed startup.
     notify_socket = os.environ.get("NOTIFY_SOCKET")
