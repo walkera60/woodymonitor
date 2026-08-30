@@ -2511,7 +2511,7 @@ def feeder_retention_loop():
             )
 
             history_cutoff = (
-                now - timedelta(days=90)
+                now - timedelta(days=30)
             ).isoformat()
 
             history_deleted = db.cleanup_measurement_history(
@@ -2519,7 +2519,7 @@ def feeder_retention_loop():
             )
 
             logger.info(
-                "90-day history cleanup: %d rows deleted",
+                "30-day history cleanup: %d rows deleted",
                 history_deleted
             )
 
