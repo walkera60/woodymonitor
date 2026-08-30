@@ -9,17 +9,193 @@ consumption statistics.
 
 ## Features
 
-- Live burner monitoring
-- Local web interface
-- Historical graphs
-- Pellet consumption calculation
-- Pellet silo monitoring
-- SQLite database
-- Automatic database retention
+- Live monitoring of pellet burner operation
+- Local responsive web interface for desktop, tablet and mobile
+- Direct serial communication with compatible burner controllers
+- Burner start and stop control
+- Historical graphs with selectable parameters
+- Pellet consumption calculation and statistics
+- Pellet silo monitoring with estimated empty date and days remaining
+- Burner cleaning tracking and configurable cleaning reminders
+- Smart alarm indication for burner alarms and cleaning reminders
+- Advanced weekly burner timer
+- Weather compensated burner scheduling
+- Five configurable temperature curves
+- Controller parameter monitoring and editing
+- Activity log for important burner and system events
+- SQLite database with automatic retention
 - Optional MQTT publishing
+- REST API for integrations such as Home Assistant
 - Configurable timezone
 - Runs as a systemd service
 - No cloud service required
+
+
+## Burner monitoring and control
+
+The dashboard provides the most important burner information in one view,
+including:
+
+- Boiler temperature
+- Hot water temperature
+- Burner power in percent and kW
+- Boiler return temperature
+- Outdoor temperature
+- Air flow
+- Flue temperature
+- Chute temperature
+- Flame/light level
+- Burner mode and alarm status
+
+The burner can also be started and stopped directly from the dashboard.
+
+Woody Monitor uses the controller's normal command interface for burner
+control rather than sending manually constructed serial commands.
+
+
+## Pellet silo and consumption
+
+Woody Monitor tracks pellet consumption and the estimated amount of pellets
+remaining in the silo.
+
+The dashboard can display:
+
+- Current silo content
+- Average pellet consumption
+- Last refill
+- Estimated empty date
+- Estimated days remaining
+
+Silo capacity and pellet price can be configured from the Settings page.
+
+
+## Burner cleaning
+
+A configurable cleaning interval can be used to keep track of burner
+maintenance.
+
+After cleaning the burner, the cleaning can be registered in Woody Monitor.
+When the configured interval has been exceeded, the dashboard shows a cleaning
+warning.
+
+A real controller alarm always has priority over the cleaning reminder.
+
+
+## Advanced Timer
+
+Woody Monitor includes an Advanced Timer in addition to the timer functions
+already available in the burner controller.
+
+The Advanced Timer provides a weekly schedule consisting of:
+
+- 7 days
+- 24 hourly slots per day
+- 168 individually configurable ON/OFF slots
+- Master enable/disable control
+- Set all ON
+- Set all OFF
+
+An ON slot means that automatic control is allowed to run the burner during
+that hour. An OFF slot prevents the Advanced Timer from requesting burner
+operation during that hour.
+
+The existing timer settings in the burner controller remain available and are
+not modified by the Advanced Timer.
+
+
+## Weather Compensation
+
+Weather Compensation extends the Advanced Timer by adjusting the desired
+burner operating time according to outdoor temperature.
+
+It uses both:
+
+- Current outdoor temperature
+- Historical outdoor temperature average
+
+The control temperature is calculated using a weighted combination of the
+historical average and the current temperature. The default configuration uses
+a 6-hour historical period.
+
+
+### Temperature curves
+
+Five configurable temperature curves determine how many hours per day the
+burner should be allowed to run.
+
+Example configuration:
+
+| Curve | Outdoor temperature | ON time |
+|------:|---------------------|--------:|
+| 1 | up to 5 °C | 24 h/day |
+| 2 | 5 to 8 °C | 20 h/day |
+| 3 | 8 to 11 °C | 16 h/day |
+| 4 | 11 to 14 °C | 10 h/day |
+| 5 | 14 to 17 °C | 4 h/day |
+| OFF | above 17 °C | 0 h/day |
+
+The temperature limits and number of ON hours can be changed from the Settings
+page.
+
+Woody Monitor also displays the calculated run schedule for each curve.
+
+
+### Advanced Timer and Weather Compensation
+
+The Advanced Timer acts as the base permission schedule.
+
+Weather Compensation selects operating hours only from hourly slots that are
+ON in the Advanced Timer.
+
+For example, if all 168 Advanced Timer slots are ON, Weather Compensation has
+the complete day available and can select the required number of operating
+hours according to the active temperature curve.
+
+If some Advanced Timer slots are OFF, Weather Compensation cannot use those
+hours.
+
+This makes it possible to prevent burner operation during selected periods
+while still allowing automatic temperature-based scheduling.
+
+The dashboard indicates when Advanced Timer or Weather Compensation is active
+and can show the active weather curve and calculated daily operating time.
+
+> **Current development note:** Weather Compensation currently calculates and
+> displays the effective schedule. Final integration of the calculated weather
+> schedule with automatic burner start/stop control is still under development.
+
+
+## Controller parameters
+
+The Settings page provides live controller parameters and editable controller
+settings.
+
+Parameters are organized into groups to make the controller configuration
+easier to navigate.
+
+Writable parameters are changed through the controller's normal setting
+interface.
+
+The Controller Parameters and Advanced Timer sections can be collapsed to
+reduce the amount of information shown on the Settings page.
+
+
+## Activity Log
+
+Woody Monitor includes an Activity Log for important events.
+
+Logged events can include:
+
+- Burner actions
+- Controller changes
+- Alarm changes
+- Settings changes
+- MQTT connection changes
+- Network changes
+- System events
+
+The log can be filtered by event category and cleared from the web interface.
+
 
 ## Requirements
 
