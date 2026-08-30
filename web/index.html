@@ -2773,6 +2773,174 @@ strong {
 
 </style>
 
+
+<style id="woody-user-settings-columns">
+
+.woody-user-settings-columns {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:0;
+}
+
+.woody-user-settings-column {
+    min-width:0;
+    padding:0 22px;
+    border-right:1px solid var(--border);
+}
+
+.woody-user-settings-column:first-child {
+    padding-left:0;
+}
+
+.woody-user-settings-column:last-child {
+    padding-right:0;
+    border-right:none;
+}
+
+.woody-user-settings-heading {
+    font-size:14px;
+    font-weight:700;
+    margin-bottom:14px;
+}
+
+@media (max-width:900px) {
+
+    .woody-user-settings-columns {
+        grid-template-columns:1fr;
+    }
+
+    .woody-user-settings-column {
+        padding:18px 0;
+        border-right:none;
+        border-bottom:1px solid var(--border);
+    }
+
+    .woody-user-settings-column:first-child {
+        padding-top:0;
+    }
+
+    .woody-user-settings-column:last-child {
+        padding-bottom:0;
+        border-bottom:none;
+    }
+}
+
+</style>
+
+
+<style id="woody-activity-log-ui">
+
+.activity-log-entry {
+    padding:13px 4px;
+    border-bottom:1px solid var(--border);
+}
+
+.activity-log-entry:last-child {
+    border-bottom:none;
+}
+
+.activity-log-header {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.activity-log-time {
+    min-width:145px;
+    color:var(--muted);
+    font-size:11px;
+    font-variant-numeric:tabular-nums;
+}
+
+.activity-log-event {
+    font-size:13px;
+    font-weight:600;
+}
+
+.activity-log-details {
+    margin-top:5px;
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.45;
+}
+
+.activity-type-badge {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:68px;
+    padding:3px 7px;
+    border-radius:6px;
+    font-size:9px;
+    line-height:1.2;
+    font-weight:700;
+    letter-spacing:.05em;
+    border:1px solid var(--border);
+    background:#202934;
+    color:#cbd5e1;
+}
+
+.activity-type-setting {
+    color:#93c5fd;
+}
+
+.activity-type-burner {
+    color:#fdba74;
+}
+
+.activity-type-alarm {
+    color:#fca5a5;
+}
+
+.activity-type-controller {
+    color:#c4b5fd;
+}
+
+.activity-type-mqtt {
+    color:#86efac;
+}
+
+.activity-type-network {
+    color:#67e8f9;
+}
+
+.activity-type-system {
+    color:#d1d5db;
+}
+
+.activity-type-other {
+    color:var(--muted);
+}
+
+@media (max-width:700px) {
+
+    .activity-log-entry {
+        padding:12px 2px;
+    }
+
+    .activity-log-header {
+        gap:7px;
+    }
+
+    .activity-log-time {
+        min-width:0;
+        width:100%;
+        font-size:10px;
+    }
+
+    .activity-log-event {
+        flex:1;
+        min-width:140px;
+    }
+
+    .activity-type-badge {
+        min-width:auto;
+    }
+}
+
+</style>
+
 </head>
 
 <body>
@@ -3412,46 +3580,7 @@ strong {
         <p>Activities and changes in Woody Monitor</p>
     </div>
 
-                <div class="card">
-
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">About</div>
-                        <div class="card-subtitle">
-                            Woody Monitor application information
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-list">
-
-                    <div class="settings-row">
-                        <div>
-                            <div>Application</div>
-                            <div class="card-subtitle">
-                                Pellet burner monitoring and control
-                            </div>
-                        </div>
-                        <div>Woody Monitor</div>
-                    </div>
-
-                    <div class="settings-row">
-                        <div>
-                            <div>Version</div>
-                        </div>
-                        <div id="aboutVersion">--</div>
-                    </div>
-
-                    <div class="settings-row">
-                        <div>
-                            <div>API status</div>
-                        </div>
-                        <div id="aboutApiStatus">--</div>
-                    </div>
-
-                </div>
-
-            </div>
+                
 
 <div class="card">
 
@@ -3484,6 +3613,7 @@ strong {
                     <option value="ALARM">Alarm</option>
                     <option value="CONTROLLER">Controller</option>
                     <option value="MQTT">MQTT</option>
+                    <option value="NETWORK">Network</option>
                     <option value="SYSTEM">System</option>
                 </select>
 
@@ -3518,10 +3648,23 @@ strong {
 
     <div class="grid">
 
-        <div class="card col-6">
+        <div class="card col-12">
 
-            <div class="card-header">
-                <div class="card-title">User interface</div>
+    <div class="card-header">
+        <div>
+            <div class="card-title">User settings</div>
+            <div class="card-subtitle">
+                Application, timezone and pellet configuration
+            </div>
+        </div>
+    </div>
+
+    <div class="woody-user-settings-columns">
+
+        <div class="woody-user-settings-column">
+
+            <div class="woody-user-settings-heading">
+                Connections
             </div>
 
             <div style="padding:12px 0;">
@@ -3530,18 +3673,71 @@ strong {
             </div>
 
             <div style="padding:12px 0;border-top:1px solid var(--border);">
-                API
-                <span style="float:right;color:var(--muted);">/api/v1</span>
-            </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <span>API</span>
+                    <span id="apiConnectionStatus" style="color:var(--muted);">
+                        Checking...
+                    </span>
+                </div>
 
-            <div style="padding:12px 0;border-top:1px solid var(--border);">
-                <div id="systemStatus"></div>
+                <div
+                    id="systemStatus"
+                    style="font-size:12px;color:var(--muted);margin-top:5px;"
+                >
+                    Loading status...
+                </div>
             </div>
 
             <div style="padding:12px 0;border-top:1px solid var(--border);">
                 MQTT
                 <span style="float:right;color:var(--green);">Active</span>
             </div>
+
+            
+
+        </div>
+
+        <div class="woody-user-settings-column">
+
+            <div class="woody-user-settings-heading">
+                Date, time and timezone
+            </div>
+
+            <div style="padding:12px 0;">
+
+                <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">
+                    Select the timezone used for dates, history and
+                    consumption periods. Daylight saving time is handled automatically.
+                </div>
+
+                <div style="display:flex;align-items:center;gap:10px;">
+
+                    <span>Timezone</span>
+
+                    <select
+                        id="timezoneSetting"
+                        style="margin-left:auto;min-width:190px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+                        <option value="Europe/Copenhagen">
+                            Europe/Copenhagen
+                        </option>
+                    </select>
+
+                    <button
+                        class="btn"
+                        onclick="saveTimezoneSettings()"
+                    >
+                        Save
+                    </button>
+
+                </div>
+
+                <div
+                    id="timezoneInfo"
+                    style="font-size:13px;color:var(--muted);margin-top:10px;"
+                >
+                    Loading timezone...
+                </div>
 
             <div style="
                 padding:12px 0 0 0;
@@ -3568,81 +3764,14 @@ strong {
                 </button>
             </div>
 
-        </div>
-
-        <div class="card col-12">
-
-            <div class="card-header">
-                <div>
-                    <div class="card-title">Controller parameters</div>
-                    <div class="card-subtitle">
-                        Live values and editable controller settings
-                    </div>
-                </div>
-            </div>
-
-            
-            <div class="live-parameters-wrapper">
-                <div class="card-subtitle" style="margin-bottom:12px;">
-                    Current values from the controller. Editable parameters can be changed and saved.
-                </div>
-
-                <div id="liveParameters" class="live-parameters-clean"></div>
-            </div>
-
-
-        </div>
-
-        <div class="card col-6">
-
-            <div class="card-header">
-                <div class="card-title">Date, time and timezone</div>
-            </div>
-
-            <div style="padding:12px 0;">
-
-                <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">
-                    Select the timezone used for dates, history and
-                    consumption periods. Daylight saving time is handled automatically.
-                </div>
-
-                <div style="display:flex;align-items:center;gap:10px;">
-
-                    <span>Tidszone</span>
-
-                    <select
-                        id="timezoneSetting"
-                        style="margin-left:auto;min-width:190px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
-                    >
-                        <option value="Europe/Copenhagen">
-                            Europe/Copenhagen
-                        </option>
-                    </select>
-
-                    <button
-                        class="btn"
-                        onclick="saveTimezoneSettings()"
-                    >
-                        Save
-                    </button>
-
-                </div>
-
-                <div
-                    id="timezoneInfo"
-                    style="font-size:13px;color:var(--muted);margin-top:10px;"
-                >
-                    Henter tidszone...
-                </div>
-
             </div>
 
         </div>
 
-        <div class="card col-6">
+        <div class="woody-user-settings-column">
 
-            <div class="card-header">
-                <div class="card-title">Pellet settings</div>
+            <div class="woody-user-settings-heading">
+                Pellet settings
             </div>
 
             <div style="padding:12px 0;">
@@ -3706,52 +3835,85 @@ strong {
 
             </div>
 
-            <div style="padding:12px 0;border-top:1px solid var(--border);">
+        </div>
 
-                <div style="margin-bottom:8px;">
-                    Feeder calibration
+    </div>
+
+</div>
+
+        <div class="card col-12">
+
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Controller parameters</div>
+                    <div class="card-subtitle">
+                        Live values and editable controller settings
+                    </div>
+                </div>
+            </div>
+
+            
+            <div class="live-parameters-wrapper">
+                <div class="card-subtitle" style="margin-bottom:12px;">
+                    Current values from the controller. Editable parameters can be changed and saved.
                 </div>
 
-                <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">
-                    Amount of pellets delivered by the auger in 6 minutes.
-                    This value is used to calculate pellet consumption.
+                <div id="liveParameters" class="live-parameters-clean"></div>
+            </div>
+
+
+        </div>
+
+        
+
+        
+
+    
+
+<div class="card col-12">
+
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">About</div>
+                        <div class="card-subtitle">
+                            Woody Monitor application information
+                        </div>
+                    </div>
                 </div>
 
-                <div style="display:flex;gap:10px;align-items:center;">
+                <div class="settings-list">
 
-                    <input
-                        id="feederGrams"
-                        type="number"
-                        value="1200"
-                        min="1"
-                        max="10000"
-                        step="1"
-                        style="width:110px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
-                    >
+                    <div class="settings-row">
+                        <div>
+                            <div>Application</div>
+                            <div class="card-subtitle">
+                                Pellet burner monitoring and control
+                            </div>
+                        </div>
+                        <div>Woody Monitor</div>
+                    </div>
 
-                    <span>gram</span>
+                    <div class="settings-row">
+                        <div>
+                            <div>Version</div>
+                        </div>
+                        <div id="aboutVersion">1.1</div>
+                    </div>
 
-                    <button
-                        class="btn"
-                        onclick="saveFeederSettings()"
-                    >
-                        Save
-                    </button>
+                    <div class="settings-row">
+                        <div>
+                            <div>Release date</div>
+                        </div>
+                        <div>30 August 2026</div>
+                    </div>
 
-                </div>
+                    
 
-                <div
-                    id="feederCalibrationInfo"
-                    style="font-size:13px;color:var(--muted);margin-top:10px;"
-                >
-                    1200 g / 6 min = 12.00 kg/h
                 </div>
 
             </div>
 
-        </div>
-
-    </div>
+</div>
 </section>
 
 </main>
@@ -3840,31 +4002,31 @@ const DISPLAY = {
     feeder_low: ["Feeder low","%"],
     feeder_high: ["Feeder high","%"],
     feed_per_minute: ["Feed per minute","g/min"],
-    motor_time: ["Motortid","s"],
-    motor_time_perm: ["Motortid permanent","s"],
-    cleaning_interval: ["Renseinterval","min"],
+    motor_time: ["Motor runtime","s"],
+    motor_time_perm: ["Permanent motor runtime","s"],
+    cleaning_interval: ["Cleaning interval","min"],
     cleaning_time: ["Cleaning time","s"],
     comp_clean_blower: ["Compressor cleaning blower","%"],
-    comp_clean_interval: ["Kompressor renseinterval","min"],
+    comp_clean_interval: ["Compressor cleaning interval","min"],
     comp_clean_time: ["Compressor cleaning time","s"],
-    comp_clean_wait: ["Kompressor renseventetid","s"],
+    comp_clean_wait: ["Compressor cleaning wait time","s"],
     time_minutes: ["Controller time",""],
-    timer_heating_period: ["Varmeperiode",""],
+    timer_heating_period: ["Heating period",""],
     timer_hotwater_period: ["Hot water period",""],
     ignition_count: ["Ignition count",""],
     ignition_time: ["Ignition time","s"],
-    el_time: ["Driftstid","s"],
-    el_time_perm: ["Driftstid permanent","s"],
+    el_time: ["Operating time","s"],
+    el_time_perm: ["Permanent operating time","s"],
     consumption: ["Pellet consumption","kg/h"],
     alarm: ["Alarm",""],
     mode: ["Operating mode",""],
     model: ["Controller model",""],
     version: ["Controller version",""],
-    language: ["Sprog",""],
-    autocalculation: ["Automatisk beregning",""],
+    language: ["Language",""],
+    autocalculation: ["Automatic calculation",""],
     flow: ["Flow",""],
-    light: ["Lys",""],
-    light_required: ["Lys påkrævet",""]
+    light: ["Light",""],
+    light_required: ["Required light",""]
 };
 
 function esc(value) {
@@ -4948,24 +5110,39 @@ async function loadStatus() {
 
         const status = await api("/status");
 
-        document.getElementById("systemStatus").innerHTML = `
-            <div class="event info">
-                <div class="event-icon">🟢</div>
-                <div class="event-text">
-                    API connected<br>
-                    <small>${status.parameter_count} live parameters • ${status.history_rows} history rows</small>
-                </div>
-            </div>
-        `;
+        const apiStatus =
+            document.getElementById("apiConnectionStatus");
+
+        const systemStatus =
+            document.getElementById("systemStatus");
+
+        if (apiStatus) {
+            apiStatus.textContent = "Active";
+            apiStatus.style.color = "var(--green)";
+        }
+
+        if (systemStatus) {
+            systemStatus.textContent =
+                `${status.parameter_count} live parameters • ${Number(status.history_rows).toLocaleString()} history rows`;
+        }
 
     } catch(error) {
 
-        document.getElementById("systemStatus").innerHTML = `
-            <div class="event error">
-                <div class="event-icon">🔴</div>
-                <div class="event-text">API unavailable</div>
-            </div>
-        `;
+        const apiStatus =
+            document.getElementById("apiConnectionStatus");
+
+        const systemStatus =
+            document.getElementById("systemStatus");
+
+        if (apiStatus) {
+            apiStatus.textContent = "Offline";
+            apiStatus.style.color = "var(--red)";
+        }
+
+        if (systemStatus) {
+            systemStatus.textContent =
+                "API unavailable";
+        }
     }
 }
 
@@ -5844,10 +6021,10 @@ async function exportHistoryCSV() {
         }
 
         const headers = [
-            "Tidspunkt",
+            "Timestamp",
             "Parameter",
-            "Værdi",
-            "Enhed"
+            "Value",
+            "Unit"
         ];
 
         const lines = [
@@ -6269,10 +6446,10 @@ function updateTimezoneInfo(data) {
         text += ` · UTC${offset}`;
 
     if (dst)
-        text += " · Sommertid aktiv";
+        text += " · Daylight saving time active";
 
     else
-        text += " · Vintertid aktiv";
+        text += " · Standard time active";
 
     if (localTime)
         text += ` · ${localTime}`;
@@ -6908,7 +7085,7 @@ function exportPelletCSV() {
     }
 
     const headers = [
-        "Tidspunkt",
+        "Timestamp",
         "Pellet consumption (kg)",
         "Pellet price (DKK/kg)",
         "Cost (DKK)"
@@ -8214,6 +8391,39 @@ function formatActivityTime(timestamp) {
 }
 
 
+
+function activityTypeLabel(type) {
+
+    const labels = {
+        SETTING: "SETTINGS",
+        BURNER: "BURNER",
+        ALARM: "ALARM",
+        CONTROLLER: "CONTROLLER",
+        MQTT: "MQTT",
+        NETWORK: "NETWORK",
+        SYSTEM: "SYSTEM"
+    };
+
+    return labels[type] || type || "OTHER";
+}
+
+
+function activityTypeClass(type) {
+
+    const classes = {
+        SETTING: "activity-type-setting",
+        BURNER: "activity-type-burner",
+        ALARM: "activity-type-alarm",
+        CONTROLLER: "activity-type-controller",
+        MQTT: "activity-type-mqtt",
+        NETWORK: "activity-type-network",
+        SYSTEM: "activity-type-system"
+    };
+
+    return classes[type] || "activity-type-other";
+}
+
+
 async function loadActivityLog() {
 
     const container =
@@ -8304,24 +8514,18 @@ async function loadActivityLog() {
                     `
                     : "";
 
+                const typeLabel =
+                    activityTypeLabel(item.type);
+
+                const typeClass =
+                    activityTypeClass(item.type);
+
                 return `
-                    <div style="
-                        padding:13px 4px;
-                        border-bottom:1px solid var(--border);
-                    ">
+                    <div class="activity-log-entry">
 
-                        <div style="
-                            display:flex;
-                            gap:12px;
-                            align-items:baseline;
-                            flex-wrap:wrap;
-                        ">
+                        <div class="activity-log-header">
 
-                            <span style="
-                                min-width:145px;
-                                color:var(--muted);
-                                font-size:11px;
-                            ">
+                            <span class="activity-log-time">
                                 ${esc(
                                     formatActivityTime(
                                         item.timestamp
@@ -8329,18 +8533,11 @@ async function loadActivityLog() {
                                 )}
                             </span>
 
-                            <span style="
-                                font-size:10px;
-                                font-weight:700;
-                                letter-spacing:.05em;
-                                opacity:.7;
-                            ">
-                                ${esc(item.type)}
+                            <span class="activity-type-badge ${typeClass}">
+                                ${esc(typeLabel)}
                             </span>
 
-                            <strong style="
-                                font-size:13px;
-                            ">
+                            <strong class="activity-log-event">
                                 ${esc(item.event)}
                             </strong>
 
@@ -8349,11 +8546,7 @@ async function loadActivityLog() {
                         ${
                             item.details
                             ? `
-                                <div style="
-                                    margin-top:4px;
-                                    color:var(--muted);
-                                    font-size:12px;
-                                ">
+                                <div class="activity-log-details">
                                     ${esc(item.details)}
                                 </div>
                             `
