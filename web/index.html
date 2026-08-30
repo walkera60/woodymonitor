@@ -4830,6 +4830,92 @@ strong {
                 <span style="float:right;color:var(--green);">Active</span>
             </div>
 
+            <div style="padding:12px 0;border-top:1px solid var(--border);">
+
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                    <span>Home Assistant</span>
+
+                    <span
+                        id="homeAssistantStatus"
+                        style="color:var(--muted);">
+                        Not configured
+                    </span>
+                </div>
+
+                <div
+                    id="homeAssistantTemperature"
+                    style="font-size:12px;color:var(--muted);margin-top:5px;">
+                    Indoor temperature: --
+                </div>
+
+                <div style="margin-top:12px;">
+
+                    <div class="card-subtitle">
+                        Home Assistant URL
+                    </div>
+
+                    <input
+                        id="homeAssistantUrl"
+                        type="text"
+                        placeholder="http://192.168.1.10:8123"
+                        autocomplete="off"
+                        style="width:100%;box-sizing:border-box;margin-top:5px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+
+                </div>
+
+                <div style="margin-top:10px;">
+
+                    <div class="card-subtitle">
+                        Indoor temperature entity
+                    </div>
+
+                    <input
+                        id="homeAssistantIndoorEntity"
+                        type="text"
+                        placeholder="sensor.living_room_temperature"
+                        autocomplete="off"
+                        style="width:100%;box-sizing:border-box;margin-top:5px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+
+                </div>
+
+                <div style="margin-top:10px;">
+
+                    <div class="card-subtitle">
+                        Long-lived access token
+                    </div>
+
+                    <input
+                        id="homeAssistantToken"
+                        type="password"
+                        placeholder="Leave blank to keep existing token"
+                        autocomplete="new-password"
+                        style="width:100%;box-sizing:border-box;margin-top:5px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+
+                </div>
+
+                <div style="display:flex;gap:8px;margin-top:10px;">
+
+                    <button
+                        class="btn"
+                        type="button"
+                        onclick="saveHomeAssistantSettings()">
+                        Save & Test
+                    </button>
+
+                    <button
+                        class="btn"
+                        type="button"
+                        onclick="testHomeAssistantConnection()">
+                        Test
+                    </button>
+
+                </div>
+
+            </div>
+
 
 
         </div>
@@ -5100,6 +5186,7 @@ let historyEnd = null;
 let consumptionStart = null;
 let consumptionEnd = null;
 let historyParameters = [];
+let homeAssistantIndoorTemperature = null;
 
 let historyAutoUpdate =
     localStorage.getItem("woodyHistoryAutoUpdate") !== "false";
@@ -5321,6 +5408,18 @@ async function loadLive() {
         const data = await api("/live");
 
         liveData = data.values || {};
+
+        /*
+         * Indoor temperature comes from Home Assistant,
+         * not from the burner controller.
+         */
+        if (
+            homeAssistantIndoorTemperature !== null &&
+            Number.isFinite(homeAssistantIndoorTemperature)
+        ) {
+            liveData.indoor_temp =
+                homeAssistantIndoorTemperature;
+        }
 
         updateConnection(data.connected);
 
@@ -7354,6 +7453,20 @@ let editableControllerSettings = new Map();
 
 function renderLiveParameters() {
 
+    /*
+     * Indoor temperature is an external Home Assistant value.
+     * It is presented as a read-only parameter alongside the
+     * controller values without pretending it is writable.
+     */
+    if (
+        homeAssistantIndoorTemperature !== null
+        && Number.isFinite(homeAssistantIndoorTemperature)
+    ) {
+        liveData.indoor_temp =
+            homeAssistantIndoorTemperature;
+    }
+
+
     const container = document.getElementById("liveParameters");
 
     if (!container)
@@ -8119,6 +8232,7 @@ function buildHistoryParameterList() {
         "flue_gas_temp",
         "return_temp",
         "outdoor_temp",
+        "indoor_temp",
         "draft",
         "fan"
     ];
@@ -9520,6 +9634,17 @@ function selectAllParameters() {
     updateHistoryChart();
 }
 
+/*
+ * Refresh external Home Assistant values independently
+ * of the burner controller polling.
+ */
+setInterval(() => {
+    loadHomeAssistantSettings().catch(error =>
+        console.error("Home Assistant refresh:", error)
+    );
+}, 30000);
+
+
 function clearAllParameters() {
 
     syncHistoryParameterCheckboxes([]);
@@ -9528,6 +9653,279 @@ function clearAllParameters() {
 
     updateHistoryChart();
 }
+
+
+function updateHomeAssistantUI(data) {
+
+    if (!data)
+        return;
+
+    const url =
+        document.getElementById(
+            "homeAssistantUrl"
+        );
+
+    const entity =
+        document.getElementById(
+            "homeAssistantIndoorEntity"
+        );
+
+    const token =
+        document.getElementById(
+            "homeAssistantToken"
+        );
+
+    const status =
+        document.getElementById(
+            "homeAssistantStatus"
+        );
+
+    const temperature =
+        document.getElementById(
+            "homeAssistantTemperature"
+        );
+
+    if (
+        url &&
+        document.activeElement !== url
+    ) {
+        url.value =
+            data.url || "";
+    }
+
+    if (
+        entity &&
+        document.activeElement !== entity
+    ) {
+        entity.value =
+            data.indoor_temperature_entity || "";
+    }
+
+    if (token) {
+
+        token.placeholder =
+            data.token_configured
+                ? "Token configured — leave blank to keep"
+                : "Enter long-lived access token";
+    }
+
+    const ha =
+        data.status || data;
+
+    homeAssistantIndoorTemperature =
+        (
+            ha.connected &&
+            ha.temperature !== null &&
+            ha.temperature !== undefined
+        )
+            ? Number(ha.temperature)
+            : null;
+
+    if (
+        typeof renderLiveParameters === "function"
+        && liveData
+        && Object.keys(liveData).length
+    ) {
+        renderLiveParameters();
+    }
+
+    /*
+     * indoor_temp may only appear in history after the first
+     * Home Assistant sample has been stored.
+     */
+    if (
+        ha.connected &&
+        typeof loadHistoryParameters === "function"
+    ) {
+        loadHistoryParameters();
+    }
+
+    if (status) {
+
+        if (!ha.configured) {
+
+            status.textContent =
+                "Not configured";
+
+            status.style.color =
+                "var(--muted)";
+
+        } else if (ha.connected) {
+
+            status.textContent =
+                "Connected";
+
+            status.style.color =
+                "var(--green)";
+
+        } else {
+
+            status.textContent =
+                "Offline";
+
+            status.style.color =
+                "var(--red)";
+        }
+    }
+
+    if (temperature) {
+
+        if (
+            ha.connected &&
+            ha.temperature !== null &&
+            ha.temperature !== undefined
+        ) {
+
+            temperature.textContent =
+                `Indoor temperature: ${Number(
+                    ha.temperature
+                ).toFixed(1)} ${ha.unit || "°C"}`;
+
+        } else {
+
+            temperature.textContent =
+                ha.error
+                    ? `Indoor temperature: -- · ${ha.error}`
+                    : "Indoor temperature: --";
+        }
+    }
+}
+
+
+async function loadHomeAssistantSettings() {
+
+    try {
+
+        const response =
+            await fetch(
+                API + "/settings/home-assistant",
+                {
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                "Could not load Home Assistant settings"
+            );
+
+        const data =
+            await response.json();
+
+        updateHomeAssistantUI(
+            data
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Home Assistant settings:",
+            error
+        );
+    }
+}
+
+
+async function saveHomeAssistantSettings() {
+
+    const url =
+        document.getElementById(
+            "homeAssistantUrl"
+        )?.value.trim() || "";
+
+    const entity =
+        document.getElementById(
+            "homeAssistantIndoorEntity"
+        )?.value.trim() || "";
+
+    const tokenInput =
+        document.getElementById(
+            "homeAssistantToken"
+        );
+
+    const token =
+        tokenInput?.value.trim() || "";
+
+    const params =
+        new URLSearchParams({
+            url: url,
+            indoor_temperature_entity:
+                entity,
+            token: token
+        });
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/home-assistant?" +
+                params.toString(),
+                {
+                    method: "POST"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                await response.text()
+            );
+
+        const data =
+            await response.json();
+
+        if (tokenInput)
+            tokenInput.value = "";
+
+        updateHomeAssistantUI(
+            data
+        );
+
+    } catch (error) {
+
+        alert(
+            "Home Assistant settings could not be saved."
+        );
+
+        console.error(error);
+    }
+}
+
+
+async function testHomeAssistantConnection() {
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/home-assistant/test",
+                {
+                    method: "POST",
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                await response.text()
+            );
+
+        const data =
+            await response.json();
+
+        updateHomeAssistantUI(
+            data
+        );
+
+    } catch (error) {
+
+        alert(
+            "Home Assistant connection test failed."
+        );
+    }
+}
+
 
 async function loadTimezoneSettings() {
 
@@ -13393,7 +13791,8 @@ async function initialize() {
         loadTimezoneSettings(),
         loadCleaningSettings(),
         loadAdvancedTimerSettings(),
-        loadWeatherCompensationStatus()
+        loadWeatherCompensationStatus(),
+        loadHomeAssistantSettings()
     ];
 
     updateAutoUpdateButtons();

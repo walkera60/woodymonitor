@@ -26,6 +26,230 @@ from Scotteprotocol.protocol import Protocol
 from database import Database
 import json
 import paho.mqtt.client as mqtt
+import urllib.request
+import urllib.error
+
+
+
+# ============================================================
+# HOME ASSISTANT INTEGRATION
+# ============================================================
+
+HOME_ASSISTANT_SETTINGS_FILE = (
+    BASE_DIR / "data" / "home_assistant.json"
+)
+
+home_assistant_lock = threading.Lock()
+
+home_assistant_settings = {
+    "url": "",
+    "token": "",
+    "indoor_temperature_entity": ""
+}
+
+
+def load_home_assistant_settings():
+
+    try:
+
+        if not HOME_ASSISTANT_SETTINGS_FILE.exists():
+            return
+
+        with HOME_ASSISTANT_SETTINGS_FILE.open(
+            "r",
+            encoding="utf-8"
+        ) as f:
+            data = json.load(f)
+
+        with home_assistant_lock:
+
+            home_assistant_settings["url"] = str(
+                data.get("url", "")
+            ).strip().rstrip("/")
+
+            home_assistant_settings["token"] = str(
+                data.get("token", "")
+            ).strip()
+
+            home_assistant_settings[
+                "indoor_temperature_entity"
+            ] = str(
+                data.get(
+                    "indoor_temperature_entity",
+                    ""
+                )
+            ).strip()
+
+        logger.info(
+            "Home Assistant settings loaded"
+        )
+
+    except Exception:
+        logger.exception(
+            "Could not load Home Assistant settings"
+        )
+
+
+def save_home_assistant_settings():
+
+    HOME_ASSISTANT_SETTINGS_FILE.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    with home_assistant_lock:
+
+        data = dict(
+            home_assistant_settings
+        )
+
+    temporary = (
+        HOME_ASSISTANT_SETTINGS_FILE
+        .with_suffix(".tmp")
+    )
+
+    with temporary.open(
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            data,
+            f,
+            indent=2
+        )
+
+    os.chmod(
+        temporary,
+        0o600
+    )
+
+    temporary.replace(
+        HOME_ASSISTANT_SETTINGS_FILE
+    )
+
+    os.chmod(
+        HOME_ASSISTANT_SETTINGS_FILE,
+        0o600
+    )
+
+
+def get_home_assistant_temperature():
+
+    with home_assistant_lock:
+
+        url = home_assistant_settings[
+            "url"
+        ]
+
+        token = home_assistant_settings[
+            "token"
+        ]
+
+        entity = home_assistant_settings[
+            "indoor_temperature_entity"
+        ]
+
+    if not url or not token or not entity:
+
+        return {
+            "configured": False,
+            "connected": False,
+            "entity": entity or None,
+            "temperature": None,
+            "unit": None,
+            "error": None
+        }
+
+    request_url = (
+        url.rstrip("/")
+        + "/api/states/"
+        + entity
+    )
+
+    request = urllib.request.Request(
+        request_url,
+        headers={
+            "Authorization":
+                "Bearer " + token,
+            "Content-Type":
+                "application/json"
+        }
+    )
+
+    try:
+
+        with urllib.request.urlopen(
+            request,
+            timeout=5
+        ) as response:
+
+            payload = json.loads(
+                response.read().decode(
+                    "utf-8"
+                )
+            )
+
+        raw_state = payload.get(
+            "state"
+        )
+
+        temperature = float(
+            raw_state
+        )
+
+        attributes = payload.get(
+            "attributes",
+            {}
+        )
+
+        return {
+            "configured": True,
+            "connected": True,
+            "entity": entity,
+            "temperature": temperature,
+            "unit": attributes.get(
+                "unit_of_measurement",
+                "°C"
+            ),
+            "friendly_name": attributes.get(
+                "friendly_name",
+                entity
+            ),
+            "error": None
+        }
+
+    except urllib.error.HTTPError as error:
+
+        if error.code == 401:
+            message = "Authentication failed"
+        elif error.code == 404:
+            message = "Entity not found"
+        else:
+            message = (
+                "Home Assistant HTTP "
+                + str(error.code)
+            )
+
+        return {
+            "configured": True,
+            "connected": False,
+            "entity": entity,
+            "temperature": None,
+            "unit": None,
+            "error": message
+        }
+
+    except Exception as error:
+
+        return {
+            "configured": True,
+            "connected": False,
+            "entity": entity,
+            "temperature": None,
+            "unit": None,
+            "error": str(error)
+        }
 
 
 # ============================================================
@@ -2333,6 +2557,24 @@ def history_loop():
                     if parameter in HISTORY_PARAMETERS
                 }
 
+                # Indoor temperature is supplied by the optional
+                # Home Assistant integration rather than the burner.
+                try:
+                    ha_status = get_home_assistant_temperature()
+
+                    if (
+                        ha_status.get("connected")
+                        and ha_status.get("temperature") is not None
+                    ):
+                        history_values["indoor_temp"] = float(
+                            ha_status["temperature"]
+                        )
+
+                except Exception:
+                    logger.exception(
+                        "Home Assistant indoor temperature history error"
+                    )
+
                 if history_values:
                     db.insert_measurements(
                         history_values
@@ -2492,6 +2734,118 @@ def status():
 # ============================================================
 # API: TIMEZONE SETTINGS
 # ============================================================
+
+
+@app.get("/api/v1/settings/home-assistant")
+def get_home_assistant_settings_api():
+
+    with home_assistant_lock:
+
+        url = home_assistant_settings[
+            "url"
+        ]
+
+        entity = home_assistant_settings[
+            "indoor_temperature_entity"
+        ]
+
+        token_configured = bool(
+            home_assistant_settings[
+                "token"
+            ]
+        )
+
+    status = get_home_assistant_temperature()
+
+    return {
+        "url": url,
+        "indoor_temperature_entity": entity,
+        "token_configured": token_configured,
+        "status": status
+    }
+
+
+@app.post("/api/v1/settings/home-assistant")
+def set_home_assistant_settings_api(
+    url: str = Query(...),
+    indoor_temperature_entity: str = Query(...),
+    token: str = Query("")
+):
+
+    clean_url = (
+        str(url)
+        .strip()
+        .rstrip("/")
+    )
+
+    clean_entity = (
+        str(indoor_temperature_entity)
+        .strip()
+    )
+
+    clean_token = str(
+        token
+    ).strip()
+
+    if clean_url and not (
+        clean_url.startswith("http://")
+        or clean_url.startswith("https://")
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Home Assistant URL must start "
+                "with http:// or https://"
+            )
+        )
+
+    with home_assistant_lock:
+
+        home_assistant_settings[
+            "url"
+        ] = clean_url
+
+        home_assistant_settings[
+            "indoor_temperature_entity"
+        ] = clean_entity
+
+        # Blank token means keep the existing token.
+        if clean_token:
+            home_assistant_settings[
+                "token"
+            ] = clean_token
+
+    save_home_assistant_settings()
+
+    status = get_home_assistant_temperature()
+
+    try:
+        db.add_activity(
+            "SETTING",
+            "Home Assistant",
+            "Home Assistant integration updated"
+        )
+    except Exception:
+        pass
+
+    return {
+        "url": clean_url,
+        "indoor_temperature_entity":
+            clean_entity,
+        "token_configured": bool(
+            home_assistant_settings[
+                "token"
+            ]
+        ),
+        "status": status
+    }
+
+
+@app.post("/api/v1/settings/home-assistant/test")
+def test_home_assistant_api():
+
+    return get_home_assistant_temperature()
+
 
 @app.get("/api/v1/settings/timezone")
 def get_timezone_settings():
@@ -4795,6 +5149,7 @@ def startup():
     load_cleaning_settings()
     load_advanced_timer_settings()
     load_weather_compensation_settings()
+    load_home_assistant_settings()
 
     try:
         backfill_daily_stats()
