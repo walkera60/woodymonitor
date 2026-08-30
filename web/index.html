@@ -3976,6 +3976,84 @@ strong {
 
 </style>
 
+
+<style id="pellet-overview-chart-style">
+
+.pellet-overview-controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 18px;
+    margin-bottom: -2px;
+}
+
+.pellet-overview-card-wide {
+    grid-column: 1 / -1;
+}
+
+
+.pellet-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.pellet-overview-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    min-width: 0;
+}
+
+.pellet-overview-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+
+.pellet-overview-subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+}
+
+.pellet-overview-chart {
+    position: relative;
+    height: 250px;
+}
+
+.pellet-overview-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.pellet-overview-footer strong {
+    color: var(--text);
+    font-weight: 600;
+}
+
+@media (max-width: 800px) {
+
+    .pellet-overview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pellet-overview-chart {
+        height: 230px;
+    }
+
+}
+
+</style>
+
 </head>
 
 <body>
@@ -4529,7 +4607,189 @@ strong {
         <p>Pellet consumption calculated from feeder runtime</p>
     </div>
 
-    <div class="card">
+    
+
+    <div class="pellet-overview-grid">
+
+            <div class="pellet-overview-card">
+
+                <div class="pellet-overview-title">
+                    Last 24 hours
+                </div>
+
+                <div class="pellet-overview-subtitle">
+                    Cumulative pellet consumption
+                </div>
+
+                <div class="pellet-overview-chart">
+                    <canvas id="pelletOverview24h"></canvas>
+                </div>
+
+                <div class="pellet-overview-footer">
+                    <span>
+                        Average:
+                        <strong id="pelletOverview24hAverage">--</strong>
+                    </span>
+                    <span>
+                        Total:
+                        <strong id="pelletOverview24hTotal">--</strong>
+                    </span>
+                    <span>
+                        Highest consumption:
+                        <strong id="pelletOverview24hHighest">--</strong>
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div class="pellet-overview-card">
+
+                <div class="pellet-overview-title">
+                    Last 7 days
+                </div>
+
+                <div class="pellet-overview-subtitle">
+                    Cumulative pellet consumption
+                </div>
+
+                <div class="pellet-overview-chart">
+                    <canvas id="pelletOverview7d"></canvas>
+                </div>
+
+                <div class="pellet-overview-footer">
+                    <span>
+                        Average:
+                        <strong id="pelletOverview7dAverage">--</strong>
+                    </span>
+                    <span>
+                        Total:
+                        <strong id="pelletOverview7dTotal">--</strong>
+                    </span>
+                    <span>
+                        Highest consumption:
+                        <strong id="pelletOverview7dHighest">--</strong>
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div class="pellet-overview-card">
+
+                <div class="pellet-overview-title">
+                    Last 3 months
+                </div>
+
+                <div class="pellet-overview-subtitle">
+                    Cumulative pellet consumption
+                </div>
+
+                <div class="pellet-overview-chart">
+                    <canvas id="pelletOverview3m"></canvas>
+                </div>
+
+                <div class="pellet-overview-footer">
+                    <span>
+                        Average:
+                        <strong id="pelletOverview3mAverage">--</strong>
+                    </span>
+                    <span>
+                        Total:
+                        <strong id="pelletOverview3mTotal">--</strong>
+                    </span>
+                    <span>
+                        Highest consumption:
+                        <strong id="pelletOverview3mHighest">--</strong>
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div class="pellet-overview-card">
+
+                <div class="pellet-overview-title">
+                    Last 12 months
+                </div>
+
+                <div class="pellet-overview-subtitle">
+                    Cumulative pellet consumption
+                </div>
+
+                <div class="pellet-overview-chart">
+                    <canvas id="pelletOverview12m"></canvas>
+                </div>
+
+                <div class="pellet-overview-footer">
+                    <span>
+                        Average:
+                        <strong id="pelletOverview12mAverage">--</strong>
+                    </span>
+                    <span>
+                        Total:
+                        <strong id="pelletOverview12mTotal">--</strong>
+                    </span>
+                    <span>
+                        Highest consumption:
+                        <strong id="pelletOverview12mHighest">--</strong>
+                    </span>
+                </div>
+
+            </div>
+
+            <div class="pellet-overview-card pellet-overview-card-wide">
+
+                <div class="pellet-overview-title">
+                    Last 5 years
+                </div>
+
+                <div class="pellet-overview-subtitle">
+                    Annual pellet consumption
+                </div>
+
+                <div class="pellet-overview-chart">
+                    <canvas id="pelletOverview5y"></canvas>
+                </div>
+
+                <div class="pellet-overview-footer">
+
+                    <span>
+                        Average:
+                        <strong id="pelletOverview5yAverage">--</strong>
+                    </span>
+
+                    <span>
+                        Total:
+                        <strong id="pelletOverview5yTotal">--</strong>
+                    </span>
+                    <span>
+                        Highest consumption:
+                        <strong id="pelletOverview5yHighest">--</strong>
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+<div class="card">
+
+        <div class="card-header">
+
+            <div>
+                <div class="card-title">
+                    Custom
+                </div>
+
+                <div class="card-subtitle">
+                    Select a custom period and explore pellet consumption
+                </div>
+            </div>
+
+        </div>
+
 
         <!-- PELLET CHART TOOLBAR -->
         <div class="chart-toolbar">
@@ -4656,54 +4916,19 @@ strong {
 
         </div>
 
-        <div class="pellet-summary">
-
-            <div class="pellet-summary-item">
-                <div class="pellet-summary-label">AVG / DAY</div>
-                <div id="pelletStatsDay" class="pellet-summary-value">--</div>
-            </div>
-
-            <div class="pellet-summary-item">
-                <div class="pellet-summary-label">AVG / WEEK</div>
-                <div id="pelletStatsWeek" class="pellet-summary-value">--</div>
-            </div>
-
-            <div class="pellet-summary-item">
-                <div class="pellet-summary-label">AVG / MONTH</div>
-                <div id="pelletStatsMonth" class="pellet-summary-value">--</div>
-            </div>
-
-            <div class="pellet-summary-item">
-                <div class="pellet-summary-label">AVG / YEAR</div>
-                <div id="pelletStatsYear" class="pellet-summary-value">--</div>
-            </div>
+        
 
         </div>
 
-        <div class="pellet-summary">
-
-            <div class="pellet-summary-item">
-                <div class="pellet-summary-label">MAX CONSUMPTION</div>
-                <div id="pelletStatsMaxConsumption"
-                     class="pellet-summary-value">--</div>
-                <div id="pelletStatsMaxConsumptionInfo"
-                     class="card-subtitle">--</div>
-            </div>
-
-            <div class="pellet-summary-item">
-                <div class="pellet-summary-label">MAX DAILY OUTPUT</div>
-                <div id="pelletStatsMaxOutput"
-                     class="pellet-summary-value">--</div>
-                <div id="pelletStatsMaxOutputInfo"
-                     class="card-subtitle">--</div>
-            </div>
+        
 
         </div>
 
-        <div id="pelletStatsCoverage"
-             class="card-subtitle">
-            Historical statistics: --
-        </div>
+        
+
+        
+
+        
 
     </div>
 
@@ -5020,6 +5245,52 @@ strong {
                         Save
                     </button>
                 </div>
+            </div>
+
+            <div style="padding:12px 0;border-top:1px solid var(--border);">
+
+                <div style="font-weight:600;margin-bottom:8px;">
+                    Pellet history import
+                </div>
+
+                <div style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
+                    CSV format: one row per period using <code>YYYY-MM;kg</code>.
+                    Example: <code>2023-01;425</code> means 425 kg used in January 2023.
+                    Daily values using <code>YYYY-MM-DD;kg</code> are also supported.
+                </div>
+
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+
+                    <button
+                        class="btn"
+                        type="button"
+                        onclick="downloadPelletHistoryTemplate()"
+                    >
+                        Download CSV template
+                    </button>
+
+                    <input
+                        id="pelletHistoryFile"
+                        type="file"
+                        accept=".csv,text/csv"
+                        style="max-width:260px;"
+                    >
+
+                    <button
+                        class="btn"
+                        type="button"
+                        onclick="importPelletHistory()"
+                    >
+                        Import CSV
+                    </button>
+
+                </div>
+
+                <div
+                    id="pelletHistoryImportStatus"
+                    style="margin-top:8px;font-size:13px;color:var(--muted);"
+                ></div>
+
             </div>
 
             <div style="padding:12px 0;border-top:1px solid var(--border);">
@@ -10214,6 +10485,70 @@ async function savePelletPrice() {
 }
 
 
+
+function downloadPelletHistoryTemplate() {
+    window.location.href =
+        API + "/settings/pellet-history/template";
+}
+
+async function importPelletHistory() {
+    const input =
+        document.getElementById("pelletHistoryFile");
+
+    const status =
+        document.getElementById(
+            "pelletHistoryImportStatus"
+        );
+
+    if (!input || !input.files || !input.files.length) {
+        status.textContent =
+            "Select a CSV file first.";
+        return;
+    }
+
+    const file = input.files[0];
+
+    status.textContent = "Importing...";
+
+    try {
+        const response = await fetch(
+            API + "/settings/pellet-history/import",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "text/csv"
+                },
+                body: file
+            }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                result.detail || "Import failed"
+            );
+        }
+
+        status.textContent =
+            "Import completed: " +
+            result.imported +
+            " records, " +
+            result.total_kg +
+            " kg (" +
+            result.from +
+            " to " +
+            result.to +
+            ").";
+
+        input.value = "";
+
+    } catch (error) {
+        status.textContent =
+            "Import failed: " + error.message;
+    }
+}
+
 async function loadFeederSettings() {
 
     try {
@@ -11090,9 +11425,1695 @@ async function updatePelletStatistics() {
 }
 
 
+
+let pelletOverviewCharts = {};
+
+function pelletOverviewBucketDate(timestamp, mode) {
+
+    const d = new Date(timestamp.getTime() - 1);
+
+    if (mode === "month") {
+        return new Date(
+            d.getFullYear(),
+            d.getMonth(),
+            1,
+            0, 0, 0, 0
+        );
+    }
+
+    if (mode === "day") {
+        return new Date(
+            d.getFullYear(),
+            d.getMonth(),
+            d.getDate(),
+            0, 0, 0, 0
+        );
+    }
+
+    return new Date(
+        d.getFullYear(),
+        d.getMonth(),
+        d.getDate(),
+        d.getHours(),
+        0, 0, 0
+    );
+}
+
+
+function pelletOverviewLabel(date, mode) {
+
+    if (mode === "hour") {
+        return date.toLocaleTimeString(
+            "en-GB",
+            {
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
+    }
+
+    if (mode === "month") {
+        return date.toLocaleDateString(
+            "en-GB",
+            {
+                month: "short",
+                year: "2-digit"
+            }
+        );
+    }
+
+    return date.toLocaleDateString(
+        "en-GB",
+        {
+            day: "2-digit",
+            month: "short"
+        }
+    );
+}
+
+
+function pelletOverviewFormatKg(value, decimals = 2) {
+
+    if (!Number.isFinite(value)) {
+        return "--";
+    }
+
+    return value.toLocaleString(
+        "en-GB",
+        {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        }
+    ) + " kg";
+}
+
+
+
+async function updatePelletOverviewChart(config) {
+
+    /*
+     * --------------------------------------------------------
+     * PELLET CONSUMPTION
+     * --------------------------------------------------------
+     */
+
+    const result =
+        await api(
+            `/consumption/pellets?hours=${config.hours}`
+        );
+
+    const rows =
+        Array.isArray(result.data)
+            ? result.data
+            : [];
+
+
+    const buckets = new Map();
+
+
+    for (const row of rows) {
+
+        const timestamp =
+            new Date(row.timestamp);
+
+        const kg =
+            Number(row.kg);
+
+        if (
+            !Number.isFinite(timestamp.getTime()) ||
+            !Number.isFinite(kg)
+        ) {
+            continue;
+        }
+
+
+        const bucketDate =
+            pelletOverviewBucketDate(
+                timestamp,
+                config.mode
+            );
+
+        const key =
+            bucketDate.getTime();
+
+
+        if (!buckets.has(key)) {
+
+            buckets.set(
+                key,
+                {
+                    date: bucketDate,
+                    kg: 0,
+                    temperatures: [],
+                    powers: []
+                }
+            );
+        }
+
+
+        buckets.get(key).kg += kg;
+    }
+
+
+    /*
+     * --------------------------------------------------------
+     * TEMPERATURE + BOILER POWER
+     * --------------------------------------------------------
+     */
+
+    try {
+
+        if (config.mode === "hour") {
+
+            const metrics =
+                await api(
+                    `/consumption/overview/hourly?hours=${config.hours}`
+                );
+
+            const metricRows =
+                Array.isArray(metrics.data)
+                    ? metrics.data
+                    : [];
+
+
+            for (const row of metricRows) {
+
+                const timestamp =
+                    new Date(row.timestamp);
+
+                if (
+                    !Number.isFinite(
+                        timestamp.getTime()
+                    )
+                ) {
+                    continue;
+                }
+
+
+                const bucketDate =
+                    pelletOverviewBucketDate(
+                        timestamp,
+                        "hour"
+                    );
+
+                const key =
+                    bucketDate.getTime();
+
+
+                if (!buckets.has(key)) {
+
+                    buckets.set(
+                        key,
+                        {
+                            date: bucketDate,
+                            kg: 0,
+                            temperatures: [],
+                            powers: []
+                        }
+                    );
+                }
+
+
+                const bucket =
+                    buckets.get(key);
+
+
+                const temperature =
+                    Number(
+                        row.outside_temp_avg
+                    );
+
+                if (
+                    row.outside_temp_avg !== null &&
+                    Number.isFinite(temperature)
+                ) {
+                    bucket.temperatures.push(
+                        temperature
+                    );
+                }
+
+
+                const power =
+                    Number(
+                        row.power_avg
+                    );
+
+                if (
+                    row.power_avg !== null &&
+                    Number.isFinite(power)
+                ) {
+                    bucket.powers.push(
+                        power
+                    );
+                }
+            }
+
+        } else {
+
+            const days =
+                Math.ceil(
+                    config.hours / 24
+                ) + 2;
+
+            const metrics =
+                await api(
+                    `/consumption/overview?days=${days}`
+                );
+
+            const metricRows =
+                Array.isArray(metrics.daily)
+                    ? metrics.daily
+                    : [];
+
+
+            for (const row of metricRows) {
+
+                const timestamp =
+                    new Date(
+                        row.date +
+                        "T12:00:00"
+                    );
+
+
+                const bucketDate =
+                    pelletOverviewBucketDate(
+                        timestamp,
+                        config.mode
+                    );
+
+                const key =
+                    bucketDate.getTime();
+
+
+                if (!buckets.has(key)) {
+
+                    buckets.set(
+                        key,
+                        {
+                            date: bucketDate,
+                            kg: 0,
+                            temperatures: [],
+                            powers: []
+                        }
+                    );
+                }
+
+
+                const bucket =
+                    buckets.get(key);
+
+
+                const temperature =
+                    Number(
+                        row.outside_temp_avg
+                    );
+
+                if (
+                    row.outside_temp_avg !== null &&
+                    Number.isFinite(temperature)
+                ) {
+                    bucket.temperatures.push(
+                        temperature
+                    );
+                }
+
+
+                const power =
+                    Number(
+                        row.power_avg
+                    );
+
+                if (
+                    row.power_avg !== null &&
+                    Number.isFinite(power)
+                ) {
+                    bucket.powers.push(
+                        power
+                    );
+                }
+            }
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Unable to load chart metrics",
+            error
+        );
+    }
+
+
+    const items =
+        Array.from(
+            buckets.values()
+        ).sort(
+            (a, b) =>
+                a.date - b.date
+        );
+
+
+    function arrayAverage(values) {
+
+        if (!values.length) {
+            return null;
+        }
+
+        return (
+            values.reduce(
+                (sum, value) =>
+                    sum + value,
+                0
+            ) /
+            values.length
+        );
+    }
+
+
+    /*
+     * CUMULATIVE CONSUMPTION
+     */
+
+    let cumulative = 0;
+
+    const actual =
+        items.map(item => {
+
+            cumulative += item.kg;
+
+            return cumulative;
+        });
+
+
+    const totalKg =
+        cumulative;
+
+
+    const bucketCount =
+        Math.max(
+            items.length,
+            1
+        );
+
+
+    const averagePerBucket =
+        totalKg /
+        bucketCount;
+
+
+    const estimated =
+        items.map(
+            (_, index) =>
+                averagePerBucket *
+                (index + 1)
+        );
+
+
+    const outdoorTemperatures =
+        items.map(
+            item =>
+                arrayAverage(
+                    item.temperatures
+                )
+        );
+
+
+    const boilerPowers =
+        items.map(
+            item =>
+                arrayAverage(
+                    item.powers
+                )
+        );
+
+
+    const labels =
+        items.map(
+            item =>
+                pelletOverviewLabel(
+                    item.date,
+                    config.mode
+                )
+        );
+
+
+    /*
+     * HIGHEST CONSUMPTION BUCKET
+     */
+
+    let highest = null;
+
+    for (const item of items) {
+
+        if (
+            !highest ||
+            item.kg > highest.kg
+        ) {
+            highest = item;
+        }
+    }
+
+
+    const canvas =
+        document.getElementById(
+            config.canvas
+        );
+
+    if (!canvas) {
+        return;
+    }
+
+
+    if (
+        pelletOverviewCharts[
+            config.canvas
+        ]
+    ) {
+
+        pelletOverviewCharts[
+            config.canvas
+        ].destroy();
+    }
+
+
+    pelletOverviewCharts[
+        config.canvas
+    ] = new Chart(
+        canvas.getContext("2d"),
+        {
+
+            type: "bar",
+
+            data: {
+
+                labels: labels,
+
+                datasets: [
+
+                    {
+                        label:
+                            "Estimated consumption",
+
+                        data:
+                            estimated,
+
+                        backgroundColor:
+                            "rgba(148, 163, 184, 0.20)",
+
+                        borderColor:
+                            "rgba(148, 163, 184, 0.35)",
+
+                        borderWidth:
+                            1,
+
+                        grouped:
+                            false,
+
+                        order:
+                            3
+                    },
+
+
+                    {
+                        label:
+                            "Actual consumption",
+
+                        data:
+                            actual,
+
+                        backgroundColor:
+                            "rgba(59, 130, 246, 0.70)",
+
+                        borderColor:
+                            "rgba(59, 130, 246, 0.95)",
+
+                        borderWidth:
+                            1,
+
+                        grouped:
+                            false,
+
+                        order:
+                            2,
+
+                        barPercentage:
+                            0.62,
+
+                        categoryPercentage:
+                            0.82
+                    },
+
+
+                    {
+                        type:
+                            "line",
+
+                        label:
+                            "Average outdoor temperature",
+
+                        data:
+                            outdoorTemperatures,
+
+                        yAxisID:
+                            "temperature",
+
+                        borderColor:
+                            "rgba(245, 158, 11, 0.95)",
+
+                        backgroundColor:
+                            "rgba(245, 158, 11, 0.15)",
+
+                        borderWidth:
+                            2,
+
+                        pointRadius:
+                            2,
+
+                        pointHoverRadius:
+                            4,
+
+                        tension:
+                            0.25,
+
+                        spanGaps:
+                            false,
+
+                        order:
+                            1
+                    },
+
+
+                    {
+                        type:
+                            "line",
+
+                        label:
+                            "Average boiler power",
+
+                        data:
+                            boilerPowers,
+
+                        yAxisID:
+                            "power",
+
+                        borderColor:
+                            "rgba(16, 185, 129, 0.95)",
+
+                        backgroundColor:
+                            "rgba(16, 185, 129, 0.12)",
+
+                        borderWidth:
+                            2,
+
+                        pointRadius:
+                            2,
+
+                        pointHoverRadius:
+                            4,
+
+                        tension:
+                            0.25,
+
+                        spanGaps:
+                            false,
+
+                        order:
+                            0
+                    }
+
+                ]
+
+            },
+
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                interaction: {
+                    mode: "index",
+                    intersect: false
+                },
+
+
+                plugins: {
+
+                    legend: {
+                        display: true,
+                        position: "bottom",
+
+                        labels: {
+                            boxWidth: 18,
+                            boxHeight: 3,
+                            padding: 12,
+                            font: {
+                                size: 11
+                            },
+                            usePointStyle: false
+                        }
+                    },
+
+
+                    tooltip: {
+
+                        callbacks: {
+
+                            label:
+                                function(context) {
+
+                                    const value =
+                                        Number(
+                                            context.raw
+                                        );
+
+                                    if (
+                                        context.dataset.yAxisID ===
+                                        "temperature"
+                                    ) {
+
+                                        return (
+                                            context.dataset.label +
+                                            ": " +
+                                            (
+                                                Number.isFinite(value)
+                                                    ? value.toFixed(1) +
+                                                      " °C"
+                                                    : "--"
+                                            )
+                                        );
+                                    }
+
+
+                                    if (
+                                        context.dataset.yAxisID ===
+                                        "power"
+                                    ) {
+
+                                        return (
+                                            context.dataset.label +
+                                            ": " +
+                                            (
+                                                Number.isFinite(value)
+                                                    ? value.toFixed(1) +
+                                                      " %"
+                                                    : "--"
+                                            )
+                                        );
+                                    }
+
+
+                                    return (
+                                        context.dataset.label +
+                                        ": " +
+                                        (
+                                            Number.isFinite(value)
+                                                ? value.toFixed(2) +
+                                                  " kg"
+                                                : "--"
+                                        )
+                                    );
+                                }
+
+                        }
+
+                    }
+
+                },
+
+
+                scales: {
+
+                    x: {
+
+                        grid: {
+                            display: false
+                        },
+
+                        ticks: {
+
+                            maxRotation:
+                                0,
+
+                            autoSkip:
+                                true,
+
+                            maxTicksLimit:
+                                config.mode === "hour"
+                                    ? 8
+                                    : config.mode === "day"
+                                        ? 10
+                                        : 12
+                        }
+
+                    },
+
+
+                    y: {
+
+                        beginAtZero:
+                            true,
+
+                        position:
+                            "left",
+
+                        title: {
+                            display: true,
+                            text: "Cumulative kg"
+                        }
+
+                    },
+
+
+                    temperature: {
+
+                        type:
+                            "linear",
+
+                        position:
+                            "right",
+
+                        grid: {
+                            drawOnChartArea: false
+                        },
+
+                        title: {
+                            display: true,
+                            text: "Outdoor temperature °C"
+                        },
+
+                        ticks: {
+
+                            callback:
+                                function(value) {
+                                    return value +
+                                        " °C";
+                                }
+
+                        }
+
+                    },
+
+
+                    power: {
+
+                        type:
+                            "linear",
+
+                        position:
+                            "right",
+
+                        min:
+                            0,
+
+                        max:
+                            100,
+
+                        grid: {
+                            drawOnChartArea: false
+                        },
+
+                        title: {
+                            display: true,
+                            text: "Boiler power %"
+                        },
+
+                        ticks: {
+
+                            callback:
+                                function(value) {
+                                    return value +
+                                        " %";
+                                }
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+        }
+    );
+
+
+    /*
+     * FOOTER
+     */
+
+    const averageElement =
+        document.getElementById(
+            config.averageElement
+        );
+
+    const totalElement =
+        document.getElementById(
+            config.totalElement
+        );
+
+    const highestElement =
+        document.getElementById(
+            config.highestElement
+        );
+
+
+    let averageValue = 0;
+    let averageUnit = "";
+
+
+    if (config.mode === "hour") {
+
+        averageValue =
+            totalKg / 24;
+
+        averageUnit =
+            " kg/hour";
+
+    } else if (
+        config.mode === "month"
+    ) {
+
+        averageValue =
+            totalKg /
+            Math.max(
+                items.length,
+                1
+            );
+
+        averageUnit =
+            " kg/month";
+
+    } else {
+
+        averageValue =
+            totalKg /
+            (
+                config.hours /
+                24
+            );
+
+        averageUnit =
+            " kg/day";
+    }
+
+
+    if (averageElement) {
+
+        averageElement.textContent =
+            averageValue.toLocaleString(
+                "en-GB",
+                {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }
+            ) +
+            averageUnit;
+    }
+
+
+    if (totalElement) {
+
+        totalElement.textContent =
+            pelletOverviewFormatKg(
+                totalKg
+            );
+    }
+
+
+    if (highestElement) {
+
+        if (!highest) {
+
+            highestElement.textContent =
+                "--";
+
+        } else {
+
+            const temperature =
+                arrayAverage(
+                    highest.temperatures
+                );
+
+            let periodLabel;
+
+            if (
+                config.mode ===
+                "hour"
+            ) {
+
+                periodLabel =
+                    highest.date.toLocaleString(
+                        "en-GB",
+                        {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit"
+                        }
+                    );
+
+            } else if (
+                config.mode ===
+                "month"
+            ) {
+
+                periodLabel =
+                    highest.date.toLocaleDateString(
+                        "en-GB",
+                        {
+                            month: "short",
+                            year: "numeric"
+                        }
+                    );
+
+            } else {
+
+                periodLabel =
+                    highest.date.toLocaleDateString(
+                        "en-GB",
+                        {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric"
+                        }
+                    );
+            }
+
+
+            highestElement.textContent =
+                periodLabel +
+                " · " +
+                highest.kg.toFixed(2) +
+                " kg · " +
+                (
+                    temperature !== null
+                        ? temperature.toFixed(1) +
+                          " °C"
+                        : "temperature --"
+                );
+        }
+    }
+
+}
+
+
+
+
+
+async function updatePelletFiveYearChart() {
+
+    const result =
+        await api(
+            "/consumption/overview?days=1827"
+        );
+
+
+    const daily =
+        Array.isArray(result.daily)
+            ? result.daily
+            : [];
+
+
+    const imported =
+        Array.isArray(result.imported)
+            ? result.imported
+            : [];
+
+
+    const now =
+        new Date();
+
+    const firstYear =
+        now.getFullYear() - 4;
+
+
+    const years = [];
+
+    for (
+        let year = firstYear;
+        year <= now.getFullYear();
+        year++
+    ) {
+
+        years.push({
+            year: year,
+            pelletKg: 0,
+            temperatures: [],
+            powers: []
+        });
+    }
+
+
+    const yearMap =
+        new Map(
+            years.map(
+                item => [
+                    item.year,
+                    item
+                ]
+            )
+        );
+
+
+    /*
+     * IMPORTED PELLET HISTORY
+     */
+
+    for (const row of imported) {
+
+        const year =
+            Number(
+                String(
+                    row.period
+                ).slice(0, 4)
+            );
+
+
+        const target =
+            yearMap.get(year);
+
+        if (!target) {
+            continue;
+        }
+
+
+        const kg =
+            Number(
+                row.pellet_kg
+            );
+
+        if (Number.isFinite(kg)) {
+            target.pelletKg += kg;
+        }
+    }
+
+
+    const importedMonths =
+        new Set(
+            imported
+                .filter(
+                    row =>
+                        row.period_type ===
+                        "month"
+                )
+                .map(
+                    row =>
+                        String(row.period)
+                )
+        );
+
+
+    const importedDays =
+        new Set(
+            imported
+                .filter(
+                    row =>
+                        row.period_type ===
+                        "day"
+                )
+                .map(
+                    row =>
+                        String(row.period)
+                )
+        );
+
+
+    /*
+     * WOODY MONITOR DAILY DATA
+     */
+
+    for (const row of daily) {
+
+        const date =
+            String(
+                row.date
+            );
+
+        const year =
+            Number(
+                date.slice(
+                    0,
+                    4
+                )
+            );
+
+
+        const target =
+            yearMap.get(year);
+
+        if (!target) {
+            continue;
+        }
+
+
+        const month =
+            date.slice(
+                0,
+                7
+            );
+
+
+        if (
+            !importedMonths.has(month) &&
+            !importedDays.has(date)
+        ) {
+
+            const kg =
+                Number(
+                    row.pellet_kg
+                );
+
+            if (Number.isFinite(kg)) {
+                target.pelletKg += kg;
+            }
+        }
+
+
+        const temperature =
+            Number(
+                row.outside_temp_avg
+            );
+
+        if (
+            row.outside_temp_avg !== null &&
+            Number.isFinite(temperature)
+        ) {
+
+            target.temperatures.push(
+                temperature
+            );
+        }
+
+
+        const power =
+            Number(
+                row.power_avg
+            );
+
+        if (
+            row.power_avg !== null &&
+            Number.isFinite(power)
+        ) {
+
+            target.powers.push(
+                power
+            );
+        }
+    }
+
+
+    function avg(values) {
+
+        if (!values.length) {
+            return null;
+        }
+
+        return (
+            values.reduce(
+                (sum, value) =>
+                    sum + value,
+                0
+            ) /
+            values.length
+        );
+    }
+
+
+    const labels =
+        years.map(
+            item =>
+                String(
+                    item.year
+                )
+        );
+
+
+    const pelletValues =
+        years.map(
+            item =>
+                item.pelletKg
+        );
+
+
+    const temperatures =
+        years.map(
+            item =>
+                avg(
+                    item.temperatures
+                )
+        );
+
+
+    const powers =
+        years.map(
+            item =>
+                avg(
+                    item.powers
+                )
+        );
+
+
+    const canvas =
+        document.getElementById(
+            "pelletOverview5y"
+        );
+
+    if (!canvas) {
+        return;
+    }
+
+
+    if (
+        pelletOverviewCharts[
+            "pelletOverview5y"
+        ]
+    ) {
+
+        pelletOverviewCharts[
+            "pelletOverview5y"
+        ].destroy();
+    }
+
+
+    pelletOverviewCharts[
+        "pelletOverview5y"
+    ] = new Chart(
+        canvas.getContext("2d"),
+        {
+
+            type:
+                "bar",
+
+            data: {
+
+                labels:
+                    labels,
+
+                datasets: [
+
+                    {
+                        label:
+                            "Pellet consumption",
+
+                        data:
+                            pelletValues,
+
+                        borderWidth:
+                            1,
+
+                        order:
+                            2
+                    },
+
+
+                    {
+                        type:
+                            "line",
+
+                        label:
+                            "Average outdoor temperature",
+
+                        data:
+                            temperatures,
+
+                        yAxisID:
+                            "temperature",
+
+                        borderColor:
+                            "rgba(245, 158, 11, 0.95)",
+
+                        backgroundColor:
+                            "rgba(245, 158, 11, 0.15)",
+
+                        borderWidth:
+                            2,
+
+                        pointRadius:
+                            3,
+
+                        pointHoverRadius:
+                            5,
+
+                        tension:
+                            0.25,
+
+                        spanGaps:
+                            false,
+
+                        order:
+                            1
+                    },
+
+
+                    {
+                        type:
+                            "line",
+
+                        label:
+                            "Average boiler power",
+
+                        data:
+                            powers,
+
+                        yAxisID:
+                            "power",
+
+                        borderColor:
+                            "rgba(16, 185, 129, 0.95)",
+
+                        backgroundColor:
+                            "rgba(16, 185, 129, 0.12)",
+
+                        borderWidth:
+                            2,
+
+                        pointRadius:
+                            3,
+
+                        pointHoverRadius:
+                            5,
+
+                        tension:
+                            0.25,
+
+                        spanGaps:
+                            false,
+
+                        order:
+                            0
+                    }
+
+                ]
+
+            },
+
+
+            options: {
+
+                responsive:
+                    true,
+
+                maintainAspectRatio:
+                    false,
+
+                interaction: {
+                    mode: "index",
+                    intersect: false
+                },
+
+                plugins: {
+
+                    legend: {
+                        display: true,
+                        position: "bottom",
+
+                        labels: {
+                            boxWidth: 18,
+                            boxHeight: 3,
+                            padding: 12,
+                            font: {
+                                size: 11
+                            },
+                            usePointStyle: false
+                        }
+                    }
+
+                },
+
+                scales: {
+
+                    y: {
+
+                        beginAtZero:
+                            true,
+
+                        position:
+                            "left",
+
+                        title: {
+                            display: true,
+                            text: "Pellet consumption kg"
+                        }
+
+                    },
+
+
+                    temperature: {
+
+                        type:
+                            "linear",
+
+                        position:
+                            "right",
+
+                        grid: {
+                            drawOnChartArea: false
+                        },
+
+                        title: {
+                            display: true,
+                            text: "Outdoor temperature °C"
+                        }
+
+                    },
+
+
+                    power: {
+
+                        type:
+                            "linear",
+
+                        position:
+                            "right",
+
+                        min:
+                            0,
+
+                        max:
+                            100,
+
+                        grid: {
+                            drawOnChartArea: false
+                        },
+
+                        title: {
+                            display: true,
+                            text: "Boiler power %"
+                        }
+
+                    }
+
+                }
+
+            }
+
+        }
+    );
+
+
+    const total =
+        pelletValues.reduce(
+            (sum, value) =>
+                sum + value,
+            0
+        );
+
+
+    const yearsWithData =
+        pelletValues.filter(
+            value =>
+                value > 0
+        ).length;
+
+
+    const average =
+        yearsWithData
+            ? total /
+              yearsWithData
+            : 0;
+
+
+    const averageElement =
+        document.getElementById(
+            "pelletOverview5yAverage"
+        );
+
+    const totalElement =
+        document.getElementById(
+            "pelletOverview5yTotal"
+        );
+
+    const highestElement =
+        document.getElementById(
+            "pelletOverview5yHighest"
+        );
+
+
+    if (averageElement) {
+
+        averageElement.textContent =
+            average.toLocaleString(
+                "en-GB",
+                {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }
+            ) +
+            " kg/year";
+    }
+
+
+    if (totalElement) {
+
+        totalElement.textContent =
+            total.toLocaleString(
+                "en-GB",
+                {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }
+            ) +
+            " kg";
+    }
+
+
+    if (highestElement) {
+
+        let highestIndex = -1;
+
+        for (
+            let i = 0;
+            i < pelletValues.length;
+            i++
+        ) {
+
+            if (
+                highestIndex === -1 ||
+                pelletValues[i] >
+                pelletValues[highestIndex]
+            ) {
+                highestIndex = i;
+            }
+        }
+
+
+        if (highestIndex === -1) {
+
+            highestElement.textContent =
+                "--";
+
+        } else {
+
+            const temperature =
+                temperatures[
+                    highestIndex
+                ];
+
+
+            highestElement.textContent =
+                labels[
+                    highestIndex
+                ] +
+                " · " +
+                pelletValues[
+                    highestIndex
+                ].toFixed(2) +
+                " kg · " +
+                (
+                    temperature !== null
+                        ? temperature.toFixed(1) +
+                          " °C"
+                        : "temperature --"
+                );
+        }
+    }
+}
+
+
+
+
+async function updatePelletOverviewCharts() {
+
+    updatePelletFiveYearChart()
+        .catch(
+            error =>
+                console.error(
+                    "Five year pellet chart error",
+                    error
+                )
+        );
+
+    const configs = [
+
+        {
+            hours: 24,
+            mode: "hour",
+            canvas: "pelletOverview24h",
+            averageElement:
+                "pelletOverview24hAverage",
+            totalElement:
+                "pelletOverview24hTotal",
+            highestElement:
+                "pelletOverview24hHighest"
+        },
+
+        {
+            hours: 168,
+            mode: "day",
+            canvas: "pelletOverview7d",
+            averageElement:
+                "pelletOverview7dAverage",
+            totalElement:
+                "pelletOverview7dTotal",
+            highestElement:
+                "pelletOverview7dHighest"
+        },
+
+        {
+            hours: 2160,
+            mode: "day",
+            canvas: "pelletOverview3m",
+            averageElement:
+                "pelletOverview3mAverage",
+            totalElement:
+                "pelletOverview3mTotal",
+            highestElement:
+                "pelletOverview3mHighest"
+        },
+
+        {
+            hours: 8760,
+            mode: "month",
+            canvas: "pelletOverview12m",
+            averageElement:
+                "pelletOverview12mAverage",
+            totalElement:
+                "pelletOverview12mTotal",
+            highestElement:
+                "pelletOverview12mHighest"
+        }
+
+    ];
+
+
+    await Promise.allSettled(
+        configs.map(
+            config =>
+                updatePelletOverviewChart(
+                    config
+                )
+        )
+    );
+
+}
+
+
+
 async function updatePelletChart() {
 
     updatePelletStatistics();
+    updatePelletOverviewCharts();
 
 
 

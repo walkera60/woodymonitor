@@ -17,7 +17,7 @@ sys.path.insert(0, str(BASE_DIR))
 
 APP_VERSION = "1.1"
 
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -25,6 +25,8 @@ import uvicorn
 from Scotteprotocol.protocol import Protocol
 from database import Database
 import json
+import csv
+import io
 import paho.mqtt.client as mqtt
 import urllib.request
 import urllib.error
@@ -4445,6 +4447,140 @@ def raw():
 # API: PELLET PRICE HISTORY
 # ============================================================
 
+
+@app.get("/api/v1/settings/pellet-history/template")
+def download_pellet_history_template():
+    from fastapi.responses import Response
+
+    content = (
+        "period;pellets_kg\n"
+        "2023-01;425\n"
+        "2023-02;380\n"
+    )
+
+    return Response(
+        content=content,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition":
+            'attachment; filename="woody-monitor-pellet-history.csv"'
+        }
+    )
+
+
+@app.post("/api/v1/settings/pellet-history/import")
+async def import_pellet_history(request: Request):
+    raw = await request.body()
+
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=400,
+            detail="CSV file must use UTF-8 encoding"
+        )
+
+    rows = []
+    reader = csv.reader(io.StringIO(text), delimiter=";")
+
+    for line_number, row in enumerate(reader, start=1):
+        if not row or not any(cell.strip() for cell in row):
+            continue
+
+        if line_number == 1:
+            if [x.strip().lower() for x in row[:2]] != [
+                "period", "pellets_kg"
+            ]:
+                raise HTTPException(
+                    status_code=400,
+                    detail="CSV must start with: period;pellets_kg"
+                )
+            continue
+
+        if len(row) < 2:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid CSV row {line_number}"
+            )
+
+        period = row[0].strip()
+        value = row[1].strip().replace(",", ".")
+
+        try:
+            kg = float(value)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid pellet value on row {line_number}"
+            )
+
+        if kg < 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Pellet value cannot be negative on row {line_number}"
+            )
+
+        period_type = None
+
+        try:
+            datetime.strptime(period, "%Y-%m")
+            period_type = "month"
+        except ValueError:
+            try:
+                datetime.strptime(period, "%Y-%m-%d")
+                period_type = "day"
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Invalid period on row {line_number}. "
+                        "Use YYYY-MM or YYYY-MM-DD"
+                    )
+                )
+
+        rows.append((period, period_type, kg))
+
+    if not rows:
+        raise HTTPException(
+            status_code=400,
+            detail="CSV contains no data"
+        )
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    with db._connect() as conn:
+        for period, period_type, kg in rows:
+            conn.execute(
+                """
+                INSERT INTO pellet_consumption_imported
+                    (period, period_type, pellet_kg, source, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(period) DO UPDATE SET
+                    period_type=excluded.period_type,
+                    pellet_kg=excluded.pellet_kg,
+                    source=excluded.source,
+                    updated_at=excluded.updated_at
+                """,
+                (
+                    period,
+                    period_type,
+                    kg,
+                    "CSV import",
+                    now
+                )
+            )
+
+        conn.commit()
+
+    return {
+        "status": "ok",
+        "imported": len(rows),
+        "from": min(row[0] for row in rows),
+        "to": max(row[0] for row in rows),
+        "total_kg": round(sum(row[2] for row in rows), 3)
+    }
+
+
 @app.get("/api/v1/settings/pellet-price")
 def get_pellet_price():
 
@@ -4730,6 +4866,258 @@ def pellet_consumption(
         "kg_per_second": kg_per_second,
         "data": intervals
     }
+
+
+# ============================================================
+# API: PELLET CONSUMPTION OVERVIEW
+# ============================================================
+
+@app.get("/api/v1/consumption/overview")
+def pellet_consumption_overview(
+    days: int = Query(1827, gt=0, le=2000)
+):
+
+    zone = get_timezone()
+    today = datetime.now(zone).date()
+
+    start_date = (
+        today - timedelta(days=days)
+    ).isoformat()
+
+    end_date = today.isoformat()
+
+    with db.lock:
+
+        conn = db._connect()
+
+        try:
+
+            daily_rows = conn.execute(
+                """
+                SELECT
+                    local_date,
+                    pellet_kg,
+                    outside_temp_avg,
+                    power_avg
+                FROM daily_stats
+                WHERE local_date >= ?
+                  AND local_date <= ?
+                ORDER BY local_date
+                """,
+                (
+                    start_date,
+                    end_date
+                )
+            ).fetchall()
+
+            imported_rows = conn.execute(
+                """
+                SELECT
+                    period,
+                    period_type,
+                    pellet_kg
+                FROM pellet_consumption_imported
+                ORDER BY period
+                """
+            ).fetchall()
+
+        finally:
+
+            conn.close()
+
+
+    daily = []
+
+    measured_dates = set()
+
+    for row in daily_rows:
+
+        measured_dates.add(
+            row["local_date"]
+        )
+
+        daily.append({
+            "date":
+                row["local_date"],
+
+            "pellet_kg":
+                float(
+                    row["pellet_kg"] or 0
+                ),
+
+            "outside_temp_avg":
+                (
+                    float(
+                        row["outside_temp_avg"]
+                    )
+                    if row["outside_temp_avg"]
+                    is not None
+                    else None
+                ),
+
+            "power_avg":
+                (
+                    float(
+                        row["power_avg"]
+                    )
+                    if row["power_avg"]
+                    is not None
+                    else None
+                ),
+
+            "source":
+                "Woody Monitor"
+        })
+
+
+    imported = []
+
+    for row in imported_rows:
+
+        period = row["period"]
+
+        if (
+            period < start_date[:len(period)] or
+            period > end_date[:len(period)]
+        ):
+            continue
+
+        imported.append({
+            "period":
+                period,
+
+            "period_type":
+                row["period_type"],
+
+            "pellet_kg":
+                float(
+                    row["pellet_kg"] or 0
+                ),
+
+            "source":
+                "CSV import"
+        })
+
+
+    return {
+        "start_date": start_date,
+        "end_date": end_date,
+        "daily": daily,
+        "imported": imported
+    }
+
+
+
+# ============================================================
+# API: HOURLY CHART METRICS
+# ============================================================
+
+@app.get("/api/v1/consumption/overview/hourly")
+def pellet_consumption_overview_hourly(
+    hours: int = Query(24, gt=0, le=48)
+):
+
+    end_dt = datetime.now(timezone.utc)
+    start_dt = end_dt - timedelta(hours=hours)
+
+    with db.lock:
+
+        conn = db._connect()
+
+        try:
+
+            rows = conn.execute(
+                """
+                SELECT
+                    substr(timestamp, 1, 13) AS hour_key,
+
+                    AVG(
+                        CASE
+                            WHEN parameter = 'outside_temp'
+                            THEN value
+                        END
+                    ) AS outside_temp_avg,
+
+                    AVG(
+                        CASE
+                            WHEN parameter = 'power'
+                            THEN value
+                        END
+                    ) AS power_avg
+
+                FROM measurements
+
+                WHERE timestamp >= ?
+                  AND timestamp <= ?
+                  AND parameter IN (
+                      'outside_temp',
+                      'power'
+                  )
+
+                GROUP BY substr(timestamp, 1, 13)
+                ORDER BY hour_key
+                """,
+                (
+                    start_dt.isoformat(),
+                    end_dt.isoformat()
+                )
+            ).fetchall()
+
+        finally:
+
+            conn.close()
+
+
+    data = []
+
+    for row in rows:
+
+        try:
+
+            hour_start = datetime.fromisoformat(
+                row["hour_key"] +
+                ":00:00+00:00"
+            )
+
+            # Existing pellet chart timestamps represent
+            # the END of an interval.
+            timestamp = (
+                hour_start +
+                timedelta(hours=1)
+            )
+
+        except Exception:
+
+            continue
+
+
+        data.append({
+            "timestamp":
+                timestamp.isoformat(),
+
+            "outside_temp_avg":
+                (
+                    float(row["outside_temp_avg"])
+                    if row["outside_temp_avg"]
+                    is not None
+                    else None
+                ),
+
+            "power_avg":
+                (
+                    float(row["power_avg"])
+                    if row["power_avg"]
+                    is not None
+                    else None
+                )
+        })
+
+
+    return {
+        "hours": hours,
+        "data": data
+    }
+
 
 
 # ============================================================

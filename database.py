@@ -101,6 +101,16 @@ class Database:
                 """)
 
                 conn.execute("""
+                    CREATE TABLE IF NOT EXISTS pellet_consumption_imported (
+                        period TEXT PRIMARY KEY,
+                        period_type TEXT NOT NULL,
+                        pellet_kg REAL NOT NULL,
+                        source TEXT,
+                        updated_at TEXT NOT NULL
+                    )
+                """)
+
+                conn.execute("""
                     CREATE TABLE IF NOT EXISTS daily_stats (
                         local_date TEXT PRIMARY KEY,
                         timezone TEXT NOT NULL,
