@@ -6,12 +6,16 @@ import threading
 import logging
 import os
 import socket
+import fcntl
+import struct
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo, available_timezones
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
+
+APP_VERSION = "1.1"
 
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import FileResponse
@@ -22,6 +26,208 @@ from Scotteprotocol.protocol import Protocol
 from database import Database
 import json
 import paho.mqtt.client as mqtt
+
+
+# ============================================================
+# NETWORK MONITOR
+# ============================================================
+
+NETWORK_INTERFACE = os.environ.get(
+    "WOODY_NETWORK_INTERFACE",
+    "wlan0"
+)
+
+network_log_state = {
+    "initialized": False,
+    "connected": False,
+    "ip": None,
+}
+
+
+def get_interface_ipv4(interface):
+
+    try:
+
+        sock = socket.socket(
+            socket.AF_INET,
+            socket.SOCK_DGRAM
+        )
+
+        result = fcntl.ioctl(
+            sock.fileno(),
+            0x8915,
+            struct.pack(
+                "256s",
+                interface[:15].encode()
+            )
+        )
+
+        sock.close()
+
+        return socket.inet_ntoa(
+            result[20:24]
+        )
+
+    except Exception:
+
+        return None
+
+
+def network_interface_is_up(interface):
+
+    try:
+
+        state_file = Path(
+            f"/sys/class/net/{interface}/operstate"
+        )
+
+        return (
+            state_file.read_text().strip()
+            == "up"
+        )
+
+    except Exception:
+
+        return False
+
+
+def log_network_state(
+    connected,
+    ip=None
+):
+
+    global network_log_state
+
+    initialized = (
+        network_log_state["initialized"]
+    )
+
+    previous_connected = (
+        network_log_state["connected"]
+    )
+
+    previous_ip = (
+        network_log_state["ip"]
+    )
+
+    if not initialized:
+
+        network_log_state["initialized"] = True
+        network_log_state["connected"] = connected
+        network_log_state["ip"] = ip
+
+        if connected:
+
+            db.add_activity(
+                "NETWORK",
+                "Network connected",
+                (
+                    f"{NETWORK_INTERFACE}: "
+                    f"{ip}"
+                ),
+                response="OK"
+            )
+
+        else:
+
+            db.add_activity(
+                "NETWORK",
+                "Network disconnected",
+                (
+                    f"{NETWORK_INTERFACE} "
+                    f"is unavailable"
+                ),
+                response="ERROR"
+            )
+
+        return
+
+
+    if connected != previous_connected:
+
+        network_log_state["connected"] = connected
+        network_log_state["ip"] = ip
+
+        if connected:
+
+            db.add_activity(
+                "NETWORK",
+                "Network connected",
+                (
+                    f"{NETWORK_INTERFACE}: "
+                    f"{ip}"
+                ),
+                response="OK"
+            )
+
+        else:
+
+            db.add_activity(
+                "NETWORK",
+                "Network disconnected",
+                (
+                    f"Connection lost on "
+                    f"{NETWORK_INTERFACE}"
+                ),
+                response="ERROR"
+            )
+
+        return
+
+
+    # Log an IP change while the interface remains connected.
+    if (
+        connected
+        and ip
+        and previous_ip
+        and ip != previous_ip
+    ):
+
+        network_log_state["ip"] = ip
+
+        db.add_activity(
+            "NETWORK",
+            "IP address changed",
+            (
+                f"{previous_ip} → {ip} "
+                f"on {NETWORK_INTERFACE}"
+            ),
+            response="OK"
+        )
+
+
+def network_monitor_loop():
+
+    while True:
+
+        try:
+
+            interface_up = (
+                network_interface_is_up(
+                    NETWORK_INTERFACE
+                )
+            )
+
+            ip = get_interface_ipv4(
+                NETWORK_INTERFACE
+            )
+
+            connected = bool(
+                interface_up and ip
+            )
+
+            log_network_state(
+                connected,
+                ip
+            )
+
+        except Exception:
+
+            logger.exception(
+                "Network monitor error"
+            )
+
+        time.sleep(10)
 
 
 # ============================================================
@@ -118,7 +324,7 @@ logger = logging.getLogger("woody-monitor")
 app = FastAPI(
     title="Woody Monitor",
     description="Local API for Woody pellet burner monitoring",
-    version="1.1"
+    version=APP_VERSION
 )
 
 app.add_middleware(
@@ -621,6 +827,20 @@ PARAMETERS = [
 
 
 # ============================================================
+# API: ABOUT
+# ============================================================
+
+@app.get("/api/v1/about")
+def get_about():
+
+    return {
+        "application": "Woody Monitor",
+        "version": APP_VERSION,
+        "api": "online"
+    }
+
+
+# ============================================================
 # CONTROLLER CONNECTION
 # ============================================================
 
@@ -824,6 +1044,33 @@ def read_controller():
         timezone.utc
     ).isoformat()
 
+    # A complete read failure means the controller connection
+    # is no longer usable. Individual parameter errors are still
+    # allowed without marking the entire controller disconnected.
+    if not values and errors:
+
+        with state_lock:
+
+            live_data["connected"] = False
+            live_data["timestamp"] = timestamp
+            live_data["values"] = {}
+            live_data["errors"] = errors
+
+        log_controller_changes(
+            False,
+            {}
+        )
+
+        try:
+            if burner is not None:
+                burner.close()
+        except Exception:
+            pass
+
+        burner = None
+
+        return
+
     with state_lock:
 
         live_data["connected"] = True
@@ -887,15 +1134,103 @@ def collector_loop():
 mqtt_client = None
 mqtt_connected = False
 
+mqtt_log_state = {
+    "initialized": False,
+    "connected": False,
+}
+
+
+def log_mqtt_connection_state(
+    connected,
+    details=None
+):
+
+    global mqtt_log_state
+
+    previous_initialized = (
+        mqtt_log_state["initialized"]
+    )
+
+    previous_connected = (
+        mqtt_log_state["connected"]
+    )
+
+    # First observed MQTT state.
+    if not previous_initialized:
+
+        mqtt_log_state["initialized"] = True
+        mqtt_log_state["connected"] = connected
+
+        if connected:
+
+            db.add_activity(
+                "MQTT",
+                "MQTT connected",
+                details or "MQTT connection established",
+                response="OK"
+            )
+
+        else:
+
+            db.add_activity(
+                "MQTT",
+                "MQTT disconnected",
+                details or "MQTT connection unavailable",
+                response="ERROR"
+            )
+
+        return
+
+    # Only log actual state changes.
+    if connected == previous_connected:
+        return
+
+    mqtt_log_state["connected"] = connected
+
+    if connected:
+
+        db.add_activity(
+            "MQTT",
+            "MQTT connected",
+            details or "MQTT connection restored",
+            response="OK"
+        )
+
+    else:
+
+        db.add_activity(
+            "MQTT",
+            "MQTT disconnected",
+            details or "MQTT connection lost",
+            response="ERROR"
+        )
+
 
 def mqtt_on_connect(client, userdata, flags, reason_code, properties):
     global mqtt_connected
 
     if reason_code.is_failure:
+
         mqtt_connected = False
-        logger.error("MQTT connection failed: %s", reason_code)
+
+        logger.error(
+            "MQTT connection failed: %s",
+            reason_code
+        )
+
+        log_mqtt_connection_state(
+            False,
+            f"Connection failed: {reason_code}"
+        )
+
     else:
+
         mqtt_connected = True
+
+        log_mqtt_connection_state(
+            True,
+            f"Connected to {MQTT_BROKER}:{MQTT_PORT}"
+        )
 
         command_topic = f"{MQTT_TOPIC}/command/#"
 
@@ -930,6 +1265,11 @@ def mqtt_on_disconnect(client, userdata, disconnect_flags, reason_code, properti
     logger.warning(
         "MQTT disconnected: %s",
         reason_code
+    )
+
+    log_mqtt_connection_state(
+        False,
+        f"MQTT connection lost: {reason_code}"
     )
 
 
@@ -1776,6 +2116,44 @@ def history_loop():
 @app.get("/")
 def root():
     return FileResponse(str(BASE_DIR / "web" / "index.html"))
+
+
+@app.get("/woody-icon.svg")
+def woody_icon():
+    return FileResponse(
+        str(BASE_DIR / "web" / "woody-icon.svg"),
+        media_type="image/svg+xml"
+    )
+
+
+@app.get("/manifest.webmanifest")
+def woody_manifest():
+    return FileResponse(
+        str(BASE_DIR / "web" / "manifest.webmanifest"),
+        media_type="application/manifest+json"
+    )
+
+
+# ============================================================
+# API: RESTART WOODY MONITOR
+# ============================================================
+
+@app.post("/api/v1/system/restart")
+def restart_woody_monitor():
+    """
+    Restart Woody Monitor through systemd Restart=always.
+    Response is returned before the process exits.
+    """
+
+    def shutdown():
+        os._exit(0)
+
+    threading.Timer(0.8, shutdown).start()
+
+    return {
+        "ok": True,
+        "message": "Woody Monitor restarting"
+    }
 
 
 # ============================================================
@@ -3207,6 +3585,13 @@ def startup():
     )
 
     watchdog.start()
+
+    network_monitor = threading.Thread(
+        target=network_monitor_loop,
+        daemon=True
+    )
+
+    network_monitor.start()
 
     # Tell systemd that Woody Monitor has completed startup.
     notify_socket = os.environ.get("NOTIFY_SOCKET")

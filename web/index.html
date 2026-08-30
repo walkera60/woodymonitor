@@ -1771,6 +1771,1008 @@ body { padding-bottom:20px; }
 }
 </style>
 
+
+<style id="woody-mobile-menu">
+.mobile-menu-button {
+    display: none;
+    background: transparent;
+    color: #ffffff;
+    border: 1px solid #2b3542;
+    border-radius: 8px;
+    font-size: 24px;
+    line-height: 1;
+    padding: 6px 9px;
+    cursor: pointer;
+}
+
+@media (max-width: 700px) {
+
+    .topbar {
+        position: relative;
+        min-height: 54px;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+
+    .mobile-menu-button {
+        display: block;
+        margin-left: auto;
+        z-index: 1002;
+    }
+
+    .topbar .top-nav {
+        display: none !important;
+        position: absolute;
+        top: calc(100% + 4px);
+        right: 8px;
+        min-width: 180px;
+        background: #161d26;
+        border: 1px solid #2b3542;
+        border-radius: 10px;
+        padding: 6px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.35);
+        z-index: 1001;
+        flex-direction: column;
+        gap: 3px !important;
+    }
+
+    .topbar .top-nav.mobile-open {
+        display: flex !important;
+    }
+
+    .topbar .top-nav .nav-btn {
+        width: 100%;
+        justify-content: flex-start;
+        text-align: left;
+        padding: 10px 12px !important;
+    }
+
+    .topbar .top-nav .nav-btn span {
+        font-size: 14px !important;
+    }
+}
+
+/* History graph - larger on portrait mobile */
+@media (max-width: 700px) and (orientation: portrait) {
+
+    .dashboard-history-chart {
+        min-height: 420px !important;
+        height: 420px !important;
+    }
+
+    .dashboard-history-chart canvas {
+        height: 100% !important;
+    }
+}
+</style>
+
+
+<style id="woody-mobile-topbar-clean">
+@media (max-width: 700px) {
+
+    .topbar {
+        display: grid !important;
+        grid-template-columns: auto auto 1fr auto auto;
+        align-items: center !important;
+        gap: 6px !important;
+        min-height: 42px !important;
+        padding: 4px 8px !important;
+    }
+
+    .mobile-menu-button {
+        grid-column: 1;
+        margin: 0 !important;
+        padding: 2px 4px !important;
+        border: 0 !important;
+        background: transparent !important;
+        font-size: 22px !important;
+        line-height: 1 !important;
+    }
+
+    .logo {
+        grid-column: 2;
+        display: flex !important;
+        align-items: center !important;
+        gap: 3px !important;
+        white-space: nowrap;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+    }
+
+    .logo-fire {
+        font-size: 17px !important;
+    }
+
+    .connection {
+        grid-column: 4 / 6;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        gap: 7px !important;
+        margin: 0 !important;
+        white-space: nowrap;
+    }
+
+    .connection-dot,
+    .connection-text {
+        display: none !important;
+    }
+
+    #lastUpdate {
+        font-size: 12px !important;
+        opacity: .9;
+    }
+
+    #wifiSignal {
+        min-width: 28px;
+        text-align: right;
+        font-size: 12px !important;
+        letter-spacing: -1px;
+    }
+
+    .top-nav {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 390px) {
+    .logo {
+        font-size: 12px !important;
+    }
+
+    .logo-fire {
+        font-size: 16px !important;
+    }
+
+    #lastUpdate,
+    #wifiSignal {
+        font-size: 11px !important;
+    }
+}
+</style>
+
+    <link rel="icon" type="image/svg+xml" href="/woody-icon.svg">
+    <link rel="apple-touch-icon" href="/woody-icon.svg">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#161d26">
+
+
+
+<style id="woody-controller-parameter-alignment">
+
+.live-parameter-grid {
+    display: block !important;
+}
+
+.live-parameter-grid .parameter {
+    display: grid !important;
+    grid-template-columns:
+        minmax(180px, 1fr)
+        110px
+        42px
+        68px !important;
+
+    align-items: center !important;
+    column-gap: 8px !important;
+
+    min-height: 42px;
+    padding: 5px 2px !important;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Read-only rows */
+.live-parameter-grid .parameter > .parameter-name {
+    grid-column: 1;
+    align-self: center;
+    margin: 0 !important;
+}
+
+.live-parameter-grid .parameter > strong {
+    grid-column: 2;
+    align-self: center;
+    justify-self: stretch;
+    text-align: right;
+    margin: 0 !important;
+}
+
+.live-parameter-grid .parameter > .parameter-unit {
+    grid-column: 3;
+    align-self: center;
+    margin: 0 !important;
+}
+
+/* Editable row: flatten internal wrappers */
+.live-parameter-grid .parameter[style*="display:block"] > div:first-child,
+.live-parameter-grid .parameter[style*="display:block"] > div:nth-child(2) {
+    display: contents !important;
+}
+
+.live-parameter-grid .parameter[style*="display:block"] .parameter-name {
+    grid-column: 1;
+    align-self: center;
+    margin: 0 !important;
+}
+
+.live-parameter-grid .parameter[style*="display:block"] .controller-setting-input {
+    grid-column: 2;
+    align-self: center;
+    margin: 0 !important;
+}
+
+.live-parameter-grid .parameter[style*="display:block"] .parameter-unit {
+    grid-column: 3;
+    align-self: center;
+    margin: 0 !important;
+}
+
+.live-parameter-grid .parameter[style*="display:block"] .controller-setting-save {
+    grid-column: 4;
+    align-self: center;
+    margin: 0 !important;
+}
+
+/* Input */
+.controller-setting-input {
+    width: 100% !important;
+    height: 34px !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+}
+
+/* Save button */
+.controller-setting-save {
+    width: 68px !important;
+    height: 34px !important;
+    justify-self: end;
+}
+
+/* Hidden normally - only becomes visible on validation/save messages */
+.controller-setting-info {
+    grid-column: 2 / 5;
+    margin: 3px 0 0 0 !important;
+    font-size: 10px !important;
+    line-height: 1.2;
+}
+
+.controller-setting-info:empty {
+    display: none !important;
+}
+
+/* Mobile */
+@media (max-width: 700px) {
+
+    .live-parameter-grid .parameter {
+        grid-template-columns:
+            minmax(115px, 1fr)
+            78px
+            30px
+            54px !important;
+
+        column-gap: 5px !important;
+        min-height: 40px;
+        padding: 4px 0 !important;
+    }
+
+    .controller-setting-input {
+        height: 32px !important;
+        font-size: 12px !important;
+        padding: 4px 5px !important;
+    }
+
+    .controller-setting-save {
+        width: 54px !important;
+        height: 32px !important;
+        min-width: 54px !important;
+        padding: 4px !important;
+        font-size: 11px !important;
+    }
+
+    .parameter-name {
+        font-size: 12px !important;
+        line-height: 1.15;
+    }
+
+    .parameter-unit {
+        font-size: 10px !important;
+    }
+}
+
+/* Very narrow phones */
+@media (max-width: 420px) {
+
+    .live-parameter-grid .parameter {
+        grid-template-columns:
+            minmax(105px, 1fr)
+            70px
+            26px
+            50px !important;
+
+        column-gap: 4px !important;
+    }
+
+    .controller-setting-save {
+        width: 50px !important;
+        min-width: 50px !important;
+        font-size: 10px !important;
+    }
+}
+
+</style>
+
+
+
+
+<style id="woody-controller-collapsible">
+
+.controller-collapsible {
+    display: block !important;
+    padding: 0 !important;
+}
+
+.controller-parameter-summary {
+    width: 100%;
+    display: grid;
+    grid-template-columns:
+        minmax(150px, 1fr)
+        90px
+        40px
+        22px;
+    align-items: center;
+    gap: 8px;
+
+    min-height: 42px;
+    padding: 6px 4px;
+
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.controller-parameter-summary strong {
+    text-align: right;
+}
+
+.controller-expand-icon {
+    text-align: center;
+    color: var(--muted);
+    font-size: 18px;
+}
+
+.controller-parameter-editor {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        68px;
+    gap: 8px;
+    align-items: center;
+
+    padding:
+        8px
+        4px
+        10px
+        4px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.controller-parameter-editor[hidden] {
+    display: none !important;
+}
+
+.controller-parameter-editor .controller-setting-input {
+    width: 100% !important;
+    min-width: 0 !important;
+}
+
+.controller-parameter-editor .controller-setting-save {
+    width: 68px !important;
+}
+
+.controller-parameter-editor .controller-setting-info {
+    grid-column: 1 / 3;
+    margin: 0 !important;
+}
+
+.controller-parameter-editor .controller-setting-info:empty {
+    display: none;
+}
+
+@media (max-width: 700px) {
+
+    .controller-parameter-summary {
+        grid-template-columns:
+            minmax(110px, 1fr)
+            70px
+            28px
+            18px;
+
+        gap: 5px;
+        min-height: 40px;
+    }
+
+    .controller-parameter-summary .parameter-name {
+        font-size: 12px;
+    }
+
+    .controller-parameter-summary .parameter-unit {
+        font-size: 10px;
+    }
+
+    .controller-parameter-editor {
+        grid-template-columns:
+            minmax(0, 1fr)
+            56px;
+        gap: 6px;
+    }
+
+    .controller-parameter-editor .controller-setting-save {
+        width: 56px !important;
+        min-width: 56px !important;
+        font-size: 11px;
+        padding-left: 4px;
+        padding-right: 4px;
+    }
+}
+
+</style>
+
+
+<style id="woody-readonly-column-alignment">
+
+/* Read-only rows: use exactly the same columns as editable summaries */
+.live-parameter-grid .parameter:not(.controller-collapsible) {
+    display: grid !important;
+    grid-template-columns:
+        minmax(150px, 1fr)
+        90px
+        40px
+        22px !important;
+
+    align-items: center !important;
+    gap: 8px !important;
+
+    min-height: 42px;
+    padding: 6px 4px !important;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Name */
+.live-parameter-grid .parameter:not(.controller-collapsible) > .parameter-name {
+    grid-column: 1;
+    margin: 0 !important;
+}
+
+/* Value */
+.live-parameter-grid .parameter:not(.controller-collapsible) > strong {
+    grid-column: 2;
+    text-align: right;
+    margin: 0 !important;
+}
+
+/* Unit */
+.live-parameter-grid .parameter:not(.controller-collapsible) > .parameter-unit {
+    grid-column: 3;
+    margin: 0 !important;
+}
+
+/* Mobile: same columns as editable rows */
+@media (max-width: 700px) {
+
+    .live-parameter-grid .parameter:not(.controller-collapsible) {
+        grid-template-columns:
+            minmax(110px, 1fr)
+            70px
+            28px
+            18px !important;
+
+        gap: 5px !important;
+        min-height: 40px;
+    }
+}
+
+</style>
+
+
+<style id="woody-controller-three-column-layout">
+
+/* Main 3-column layout */
+
+.controller-parameter-columns {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+
+.controller-parameter-column {
+    min-width: 0;
+}
+
+
+.controller-parameter-column-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 6px;
+    padding: 0 4px;
+}
+
+
+/* Parameter rows */
+
+.controller-parameter-column .parameter {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+
+.controller-parameter-column .controller-readonly-row {
+    display: grid !important;
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto
+        32px !important;
+
+    align-items: center !important;
+    gap: 6px !important;
+
+    min-height: 38px;
+    padding: 5px 4px !important;
+    border-bottom: 1px solid var(--border);
+}
+
+
+.controller-parameter-column
+.controller-readonly-row
+.parameter-name {
+    min-width: 0;
+}
+
+
+.controller-parameter-column
+.controller-readonly-row
+strong {
+    text-align: right;
+    white-space: nowrap;
+}
+
+
+.controller-parameter-column
+.controller-readonly-row
+.parameter-unit {
+    text-align: left;
+    white-space: nowrap;
+}
+
+
+/* Editable summary */
+
+.controller-parameter-column
+.controller-parameter-summary {
+
+    display: grid !important;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto
+        32px
+        16px !important;
+
+    gap: 6px !important;
+
+    min-height: 38px;
+    padding: 5px 4px !important;
+}
+
+
+.controller-parameter-column
+.controller-parameter-summary
+strong {
+    text-align: right;
+    white-space: nowrap;
+}
+
+
+.controller-parameter-column
+.controller-parameter-summary
+.parameter-unit {
+    text-align: left;
+    white-space: nowrap;
+}
+
+
+/* Editor */
+
+.controller-parameter-column
+.controller-parameter-editor {
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        58px !important;
+
+    gap: 6px !important;
+}
+
+
+.controller-parameter-column
+.controller-setting-save {
+    width: 58px !important;
+}
+
+
+/* Tablet */
+
+@media (max-width: 1000px) {
+
+    .controller-parameter-columns {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+}
+
+
+/* Mobile */
+
+@media (max-width: 700px) {
+
+    .controller-parameter-columns {
+        grid-template-columns:
+            1fr !important;
+
+        gap: 14px;
+    }
+
+    .controller-parameter-column-title {
+        margin-top: 2px;
+        margin-bottom: 4px;
+    }
+
+    .controller-parameter-column
+    .controller-readonly-row,
+
+    .controller-parameter-column
+    .controller-parameter-summary {
+        min-height: 38px;
+    }
+}
+
+</style>
+
+
+<style id="woody-mobile-fixed-topbar">
+
+@media (max-width: 700px) {
+
+    .topbar {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 10000 !important;
+
+        width: 100%;
+        box-sizing: border-box;
+
+        background: var(--panel);
+    }
+
+}
+
+</style>
+
+
+<style id="woody-compact-graph-controls">
+
+/* ------------------------------------------------------------
+   Graph toolbar
+   ------------------------------------------------------------ */
+
+.chart-toolbar-left {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:wrap;
+}
+
+.woody-inline-date-range {
+    display:flex !important;
+    align-items:center;
+    gap:5px;
+    margin-left:4px;
+}
+
+.woody-inline-date-range label {
+    display:flex;
+    align-items:center;
+    gap:4px;
+    margin:0;
+    font-size:11px;
+    color:var(--muted);
+    white-space:nowrap;
+}
+
+.woody-inline-date-range input[type="datetime-local"] {
+    width:145px;
+    min-width:0;
+    padding:6px 7px;
+    font-size:11px;
+}
+
+.woody-inline-date-range .btn {
+    padding:6px 8px;
+    font-size:11px;
+}
+
+.woody-parameter-controls {
+    margin-top:10px !important;
+    margin-bottom:8px;
+}
+
+
+/* ------------------------------------------------------------
+   Burner trends
+   ------------------------------------------------------------ */
+
+.burner-trend {
+    display:inline-block;
+    min-width:15px;
+    margin-left:5px;
+    font-size:15px;
+    font-weight:800;
+    line-height:1;
+    vertical-align:1px;
+}
+
+.burner-trend-up {
+    color:#34d399;
+}
+
+.burner-trend-down {
+    color:#f87171;
+}
+
+.burner-trend-stable {
+    color:var(--muted);
+}
+
+
+/* ------------------------------------------------------------
+   Mobile
+   ------------------------------------------------------------ */
+
+@media (max-width:700px) {
+
+    .chart-toolbar-left {
+        width:100%;
+        gap:5px;
+    }
+
+    .woody-inline-date-range {
+        width:100%;
+        margin-left:0;
+        margin-top:2px;
+        gap:4px;
+    }
+
+    .woody-inline-date-range label {
+        flex:1 1 120px;
+    }
+
+    .woody-inline-date-range input[type="datetime-local"] {
+        width:100%;
+        max-width:none;
+    }
+
+    .woody-inline-date-range .btn {
+        flex:0 0 auto;
+    }
+}
+
+</style>
+
+
+<style id="woody-mobile-graph-layout-v2">
+
+/* Desktop: wrapper should behave like normal toolbar content */
+
+.woody-mobile-range-row {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:wrap;
+}
+
+
+/* Trend arrow sits after measurement unit */
+
+.burner-metric-value .burner-trend {
+    margin-left:6px;
+}
+
+
+/* ============================================================
+   MOBILE GRAPH CONTROLS
+   ============================================================ */
+
+@media (max-width:700px) {
+
+    /*
+     * Main toolbar becomes vertically organised.
+     */
+    .chart-toolbar {
+        display:flex !important;
+        flex-direction:column !important;
+        align-items:stretch !important;
+        gap:8px !important;
+    }
+
+
+    /*
+     * Left side:
+     * 1. scrolling range buttons
+     * 2. compact date range
+     */
+    .chart-toolbar-left {
+        display:flex !important;
+        flex-direction:column !important;
+        align-items:stretch !important;
+        width:100% !important;
+        gap:7px !important;
+    }
+
+
+    /*
+     * Time windows + Auto update:
+     * one horizontal row instead of ugly wrapping.
+     */
+    .woody-mobile-range-row {
+        display:flex !important;
+        flex-wrap:nowrap !important;
+        align-items:center !important;
+        gap:5px !important;
+
+        width:100% !important;
+
+        overflow-x:auto !important;
+        overflow-y:hidden !important;
+
+        padding-bottom:3px;
+
+        -webkit-overflow-scrolling:touch;
+        scrollbar-width:thin;
+    }
+
+
+    .woody-mobile-range-row .btn {
+        flex:0 0 auto !important;
+        white-space:nowrap !important;
+
+        min-width:auto !important;
+        padding:7px 9px !important;
+        font-size:11px !important;
+    }
+
+
+    /*
+     * Date range gets its own clean row on mobile.
+     */
+    .woody-inline-date-range {
+        display:grid !important;
+
+        grid-template-columns:
+            minmax(0,1fr)
+            minmax(0,1fr)
+            auto
+            auto;
+
+        align-items:end !important;
+
+        width:100% !important;
+        margin:0 !important;
+        gap:5px !important;
+    }
+
+
+    .woody-inline-date-range label {
+        display:flex !important;
+        flex-direction:column !important;
+        align-items:stretch !important;
+
+        min-width:0 !important;
+
+        gap:2px !important;
+
+        font-size:10px !important;
+    }
+
+
+    .woody-inline-date-range
+    input[type="datetime-local"] {
+
+        width:100% !important;
+        min-width:0 !important;
+
+        box-sizing:border-box !important;
+
+        padding:6px 5px !important;
+        font-size:10px !important;
+    }
+
+
+    .woody-inline-date-range .btn {
+        min-width:auto !important;
+        padding:7px 7px !important;
+        font-size:10px !important;
+        white-space:nowrap !important;
+    }
+
+
+    /*
+     * Zoom / export controls:
+     * separate clean horizontal row.
+     */
+    .chart-toolbar-right {
+        display:flex !important;
+        flex-wrap:nowrap !important;
+        align-items:center !important;
+
+        width:100% !important;
+
+        gap:5px !important;
+
+        overflow-x:auto !important;
+        overflow-y:hidden !important;
+
+        padding-bottom:2px;
+
+        -webkit-overflow-scrolling:touch;
+    }
+
+
+    .chart-toolbar-right .btn {
+        flex:0 0 auto !important;
+        min-width:auto !important;
+
+        padding:7px 9px !important;
+        font-size:11px !important;
+
+        white-space:nowrap !important;
+    }
+
+
+    /*
+     * All / None below History graph.
+     */
+    .woody-parameter-controls {
+        margin-top:8px !important;
+        margin-bottom:6px !important;
+    }
+}
+
+
+/*
+ * Extra narrow phones:
+ * Date controls become two rows rather than squeezing.
+ */
+@media (max-width:440px) {
+
+    .woody-inline-date-range {
+        grid-template-columns:
+            minmax(0,1fr)
+            minmax(0,1fr);
+    }
+
+    .woody-inline-date-range .btn {
+        width:100%;
+    }
+}
+
+</style>
+
 </head>
 
 <body>
@@ -1788,7 +2790,17 @@ body { padding-bottom:20px; }
         <span id="wifiSignal" title="Raspberry Pi WiFi signal">📶 WIFI --</span>
     </div>
 
-    <nav class="top-nav">
+    <button
+        id="mobileMenuButton"
+        class="mobile-menu-button"
+        type="button"
+        aria-label="Open menu"
+        onclick="toggleMobileMenu()"
+    >
+        ☰
+    </button>
+
+    <nav class="top-nav" id="topNav">
 
         <button class="nav-btn active"
                 data-page="dashboard"
@@ -1902,6 +2914,19 @@ body { padding-bottom:20px; }
                     </div>
 
                     <div class="burner-metric">
+                        <div class="burner-metric-icon">🚿</div>
+                        <div>
+                            <div class="burner-metric-label">
+                                Hot water
+                            </div>
+                            <div class="burner-metric-value hotwater">
+                                <span id="statusHotWater">--</span>
+                                <small>°C</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="burner-metric">
                         <div class="burner-metric-icon">⚡</div>
                         <div>
                             <div class="burner-metric-label">
@@ -1923,19 +2948,6 @@ body { padding-bottom:20px; }
                             <div class="burner-metric-value power-kw">
                                 <span id="statusPowerKw">--</span>
                                 <small>kW</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="burner-metric">
-                        <div class="burner-metric-icon">🚿</div>
-                        <div>
-                            <div class="burner-metric-label">
-                                Hot water
-                            </div>
-                            <div class="burner-metric-value hotwater">
-                                <span id="statusHotWater">--</span>
-                                <small>°C</small>
                             </div>
                         </div>
                     </div>
@@ -1978,7 +2990,7 @@ body { padding-bottom:20px; }
 
             <div class="silo-modern-header">
                 <div>
-                    <div class="card-title">Pellet silo</div>
+                    <div class="card-title">Pellets</div>
                     <div class="card-subtitle">
                         Current content and estimated consumption
                     </div>
@@ -2016,7 +3028,7 @@ body { padding-bottom:20px; }
                 <div class="silo-forecast-panel">
 
                     <div class="silo-forecast-title">
-                        Silo content forecast
+                        Silo empty forecast
                     </div>
 
                     <div class="silo-forecast-chart">
@@ -2053,9 +3065,6 @@ body { padding-bottom:20px; }
 
             <div>
                 <div class="card-title">History</div>
-                <div class="card-subtitle">
-                    Historical values from Woody Monitor
-                </div>
             </div>
 
         </div>
@@ -2403,7 +3412,48 @@ body { padding-bottom:20px; }
         <p>Aktiviteter og ændringer i Woody Monitor</p>
     </div>
 
-    <div class="card">
+                <div class="card">
+
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">About</div>
+                        <div class="card-subtitle">
+                            Woody Monitor application information
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-list">
+
+                    <div class="settings-row">
+                        <div>
+                            <div>Application</div>
+                            <div class="card-subtitle">
+                                Pellet burner monitoring and control
+                            </div>
+                        </div>
+                        <div>Woody Monitor</div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div>
+                            <div>Version</div>
+                        </div>
+                        <div id="aboutVersion">--</div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div>
+                            <div>API status</div>
+                        </div>
+                        <div id="aboutApiStatus">--</div>
+                    </div>
+
+                </div>
+
+            </div>
+
+<div class="card">
 
         <div class="card-header">
 
@@ -2493,26 +3543,29 @@ body { padding-bottom:20px; }
                 <span style="float:right;color:var(--green);">Active</span>
             </div>
 
-        </div>
-
-        <div class="card col-12">
-
-            <div class="card-header">
+            <div style="
+                padding:12px 0 0 0;
+                margin-top:12px;
+                border-top:1px solid var(--border);
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                gap:12px;
+            ">
                 <div>
-                    <div class="card-title">Controller settings</div>
+                    <div>Restart Woody Monitor</div>
                     <div class="card-subtitle">
-                        Indstillinger fra fyrets controller
+                        Restarts the application without restarting the Raspberry Pi
                     </div>
                 </div>
-            </div>
 
-            <div id="controllerSettingsStatus"
-                 style="font-size:12px;color:var(--muted);margin-bottom:14px;">
-                Henter indstillinger...
-            </div>
-
-            <div id="controllerSettings"
-                 class="controller-settings-grid">
+                <button
+                    class="btn"
+                    type="button"
+                    onclick="restartWoodyMonitor()"
+                >
+                    Restart
+                </button>
             </div>
 
         </div>
@@ -2521,9 +3574,9 @@ body { padding-bottom:20px; }
 
             <div class="card-header">
                 <div>
-                    <div class="card-title">Live parameters</div>
+                    <div class="card-title">Controller parameters</div>
                     <div class="card-subtitle">
-                        All values received directly from Woody Monitor
+                        Live values and editable controller settings
                     </div>
                 </div>
             </div>
@@ -2531,7 +3584,7 @@ body { padding-bottom:20px; }
             
             <div class="live-parameters-wrapper">
                 <div class="card-subtitle" style="margin-bottom:12px;">
-                    Current values from the controller
+                    Current values from the controller. Editable parameters can be changed and saved.
                 </div>
 
                 <div id="liveParameters" class="live-parameters-clean"></div>
@@ -2711,6 +3764,7 @@ let liveData = {};
 let historyChart = null;
 let pelletChart = null;
 let historyRequestController = null;
+let historyRequestGeneration = 0;
 let historyHours = 24;
 let consumptionHours = 24;
 
@@ -2889,10 +3943,16 @@ async function loadSystemStatus() {
             data.wifi.dbm !== undefined
         ) {
             const dbm = Number(data.wifi.dbm);
-            const percent = data.wifi.percent;
+            const percent = Number(data.wifi.percent ?? 0);
 
-            el.textContent =
-                `📶 ${dbm} dBm`;
+            const wifiLevel =
+                Math.max(0, Math.min(5, Math.ceil(percent / 20)));
+
+            const bars = ["▂", "▄", "▆", "▇", "█"];
+
+            el.innerHTML = bars.map((bar, i) =>
+                `<span style="opacity:${i < wifiLevel ? 1 : 0.18}">${bar}</span>`
+            ).join("");
 
             el.title =
                 `Raspberry Pi WiFi: ${percent}% (${dbm} dBm)` +
@@ -2900,7 +3960,7 @@ async function loadSystemStatus() {
                     ? ` • ${data.wifi.interface}`
                     : "");
         } else {
-            el.textContent = "📶 WIFI --";
+            el.textContent = "×";
             el.title = "Raspberry Pi WiFi signal unavailable";
         }
 
@@ -2911,9 +3971,23 @@ async function loadSystemStatus() {
             document.getElementById("wifiSignal");
 
         if (el)
-            el.textContent = "📶 WIFI --";
+            el.textContent = "×";
     }
 }
+
+
+function updateTopbarClock() {
+    const el = document.getElementById("lastUpdate");
+    if (!el) return;
+
+    el.textContent = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
+
+updateTopbarClock();
+setInterval(updateTopbarClock, 1000);
 
 
 async function loadLive() {
@@ -2924,15 +3998,7 @@ async function loadLive() {
 
         updateConnection(data.connected);
 
-        const time = data.timestamp
-            ? new Date(data.timestamp).toLocaleTimeString([], {
-                hour:"2-digit",
-                minute:"2-digit",
-                second:"2-digit"
-            })
-            : "--";
-
-        document.getElementById("lastUpdate").textContent = time;
+        updateTopbarClock();
 
         try {
             updateDashboard();
@@ -3175,13 +4241,13 @@ function updateDashboard() {
 
     if (burnerStatusElement) {
         burnerStatusElement.textContent =
-            alarmAktiv
-                ? "Alarm"
-                : status !== null
-                    ? String(status)
-                    : power !== null
-                        ? Number(power) > 0 ? "Running" : "Stopped"
-                        : "Connected";
+            mode !== null &&
+            mode !== undefined &&
+            String(mode).trim() !== ""
+                ? String(mode)
+                : alarmAktiv
+                    ? "Alarm"
+                    : "Connected";
     }
 
     const burnerStatusDetailElement =
@@ -3285,6 +4351,9 @@ function updateDashboard() {
     updateBurnerControlButton();
 }
 
+let editableControllerSettings = new Map();
+
+
 function renderLiveParameters() {
 
     const container = document.getElementById("liveParameters");
@@ -3292,184 +4361,381 @@ function renderLiveParameters() {
     if (!container)
         return;
 
-    /*
-     * Live parameters are shown in fixed functional groups.
-     * Only parameters actually received from the controller are shown.
-     */
-
     const groups = {
 
-        "Temperatures": [
-            "boiler_temp",
-            "boiler_temp_set",
-            "boiler_temp_min",
-            "boiler_temp_diff_up",
-            "boiler_temp_diff_down",
-            "boiler_return_temp",
-            "hotwater_temp",
-            "hotwater_temp_set",
-            "hotwater_temp_diff",
-            "smoke_temp",
-            "chute_temp",
-            "chute_temp_max",
-            "outside_temp",
-            "indoor_temp"
-        ],
+        "Temperatures": {
 
-        "Burner": [
-            "mode",
-            "power",
-            "power_kW",
-            "min_power",
-            "max_power",
-            "regulator_P",
-            "regulator_I",
-            "regulator_D"
-        ],
+            "Boiler": [
+                "boiler_temp",
+                "boiler_temp_set",
+                "boiler_temp_min",
+                "boiler_temp_diff_up",
+                "boiler_temp_diff_down",
+                "boiler_return_temp"
+            ],
 
-        "Oxygen": [
-            "oxygen",
-            "oxygen_desired",
-            "oxygen_low",
-            "oxygen_mid",
-            "oxygen_high",
-            "oxygen_regulation",
-            "oxygen_gain",
-            "oxygen_regulation_P",
-            "oxygen_regulation_I",
-            "oxygen_regulation_D",
-            "oxygen_corr_low",
-            "oxygen_corr_mid",
-            "oxygen_corr_10",
-            "oxygen_corr_50",
-            "oxygen_corr_100",
-            "oxygen_corr_interval"
-        ],
+            "Hot water": [
+                "hotwater_temp",
+                "hotwater_temp_set",
+                "hotwater_temp_diff"
+            ],
 
-        "Feeder": [
-            "feeder_time",
-            "feeder_capacity",
-            "feeder_capacity_min",
-            "feeder_capacity_max",
-            "feeder_low",
-            "feeder_high",
-            "feed_per_minute",
-            "motor_time",
-            "motor_time_perm"
-        ],
+            "Other temperatures": [
+                "smoke_temp",
+                "chute_temp",
+                "chute_temp_max",
+                "outside_temp",
+                "indoor_temp"
+            ]
+        },
 
-        "Blower": [
-            "blower_low",
-            "blower_mid",
-            "blower_high",
-            "blower_off_time",
-            "blower_corr_low",
-            "blower_corr_mid",
-            "blower_corr_high",
-            "blower_cleaning"
-        ],
+        "Burner": {
 
-        "Cleaning": [
-            "cleaning_interval",
-            "cleaning_time",
-            "comp_clean_blower",
-            "comp_clean_interval",
-            "comp_clean_time",
-            "comp_clean_wait"
-        ],
+            "Burner": [
+                "mode",
+                "power",
+                "power_kW",
+                "min_power",
+                "max_power"
+            ],
 
-        "Timers": [
-            "time_minutes",
-            "timer_heating_period",
-            "timer_heating_start_1",
-            "timer_heating_start_2",
-            "timer_heating_start_3",
-            "timer_heating_start_4",
-            "timer_hotwater_period",
-            "timer_hotwater_start_1",
-            "timer_hotwater_start_2",
-            "timer_hotwater_start_3"
-        ],
+            "Flame & flow": [
+                "light",
+                "light_required",
+                "flow"
+            ],
 
-        "System": [
-            "alarm",
-            "autocalculation",
-            "flow",
-            "language",
-            "light",
-            "light_required",
-            "model",
-            "version"
-        ],
+            "PID regulator": [
+                "regulator_P",
+                "regulator_I",
+                "regulator_D"
+            ]
+        },
 
-        "Other": [
-            "ignition_count",
-            "ignition_time",
-            "el_time",
-            "el_time_perm",
-            "magazine_content"
-        ]
+        "Oxygen": {
+
+            "Oxygen": [
+                "oxygen",
+                "oxygen_desired",
+                "oxygen_low",
+                "oxygen_mid",
+                "oxygen_high"
+            ],
+
+            "Regulation": [
+                "oxygen_regulation",
+                "oxygen_gain",
+                "oxygen_regulation_P",
+                "oxygen_regulation_I",
+                "oxygen_regulation_D"
+            ],
+
+            "Corrections": [
+                "oxygen_corr_low",
+                "oxygen_corr_mid",
+                "oxygen_corr_10",
+                "oxygen_corr_50",
+                "oxygen_corr_100",
+                "oxygen_corr_interval"
+            ]
+        },
+
+        "Feeder": {
+
+            "Feeder": [
+                "feeder_time",
+                "motor_time",
+                "motor_time_perm"
+            ],
+
+            "Capacity": [
+                "feeder_capacity",
+                "feeder_capacity_min",
+                "feeder_capacity_max"
+            ],
+
+            "Feed settings": [
+                "feeder_low",
+                "feeder_high",
+                "feed_per_minute"
+            ]
+        },
+
+        "Blower": {
+
+            "Blower output": [
+                "blower_low",
+                "blower_mid",
+                "blower_high"
+            ],
+
+            "Corrections": [
+                "blower_corr_low",
+                "blower_corr_mid",
+                "blower_corr_high"
+            ],
+
+            "Other": [
+                "blower_off_time",
+                "blower_cleaning"
+            ]
+        },
+
+        "Cleaning": {
+
+            "Standard cleaning": [
+                "cleaning_interval",
+                "cleaning_time"
+            ],
+
+            "Compressor cleaning": [
+                "comp_clean_interval",
+                "comp_clean_time",
+                "comp_clean_wait"
+            ],
+
+            "Compressor blower": [
+                "comp_clean_blower"
+            ]
+        },
+
+        "Timers": {
+
+            "Controller time": [
+                "time_minutes"
+            ],
+
+            "Heating timers": [
+                "timer_heating_period",
+                "timer_heating_start_1",
+                "timer_heating_start_2",
+                "timer_heating_start_3",
+                "timer_heating_start_4"
+            ],
+
+            "Hot water timers": [
+                "timer_hotwater_period",
+                "timer_hotwater_start_1",
+                "timer_hotwater_start_2",
+                "timer_hotwater_start_3"
+            ]
+        },
+
+        "System": {
+
+            "Controller": [
+                "alarm",
+                "autocalculation"
+            ],
+
+            "Configuration": [
+                "language"
+            ],
+
+            "Information": [
+                "model",
+                "version"
+            ]
+        },
+
+        "Other": {
+
+            "Ignition": [
+                "ignition_count",
+                "ignition_time"
+            ],
+
+            "Electrical": [
+                "el_time",
+                "el_time_perm"
+            ],
+
+            "Magazine": [
+                "magazine_content"
+            ]
+        }
     };
+
 
     const used = new Set();
     let html = "";
 
-    Object.entries(groups).forEach(([groupName, keys]) => {
 
-        const available = keys.filter(key =>
+    function parameterAvailable(key) {
+
+        return (
+            (
+                liveData[key] !== null &&
+                liveData[key] !== undefined
+            ) ||
+            editableControllerSettings.has(key)
+        );
+    }
+
+
+    function renderParameter(key) {
+
+        const editable =
+            editableControllerSettings.get(key);
+
+        const currentValue =
             liveData[key] !== null &&
             liveData[key] !== undefined
-        );
+                ? liveData[key]
+                : editable?.value;
 
-        if (!available.length)
-            return;
 
-        available.forEach(key => used.add(key));
+        if (editable) {
 
-        html += `
-            <div class="live-parameter-group">
+            const inputItem = {
+                ...editable,
+                value: currentValue
+            };
 
-                <div class="live-parameter-group-title">
-                    ${esc(groupName)}
+            return `
+                <div class="parameter controller-collapsible">
+
+                    <button
+                        type="button"
+                        class="controller-parameter-summary"
+                        onclick="toggleControllerParameter('${key}')"
+                    >
+                        <span class="parameter-name">
+                            ${esc(niceName(key))}
+                        </span>
+
+                        <strong>
+                            ${esc(number(currentValue))}
+                        </strong>
+
+                        <span class="parameter-unit">
+                            ${esc(unitFor(key))}
+                        </span>
+
+                        <span
+                            class="controller-expand-icon"
+                            id="controller-expand-${key}"
+                        >
+                            ›
+                        </span>
+                    </button>
+
+                    <div
+                        id="controller-editor-${key}"
+                        class="controller-parameter-editor"
+                        hidden
+                    >
+                        ${controllerInput(inputItem)}
+
+                        <button
+                            id="controller-save-${key}"
+                            class="btn controller-setting-save"
+                            type="button"
+                            onclick="saveControllerSetting('${key}')"
+                        >
+                            Save
+                        </button>
+
+                        <div
+                            id="controller-info-${key}"
+                            class="controller-setting-info"
+                        ></div>
+                    </div>
+
                 </div>
+            `;
+        }
 
-                <div class="live-parameter-grid">
 
-                    ${available.map(key => `
-                        <div class="parameter">
+        return `
+            <div class="parameter controller-readonly-row">
 
-                            <span class="parameter-name">
-                                ${esc(niceName(key))}
-                            </span>
+                <span class="parameter-name">
+                    ${esc(niceName(key))}
+                </span>
 
-                            <strong>
-                                ${esc(number(liveData[key]))}
-                            </strong>
+                <strong>
+                    ${esc(number(currentValue))}
+                </strong>
 
-                            <span class="parameter-unit">
-                                ${esc(unitFor(key))}
-                            </span>
-
-                        </div>
-                    `).join("")}
-
-                </div>
+                <span class="parameter-unit">
+                    ${esc(unitFor(key))}
+                </span>
 
             </div>
         `;
-    });
+    }
 
-    /*
-     * Future controller parameters that are not yet grouped.
-     */
 
-    const ungrouped = Object.keys(liveData)
+    Object.entries(groups).forEach(
+        ([groupName, columns]) => {
+
+            const renderedColumns = [];
+
+            Object.entries(columns).forEach(
+                ([columnName, keys]) => {
+
+                    const available =
+                        keys.filter(parameterAvailable);
+
+                    if (!available.length)
+                        return;
+
+                    available.forEach(
+                        key => used.add(key)
+                    );
+
+                    renderedColumns.push(`
+                        <div class="controller-parameter-column">
+
+                            <div class="controller-parameter-column-title">
+                                ${esc(columnName)}
+                            </div>
+
+                            <div class="controller-parameter-column-body">
+                                ${available.map(renderParameter).join("")}
+                            </div>
+
+                        </div>
+                    `);
+                }
+            );
+
+
+            if (!renderedColumns.length)
+                return;
+
+
+            html += `
+                <div class="live-parameter-group">
+
+                    <div class="live-parameter-group-title">
+                        ${esc(groupName)}
+                    </div>
+
+                    <div class="controller-parameter-columns">
+                        ${renderedColumns.join("")}
+                    </div>
+
+                </div>
+            `;
+        }
+    );
+
+
+    const allKeys = new Set([
+        ...Object.keys(liveData),
+        ...editableControllerSettings.keys()
+    ]);
+
+
+    const ungrouped = [...allKeys]
         .filter(key =>
-            liveData[key] !== null &&
-            liveData[key] !== undefined &&
-            !used.has(key)
+            !used.has(key) &&
+            parameterAvailable(key)
         )
         .sort();
+
 
     if (ungrouped.length) {
 
@@ -3480,25 +4746,15 @@ function renderLiveParameters() {
                     Other parameters
                 </div>
 
-                <div class="live-parameter-grid">
+                <div class="controller-parameter-columns">
 
-                    ${ungrouped.map(key => `
-                        <div class="parameter">
+                    <div class="controller-parameter-column">
 
-                            <span class="parameter-name">
-                                ${esc(niceName(key))}
-                            </span>
-
-                            <strong>
-                                ${esc(number(liveData[key]))}
-                            </strong>
-
-                            <span class="parameter-unit">
-                                ${esc(unitFor(key))}
-                            </span>
-
+                        <div class="controller-parameter-column-body">
+                            ${ungrouped.map(renderParameter).join("")}
                         </div>
-                    `).join("")}
+
+                    </div>
 
                 </div>
 
@@ -3506,12 +4762,14 @@ function renderLiveParameters() {
         `;
     }
 
+
     container.innerHTML =
         html ||
         `<div style="color:var(--muted);">
-            No live parameters available
+            No controller parameters available
         </div>`;
 }
+
 
 let lastLoggedAlarm = null;
 let lastLoggedErrors = {};
@@ -3927,6 +5185,8 @@ async function updateHistoryChart() {
 
     if (!selected.length) {
 
+        historyRequestGeneration++;
+
         if (historyRequestController) {
             historyRequestController.abort();
             historyRequestController = null;
@@ -3948,7 +5208,14 @@ async function updateHistoryChart() {
         historyRequestController.abort();
     }
 
-    historyRequestController = new AbortController();
+    const requestGeneration =
+        ++historyRequestGeneration;
+
+    const requestController =
+        new AbortController();
+
+    historyRequestController =
+        requestController;
 
     try {
 
@@ -3985,7 +5252,7 @@ async function updateHistoryChart() {
             API + url,
             {
                 cache: "no-store",
-                signal: historyRequestController.signal
+                signal: requestController.signal
             }
         );
 
@@ -3996,6 +5263,13 @@ async function updateHistoryChart() {
         }
 
         const result = await response.json();
+
+        if (
+            requestGeneration !==
+            historyRequestGeneration
+        ) {
+            return;
+        }
 
         const rows = result.data || [];
 
@@ -4066,11 +5340,6 @@ async function updateHistoryChart() {
         const ctx =
             canvas.getContext("2d");
 
-        if (historyChart) {
-            historyChart.destroy();
-            historyChart = null;
-        }
-
         /*
          * Up to 48 hours:
          * show clock time.
@@ -4084,7 +5353,49 @@ async function updateHistoryChart() {
         const isMobile =
             window.innerWidth < 600;
 
-        historyChart = new Chart(ctx, {
+        if (
+            historyChart &&
+            historyChart.canvas === canvas
+        ) {
+
+            historyChart.data.datasets =
+                datasets;
+
+            historyChart.options.scales.x.time =
+                useTime
+                    ? {
+                        unit: "hour",
+                        tooltipFormat:
+                            "dd/MM/yyyy HH:mm",
+                        displayFormats: {
+                            hour: "HH:mm",
+                            day: "dd/MM"
+                        }
+                    }
+                    : {
+                        unit: "day",
+                        tooltipFormat:
+                            "dd/MM/yyyy HH:mm",
+                        displayFormats: {
+                            day: "dd/MM",
+                            month: "MMM yyyy"
+                        }
+                    };
+
+            historyChart.options.scales.x
+                .ticks.maxTicksLimit =
+                    isMobile ? 6 : 10;
+
+            historyChart.update("none");
+
+        } else {
+
+            if (historyChart) {
+                historyChart.destroy();
+                historyChart = null;
+            }
+
+            historyChart = new Chart(ctx, {
 
             type: "line",
 
@@ -4262,7 +5573,14 @@ async function updateHistoryChart() {
             }
         });
 
-        historyRequestController = null;
+        }
+
+        if (
+            historyRequestController ===
+            requestController
+        ) {
+            historyRequestController = null;
+        }
 
     } catch(error) {
 
@@ -4274,7 +5592,12 @@ async function updateHistoryChart() {
             error
         );
 
-        historyRequestController = null;
+        if (
+            historyRequestController ===
+            requestController
+        ) {
+            historyRequestController = null;
+        }
     }
 }
 
@@ -7104,7 +8427,64 @@ async function clearActivityLog() {
 }
 
 
+
+async function restartWoodyMonitor() {
+
+    if (!confirm("Are you sure you want to restart Woody Monitor?\n\nThe connection will be unavailable briefly during restart.")) {
+        return;
+    }
+
+    try {
+
+        const response = await fetch(
+            "/api/v1/system/restart",
+            {
+                method: "POST"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Restart request failed");
+        }
+
+        const button = event?.currentTarget;
+
+        if (button) {
+            button.disabled = true;
+            button.textContent = "Restarting...";
+        }
+
+        setTimeout(() => {
+            window.location.reload();
+        }, 8000);
+
+    } catch (error) {
+
+        alert(
+            "Could not restart Woody Monitor: " +
+            error.message
+        );
+    }
+}
+
+
+function toggleMobileMenu() {
+    const nav = document.getElementById("topNav");
+    if (nav) {
+        nav.classList.toggle("mobile-open");
+    }
+}
+
+function closeMobileMenu() {
+    const nav = document.getElementById("topNav");
+    if (nav) {
+        nav.classList.remove("mobile-open");
+    }
+}
+
 function showPage(page) {
+
+    closeMobileMenu();
 
     document.querySelectorAll(".page")
         .forEach(section => section.classList.remove("active"));
@@ -7635,6 +9015,9 @@ async function toggleBurner() {
     if (running) {
         if (!confirm("Stop the pellet burner?"))
             return;
+    } else {
+        if (!confirm("Start the pellet burner?"))
+            return;
     }
 
     burnerCommandBusy = true;
@@ -7832,91 +9215,16 @@ function controllerInput(item) {
 
 function renderControllerSettings(result) {
 
-    const container =
-        document.getElementById("controllerSettings");
-
-    const status =
-        document.getElementById("controllerSettingsStatus");
-
-    if (!container)
-        return;
-
     const settings =
         Array.isArray(result.settings)
             ? result.settings
             : [];
 
-    const groups = {};
-
-    settings.forEach(item => {
-
-        if (!groups[item.group])
-            groups[item.group] = [];
-
-        groups[item.group].push(item);
-    });
-
-    let html = "";
-
-    Object.entries(groups).forEach(
-        ([group, items]) => {
-
-            html += `
-                <div class="controller-settings-group">
-
-                    <div class="controller-settings-group-title">
-                        ${controllerGroups[group] || group}
-                    </div>
-            `;
-
-            items.forEach(item => {
-
-                const name =
-                    controllerNames[item.id] ||
-                    item.name ||
-                    item.id;
-
-                html += `
-                    <div class="controller-setting-row">
-
-                        <div>
-                            <div class="controller-setting-name">
-                                ${name}
-                            </div>
-
-                            <div
-                                id="controller-info-${item.id}"
-                                class="controller-setting-info"
-                            >
-                                Range: ${item.min} – ${item.max}
-                            </div>
-                        </div>
-
-                        ${controllerInput(item)}
-
-                        <button
-                            id="controller-save-${item.id}"
-                            class="btn controller-setting-save"
-                            type="button"
-                            onclick="saveControllerSetting('${item.id}')"
-                        >
-                            Save
-                        </button>
-
-                    </div>
-                `;
-            });
-
-            html += "</div>";
-        }
+    editableControllerSettings = new Map(
+        settings.map(item => [item.id, item])
     );
 
-    container.innerHTML = html;
-
-    if (status) {
-        status.textContent =
-            `${settings.length} editable controller settings`;
-    }
+    renderLiveParameters();
 }
 
 
@@ -7971,6 +9279,42 @@ async function loadControllerSettings() {
 }
 
 
+
+function toggleControllerParameter(parameter) {
+
+    const editor =
+        document.getElementById(
+            `controller-editor-${parameter}`
+        );
+
+    const icon =
+        document.getElementById(
+            `controller-expand-${parameter}`
+        );
+
+    if (!editor)
+        return;
+
+    const opening = editor.hidden;
+
+    editor.hidden = !opening;
+
+    if (icon)
+        icon.textContent = opening ? "⌄" : "›";
+
+    if (opening) {
+        const input =
+            document.getElementById(
+                `controller-${parameter}`
+            );
+
+        if (input) {
+            setTimeout(() => input.focus(), 0);
+        }
+    }
+}
+
+
 async function saveControllerSetting(parameter) {
 
     const input =
@@ -8001,6 +9345,33 @@ async function saveControllerSetting(parameter) {
                 "Value is required";
 
         return;
+    }
+
+    /*
+     * Validate numeric controller limits.
+     * Limits are only shown when the entered value is invalid.
+     */
+    if (!controllerIsTime(parameter)) {
+
+        const numericValue = Number(value);
+        const min = Number(input.min);
+        const max = Number(input.max);
+
+        if (
+            !Number.isFinite(numericValue) ||
+            numericValue < min ||
+            numericValue > max
+        ) {
+            if (info) {
+                info.textContent =
+                    `Allowed range: ${input.min} – ${input.max}`;
+
+                info.className =
+                    "controller-setting-info controller-setting-error";
+            }
+
+            return;
+        }
     }
 
     /*
@@ -8058,6 +9429,14 @@ async function saveControllerSetting(parameter) {
         ) {
             input.value =
                 result.value;
+        }
+
+        const cachedSetting =
+            editableControllerSettings.get(parameter);
+
+        if (cachedSetting) {
+            cachedSetting.value =
+                result.value ?? value;
         }
 
         if (info) {
@@ -8132,6 +9511,622 @@ loadSiloCapacity();
 
 </script>
 
+
+<script id="woody-ui-toolbar-trends">
+
+/* ============================================================
+   GRAPH TOOLBAR LAYOUT
+   ============================================================ */
+
+function woodyMoveDateRangeIntoToolbar(card, toolbarLeft) {
+
+    if (!card || !toolbarLeft)
+        return;
+
+    const dateInput =
+        card.querySelector('input[type="datetime-local"]');
+
+    if (!dateInput)
+        return;
+
+    const dateGroup =
+        dateInput.closest(".button-group");
+
+    if (!dateGroup)
+        return;
+
+    dateGroup.classList.add(
+        "woody-inline-date-range"
+    );
+
+    toolbarLeft.appendChild(dateGroup);
+
+    const oldToolbar =
+        dateGroup.closest(".toolbar");
+
+    /*
+     * The group has now been moved, so find empty toolbars
+     * left behind and hide them.
+     */
+    card.querySelectorAll(".toolbar")
+        .forEach(toolbar => {
+
+            if (
+                !toolbar.children.length ||
+                !toolbar.textContent.trim()
+            ) {
+                toolbar.style.display = "none";
+            }
+        });
+}
+
+
+function woodyArrangeHistoryControls() {
+
+    const canvas =
+        document.getElementById(
+            "dashboardHistoryChart"
+        );
+
+    if (!canvas)
+        return;
+
+    const card =
+        canvas.closest(".card");
+
+    if (!card)
+        return;
+
+    const toolbar =
+        card.querySelector(".chart-toolbar");
+
+    const left =
+        toolbar
+            ? toolbar.querySelector(
+                ".chart-toolbar-left"
+            )
+            : null;
+
+    if (!left)
+        return;
+
+
+    /* Time buttons -> Auto update -> Date range */
+
+    const auto =
+        document.getElementById(
+            "historyAutoUpdateButton"
+        );
+
+    if (auto) {
+        left.appendChild(auto);
+    }
+
+    woodyMoveDateRangeIntoToolbar(
+        card,
+        left
+    );
+
+
+    /*
+     * Move All / None below the graph,
+     * immediately before parameter selection.
+     */
+
+    const allButton =
+        card.querySelector(
+            '[onclick*="selectAllParameters"]'
+        );
+
+    if (allButton) {
+
+        const parameterToolbar =
+            allButton.closest(".toolbar");
+
+        const chart =
+            card.querySelector(
+                ".dashboard-history-chart"
+            );
+
+        if (
+            parameterToolbar &&
+            chart
+        ) {
+            parameterToolbar.classList.add(
+                "woody-parameter-controls"
+            );
+
+            chart.insertAdjacentElement(
+                "afterend",
+                parameterToolbar
+            );
+        }
+    }
+}
+
+
+function woodyArrangeConsumptionControls() {
+
+    const auto =
+        document.getElementById(
+            "pelletAutoUpdateButton"
+        );
+
+    if (!auto)
+        return;
+
+    const card =
+        auto.closest(".card");
+
+    if (!card)
+        return;
+
+    const toolbar =
+        card.querySelector(".chart-toolbar");
+
+    const left =
+        toolbar
+            ? toolbar.querySelector(
+                ".chart-toolbar-left"
+            )
+            : null;
+
+    if (!left)
+        return;
+
+
+    /* Time buttons -> Auto update -> Date range */
+
+    left.appendChild(auto);
+
+    woodyMoveDateRangeIntoToolbar(
+        card,
+        left
+    );
+}
+
+
+function woodyCreateMobileRangeRow(
+    toolbarLeft
+) {
+
+    if (!toolbarLeft)
+        return;
+
+    if (
+        toolbarLeft.querySelector(
+            ".woody-mobile-range-row"
+        )
+    ) {
+        return;
+    }
+
+    const dateRange =
+        toolbarLeft.querySelector(
+            ".woody-inline-date-range"
+        );
+
+    const rangeRow =
+        document.createElement("div");
+
+    rangeRow.className =
+        "woody-mobile-range-row";
+
+
+    /*
+     * Everything before Date range consists of
+     * time-window buttons + Auto update.
+     */
+    const children =
+        [...toolbarLeft.children];
+
+    children.forEach(child => {
+
+        if (child === dateRange)
+            return;
+
+        rangeRow.appendChild(child);
+    });
+
+
+    if (dateRange) {
+
+        toolbarLeft.insertBefore(
+            rangeRow,
+            dateRange
+        );
+
+    } else {
+
+        toolbarLeft.appendChild(
+            rangeRow
+        );
+    }
+}
+
+
+function woodyArrangeGraphControls() {
+
+    woodyArrangeHistoryControls();
+    woodyArrangeConsumptionControls();
+
+    const historyCanvas =
+        document.getElementById(
+            "dashboardHistoryChart"
+        );
+
+    if (historyCanvas) {
+
+        const card =
+            historyCanvas.closest(".card");
+
+        const left =
+            card?.querySelector(
+                ".chart-toolbar-left"
+            );
+
+        woodyCreateMobileRangeRow(left);
+    }
+
+
+    const pelletAuto =
+        document.getElementById(
+            "pelletAutoUpdateButton"
+        );
+
+    if (pelletAuto) {
+
+        const card =
+            pelletAuto.closest(".card");
+
+        const left =
+            card?.querySelector(
+                ".chart-toolbar-left"
+            );
+
+        woodyCreateMobileRangeRow(left);
+    }
+}
+
+
+
+/* ============================================================
+   BURNER TREND INDICATORS
+   ============================================================ */
+
+const woodyBurnerTrendValues = new Map();
+
+const woodyBurnerTrendIds = [
+    "statusBoilerTemp",
+    "statusHotWater",
+    "statusPower",
+    "statusPowerKw",
+    "statusReturnTemp"
+];
+
+
+/*
+ * Outdoor temperature intentionally excluded.
+ */
+
+function woodyNumericText(element) {
+
+    if (!element)
+        return null;
+
+    const value =
+        Number(
+            String(element.textContent)
+                .replace(",", ".")
+                .trim()
+        );
+
+    return Number.isFinite(value)
+        ? value
+        : null;
+}
+
+
+function woodyEnsureTrendElement(valueElement) {
+
+    if (!valueElement)
+        return null;
+
+    const trendId =
+        valueElement.id + "Trend";
+
+    let trend =
+        document.getElementById(trendId);
+
+    if (trend)
+        return trend;
+
+    trend =
+        document.createElement("span");
+
+    trend.id = trendId;
+    trend.className =
+        "burner-trend burner-trend-stable";
+
+    trend.textContent = "→";
+    trend.title = "Stable";
+
+    const valueContainer =
+        valueElement.closest(
+            ".burner-metric-value"
+        );
+
+    if (valueContainer) {
+
+        /*
+         * Append after value + unit:
+         * 62 °C ↑
+         * 4.2 kW ↓
+         * 35 % →
+         */
+        valueContainer.appendChild(trend);
+
+    } else {
+
+        valueElement.insertAdjacentElement(
+            "afterend",
+            trend
+        );
+    }
+
+    return trend;
+}
+
+
+function woodySetTrend(
+    valueElement,
+    currentValue
+) {
+
+    if (
+        !valueElement ||
+        currentValue === null
+    ) {
+        return;
+    }
+
+    const trend =
+        woodyEnsureTrendElement(
+            valueElement
+        );
+
+    if (!trend)
+        return;
+
+    const previous =
+        woodyBurnerTrendValues.get(
+            valueElement.id
+        );
+
+    /*
+     * First reading has no previous sample.
+     */
+    if (
+        previous === undefined ||
+        previous === null
+    ) {
+
+        trend.textContent = "→";
+
+        trend.className =
+            "burner-trend burner-trend-stable";
+
+        trend.title =
+            "Waiting for trend";
+
+        woodyBurnerTrendValues.set(
+            valueElement.id,
+            currentValue
+        );
+
+        return;
+    }
+
+
+    const difference =
+        currentValue - previous;
+
+    /*
+     * Ignore tiny floating point changes.
+     */
+    const epsilon = 0.001;
+
+
+    if (difference > epsilon) {
+
+        trend.textContent = "↑";
+
+        trend.className =
+            "burner-trend burner-trend-up";
+
+        trend.title =
+            "Increasing";
+
+    } else if (difference < -epsilon) {
+
+        trend.textContent = "↓";
+
+        trend.className =
+            "burner-trend burner-trend-down";
+
+        trend.title =
+            "Decreasing";
+
+    } else {
+
+        trend.textContent = "→";
+
+        trend.className =
+            "burner-trend burner-trend-stable";
+
+        trend.title =
+            "Stable";
+    }
+
+
+    woodyBurnerTrendValues.set(
+        valueElement.id,
+        currentValue
+    );
+}
+
+
+function woodyWatchBurnerTrend(id) {
+
+    const element =
+        document.getElementById(id);
+
+    if (!element)
+        return;
+
+    woodyEnsureTrendElement(element);
+
+    /*
+     * Store initial displayed value.
+     */
+    const initial =
+        woodyNumericText(element);
+
+    if (initial !== null) {
+
+        woodyBurnerTrendValues.set(
+            id,
+            initial
+        );
+    }
+
+
+    /*
+     * Watch actual live-value changes.
+     * This means we do not modify loadLive() at all.
+     */
+
+    const observer =
+        new MutationObserver(() => {
+
+            const current =
+                woodyNumericText(element);
+
+            woodySetTrend(
+                element,
+                current
+            );
+        });
+
+    observer.observe(
+        element,
+        {
+            childList:true,
+            characterData:true,
+            subtree:true
+        }
+    );
+}
+
+
+function woodyInitBurnerTrends() {
+
+    woodyBurnerTrendIds
+        .forEach(
+            woodyWatchBurnerTrend
+        );
+}
+
+
+
+/* ============================================================
+   INITIALIZE
+   ============================================================ */
+
+function woodyInitUIEnhancements() {
+
+    woodyArrangeGraphControls();
+    woodyInitBurnerTrends();
+}
+
+
+if (
+    document.readyState === "loading"
+) {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        woodyInitUIEnhancements,
+        { once:true }
+    );
+
+} else {
+
+    woodyInitUIEnhancements();
+}
+
+</script>
+
+
+<script id="woody-about-info">
+
+async function loadAboutInfo() {
+
+    const versionElement =
+        document.getElementById("aboutVersion");
+
+    const apiElement =
+        document.getElementById("aboutApiStatus");
+
+    if (!versionElement || !apiElement)
+        return;
+
+    try {
+
+        const response =
+            await fetch("/api/v1/about");
+
+        if (!response.ok)
+            throw new Error(
+                "API request failed"
+            );
+
+        const data =
+            await response.json();
+
+        versionElement.textContent =
+            data.version || "--";
+
+        apiElement.textContent =
+            "Online";
+
+    } catch (error) {
+
+        versionElement.textContent =
+            "--";
+
+        apiElement.textContent =
+            "Offline";
+    }
+}
+
+
+if (
+    document.readyState === "loading"
+) {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        loadAboutInfo
+    );
+
+} else {
+
+    loadAboutInfo();
+}
+
+</script>
+
 </body>
 </html>
 
@@ -8157,3 +10152,41 @@ loadSiloCapacity();
     }
 }
 </style>
+
+<style id="woody-mobile-topbar-fix">
+@media (max-width: 700px) {
+
+    .topbar {
+        min-height: 0 !important;
+        height: auto !important;
+        padding: 6px 10px !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+
+    .logo {
+        order: 2;
+        flex-shrink: 0;
+    }
+
+    .mobile-menu-button {
+        order: 1;
+        margin: 0 8px 0 0 !important;
+        padding: 3px 6px !important;
+        font-size: 22px !important;
+        line-height: 1 !important;
+        flex-shrink: 0;
+    }
+
+    .connection {
+        order: 3;
+        margin-left: auto !important;
+    }
+
+    .top-nav {
+        order: 4;
+    }
+}
+</style>
+

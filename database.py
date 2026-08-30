@@ -60,6 +60,25 @@ class Database:
 
 
                 conn.execute("""
+                    CREATE TABLE IF NOT EXISTS history_hourly (
+                        hour_start TEXT NOT NULL,
+                        parameter TEXT NOT NULL,
+                        value_sum REAL NOT NULL,
+                        value_count INTEGER NOT NULL,
+                        last_value REAL,
+                        last_timestamp TEXT NOT NULL,
+                        PRIMARY KEY (hour_start, parameter)
+                    )
+                """)
+
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS
+                    idx_history_hourly_parameter_time
+                    ON history_hourly(parameter, hour_start)
+                """)
+
+
+                conn.execute("""
                     CREATE TABLE IF NOT EXISTS pellet_prices (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         effective_at TEXT NOT NULL,
@@ -159,6 +178,60 @@ class Database:
                     rows
                 )
 
+                hourly_rows = [
+                    (
+                        timestamp[:13] + ":00:00+00:00",
+                        parameter,
+                        value,
+                        1,
+                        value,
+                        timestamp
+                    )
+                    for timestamp, parameter, value in rows
+                ]
+
+                conn.executemany(
+                    """
+                    INSERT INTO history_hourly (
+                        hour_start,
+                        parameter,
+                        value_sum,
+                        value_count,
+                        last_value,
+                        last_timestamp
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+
+                    ON CONFLICT(hour_start, parameter)
+                    DO UPDATE SET
+
+                        value_sum =
+                            history_hourly.value_sum +
+                            excluded.value_sum,
+
+                        value_count =
+                            history_hourly.value_count +
+                            excluded.value_count,
+
+                        last_value =
+                            CASE
+                                WHEN excluded.last_timestamp >=
+                                     history_hourly.last_timestamp
+                                THEN excluded.last_value
+                                ELSE history_hourly.last_value
+                            END,
+
+                        last_timestamp =
+                            CASE
+                                WHEN excluded.last_timestamp >=
+                                     history_hourly.last_timestamp
+                                THEN excluded.last_timestamp
+                                ELSE history_hourly.last_timestamp
+                            END
+                    """,
+                    hourly_rows
+                )
+
                 conn.commit()
 
             finally:
@@ -236,95 +309,312 @@ class Database:
                 # real value in every time bucket.
                 #
 
+                # -------------------------------------------------
+                # HOURLY HISTORY CACHE
+                # -------------------------------------------------
+                #
+                # Long history ranges use pre-aggregated hourly data.
+                # This avoids scanning hundreds of thousands of raw
+                # measurements for every graph request.
+                #
+                if bucket_seconds >= 3600:
+
+                    def utc_hour(value):
+                        dt = datetime.fromisoformat(
+                            value.replace("Z", "+00:00")
+                        )
+
+                        if dt.tzinfo is None:
+                            dt = dt.replace(
+                                tzinfo=timezone.utc
+                            )
+
+                        return (
+                            dt.astimezone(timezone.utc)
+                            .replace(
+                                minute=0,
+                                second=0,
+                                microsecond=0
+                            )
+                            .isoformat()
+                        )
+
+                    start_hour = utc_hour(start)
+                    end_hour = utc_hour(end)
+
+                    rows = []
+
+                    cumulative_parameters = {
+                        "feeder_time"
+                    }
+
+                    normal_parameters = [
+                        parameter
+                        for parameter in parameters
+                        if parameter not in cumulative_parameters
+                    ]
+
+                    if normal_parameters:
+
+                        hourly_placeholders = ",".join(
+                            "?" for _ in normal_parameters
+                        )
+
+                        sql = f"""
+                            SELECT
+                                parameter,
+
+                                CAST(
+                                    strftime('%s', hour_start)
+                                    AS INTEGER
+                                ) / ? AS bucket,
+
+                                MIN(hour_start) AS timestamp,
+
+                                SUM(value_sum) /
+                                NULLIF(
+                                    SUM(value_count),
+                                    0
+                                ) AS value
+
+                            FROM history_hourly
+
+                            WHERE parameter IN (
+                                {hourly_placeholders}
+                            )
+                              AND hour_start >= ?
+                              AND hour_start <= ?
+
+                            GROUP BY parameter, bucket
+
+                            ORDER BY bucket ASC
+                        """
+
+                        hourly_rows = conn.execute(
+                            sql,
+                            [
+                                bucket_seconds,
+                                *normal_parameters,
+                                start_hour,
+                                end_hour
+                            ]
+                        ).fetchall()
+
+                        rows.extend(
+                            {
+                                "timestamp":
+                                    row["timestamp"],
+                                "parameter":
+                                    row["parameter"],
+                                "value":
+                                    row["value"]
+                            }
+                            for row in hourly_rows
+                        )
+
+                    for parameter in parameters:
+
+                        if parameter not in cumulative_parameters:
+                            continue
+
+                        sql = """
+                            SELECT
+                                bucket,
+                                last_timestamp AS timestamp,
+                                last_value AS value
+
+                            FROM (
+                                SELECT
+                                    CAST(
+                                        strftime(
+                                            '%s',
+                                            hour_start
+                                        )
+                                        AS INTEGER
+                                    ) / ? AS bucket,
+
+                                    last_timestamp,
+                                    last_value,
+
+                                    ROW_NUMBER() OVER (
+                                        PARTITION BY
+                                            CAST(
+                                                strftime(
+                                                    '%s',
+                                                    hour_start
+                                                )
+                                                AS INTEGER
+                                            ) / ?
+
+                                        ORDER BY
+                                            hour_start DESC
+                                    ) AS rn
+
+                                FROM history_hourly
+
+                                WHERE parameter = ?
+                                  AND hour_start >= ?
+                                  AND hour_start <= ?
+                            )
+
+                            WHERE rn = 1
+
+                            ORDER BY bucket ASC
+                        """
+
+                        hourly_rows = conn.execute(
+                            sql,
+                            [
+                                bucket_seconds,
+                                bucket_seconds,
+                                parameter,
+                                start_hour,
+                                end_hour
+                            ]
+                        ).fetchall()
+
+                        rows.extend(
+                            {
+                                "timestamp":
+                                    row["timestamp"],
+                                "parameter":
+                                    parameter,
+                                "value":
+                                    row["value"]
+                            }
+                            for row in hourly_rows
+                        )
+
+                    rows.sort(
+                        key=lambda row: row["timestamp"]
+                    )
+
+                    return rows
+
                 rows = []
 
                 cumulative_parameters = {
                     "feeder_time"
                 }
 
+                normal_parameters = [
+                    parameter
+                    for parameter in parameters
+                    if parameter not in cumulative_parameters
+                ]
+
+                # -------------------------------------------------
+                # NORMAL PARAMETERS
+                # -------------------------------------------------
+                #
+                # Query all normal parameters in one SQL statement
+                # instead of executing one query per parameter.
+                #
+                if normal_parameters:
+
+                    normal_placeholders = ",".join(
+                        "?" for _ in normal_parameters
+                    )
+
+                    sql = f"""
+                        SELECT
+                            parameter,
+
+                            CAST(
+                                strftime('%s', timestamp)
+                                AS INTEGER
+                            ) / ? AS bucket,
+
+                            MIN(timestamp) AS timestamp,
+                            AVG(value) AS value
+
+                        FROM measurements
+
+                        WHERE parameter IN ({normal_placeholders})
+                          AND timestamp >= ?
+                          AND timestamp <= ?
+
+                        GROUP BY parameter, bucket
+
+                        ORDER BY bucket ASC
+                    """
+
+                    parameter_rows = conn.execute(
+                        sql,
+                        [
+                            bucket_seconds,
+                            *normal_parameters,
+                            start,
+                            end
+                        ]
+                    ).fetchall()
+
+                    rows.extend(
+                        {
+                            "timestamp": row["timestamp"],
+                            "parameter": row["parameter"],
+                            "value": row["value"]
+                        }
+                        for row in parameter_rows
+                    )
+
+                # -------------------------------------------------
+                # CUMULATIVE PARAMETERS
+                # -------------------------------------------------
+                #
+                # Keep the LAST real value in each bucket.
+                #
                 for parameter in parameters:
 
-                    if parameter in cumulative_parameters:
+                    if parameter not in cumulative_parameters:
+                        continue
 
-                        sql = f"""
-                            SELECT
-                                bucket,
-                                timestamp,
-                                value
-                            FROM (
-                                SELECT
-                                    CAST(
-                                        strftime('%s', timestamp)
-                                        AS INTEGER
-                                    ) / ? AS bucket,
-
-                                    timestamp,
-                                    value,
-
-                                    ROW_NUMBER() OVER (
-                                        PARTITION BY
-                                            CAST(
-                                                strftime('%s', timestamp)
-                                                AS INTEGER
-                                            ) / ?
-                                        ORDER BY timestamp DESC
-                                    ) AS rn
-
-                                FROM measurements
-
-                                WHERE parameter = ?
-                                  AND timestamp >= ?
-                                  AND timestamp <= ?
-                            )
-
-                            WHERE rn = 1
-
-                            ORDER BY timestamp ASC
-                        """
-
-                        parameter_rows = conn.execute(
-                            sql,
-                            [
-                                bucket_seconds,
-                                bucket_seconds,
-                                parameter,
-                                start,
-                                end
-                            ]
-                        ).fetchall()
-
-                    else:
-
-                        sql = f"""
+                    sql = """
+                        SELECT
+                            bucket,
+                            timestamp,
+                            value
+                        FROM (
                             SELECT
                                 CAST(
                                     strftime('%s', timestamp)
                                     AS INTEGER
                                 ) / ? AS bucket,
 
-                                MIN(timestamp) AS timestamp,
-                                AVG(value) AS value
+                                timestamp,
+                                value,
+
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY
+                                        CAST(
+                                            strftime('%s', timestamp)
+                                            AS INTEGER
+                                        ) / ?
+                                    ORDER BY timestamp DESC
+                                ) AS rn
 
                             FROM measurements
 
                             WHERE parameter = ?
                               AND timestamp >= ?
                               AND timestamp <= ?
+                        )
 
-                            GROUP BY bucket
+                        WHERE rn = 1
 
-                            ORDER BY bucket ASC
-                        """
+                        ORDER BY timestamp ASC
+                    """
 
-                        parameter_rows = conn.execute(
-                            sql,
-                            [
-                                bucket_seconds,
-                                parameter,
-                                start,
-                                end
-                            ]
-                        ).fetchall()
+                    parameter_rows = conn.execute(
+                        sql,
+                        [
+                            bucket_seconds,
+                            bucket_seconds,
+                            parameter,
+                            start,
+                            end
+                        ]
+                    ).fetchall()
 
                     rows.extend(
                         {

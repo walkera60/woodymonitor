@@ -1,0 +1,16 @@
+{
+  "name": "Woody Monitor",
+  "short_name": "Woody Monitor",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#161d26",
+  "theme_color": "#161d26",
+  "icons": [
+    {
+      "src": "/woody-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
