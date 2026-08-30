@@ -291,6 +291,7 @@ HISTORY_PARAMETERS = {
     "oxygen",
     "light",
     "flow",
+    "magazine_content",
     "power",
     "power_kW",
     "feeder_time",

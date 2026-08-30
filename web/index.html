@@ -1760,6 +1760,73 @@ body { padding-bottom:20px; }
 }
 
 
+
+/* Woody History fixed color palette */
+.history-color-control {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.history-color-choice {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    padding: 0;
+    border: 2px solid rgba(255,255,255,.45);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.25);
+}
+
+.history-color-choice:hover {
+    transform: scale(1.12);
+}
+
+.history-color-palette {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: calc(100% + 7px);
+    z-index: 5000;
+
+    grid-template-columns: repeat(4, 22px);
+    gap: 7px;
+
+    padding: 9px;
+
+    background: #1d232d;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px;
+
+    box-shadow:
+        0 8px 24px rgba(0,0,0,.55);
+}
+
+.history-color-palette.open {
+    display: grid;
+}
+
+.history-color-swatch {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+
+    padding: 0;
+    margin: 0;
+
+    border: 2px solid rgba(255,255,255,.35);
+    border-radius: 50%;
+
+    cursor: pointer;
+}
+
+.history-color-swatch:hover {
+    transform: scale(1.15);
+    border-color: #fff;
+}
+
 </style>
 
 <style id="nav-font-fix">
@@ -2941,6 +3008,477 @@ strong {
 
 </style>
 
+
+<style id="woody-round-burner-button">
+
+/*
+ * Burner START / STOP button
+ * Same controller logic - visual change only.
+ */
+
+.burner-control-button {
+    width:46px !important;
+    height:46px !important;
+    min-width:46px !important;
+    min-height:46px !important;
+    flex:0 0 46px;
+
+    padding:0 !important;
+    margin:0 !important;
+
+    position:relative;
+    display:inline-flex !important;
+    align-items:center;
+    justify-content:center;
+
+    border-radius:50% !important;
+    border:3px solid currentColor !important;
+
+    background:
+        radial-gradient(
+            circle at 50% 45%,
+            #202934 0%,
+            #151c24 70%,
+            #0b1016 100%
+        ) !important;
+
+    box-shadow:
+        0 2px 6px rgba(0,0,0,.55),
+        inset 0 1px 1px rgba(255,255,255,.08),
+        inset 0 -2px 3px rgba(0,0,0,.5);
+
+    font-size:0 !important;
+    line-height:1;
+
+    cursor:pointer;
+
+    transition:
+        color .20s ease,
+        border-color .20s ease,
+        box-shadow .20s ease,
+        transform .08s ease;
+}
+
+
+/* Circular part of power symbol */
+.burner-control-button::before {
+    content:"";
+
+    position:absolute;
+
+    width:19px;
+    height:19px;
+
+    left:50%;
+    top:53%;
+
+    transform:translate(-50%,-50%);
+
+    border:4px solid currentColor;
+    border-top-color:transparent;
+    border-radius:50%;
+}
+
+
+/* Vertical part of power symbol */
+.burner-control-button::after {
+    content:"";
+
+    position:absolute;
+
+    width:4px;
+    height:18px;
+
+    left:50%;
+    top:9px;
+
+    transform:translateX(-50%);
+
+    border-radius:4px;
+
+    background:currentColor;
+}
+
+
+/* Stopped -> button means START */
+.burner-control-button.start {
+    color:#35d018 !important;
+    border-color:#35d018 !important;
+
+    box-shadow:
+        0 2px 6px rgba(0,0,0,.55),
+        0 0 7px rgba(53,208,24,.22),
+        inset 0 1px 1px rgba(255,255,255,.08);
+}
+
+
+/* Running -> button means STOP */
+.burner-control-button.stop {
+    color:#f12626 !important;
+    border-color:#f12626 !important;
+
+    box-shadow:
+        0 2px 6px rgba(0,0,0,.55),
+        0 0 7px rgba(241,38,38,.22),
+        inset 0 1px 1px rgba(255,255,255,.08);
+}
+
+
+.burner-control-button:hover {
+    transform:scale(1.04);
+}
+
+
+.burner-control-button:active {
+    transform:scale(.94);
+}
+
+
+.burner-control-button:disabled {
+    opacity:.45;
+    cursor:not-allowed;
+    transform:none;
+}
+
+
+@media (max-width:700px) {
+
+    .burner-control-button {
+        width:42px !important;
+        height:42px !important;
+        min-width:42px !important;
+        min-height:42px !important;
+        flex-basis:42px;
+    }
+
+    .burner-control-button::before {
+        width:17px;
+        height:17px;
+        border-width:3px;
+    }
+
+    .burner-control-button::after {
+        width:3px;
+        height:16px;
+        top:8px;
+    }
+}
+
+
+
+.burner-control-wrapper {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+    flex-shrink:0;
+}
+
+.burner-control-label {
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:.08em;
+    line-height:1;
+    text-align:center;
+    color:var(--muted);
+}
+
+.burner-control-wrapper:has(.burner-control-button.start)
+.burner-control-label {
+    color:#35d018;
+}
+
+.burner-control-wrapper:has(.burner-control-button.stop)
+.burner-control-label {
+    color:#f12626;
+}
+
+</style>
+
+
+<style id="woody-burner-control-topright">
+
+/* Alarm + burner control in upper-right area */
+.burner-alarm-control-row {
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    gap:12px !important;
+}
+
+
+/* Smaller burner button */
+.burner-control-button {
+    width:40px !important;
+    height:40px !important;
+    min-width:40px !important;
+    min-height:40px !important;
+    flex:0 0 40px !important;
+    border-width:3px !important;
+}
+
+
+/* Smaller power symbol */
+.burner-control-button::before {
+    width:16px !important;
+    height:16px !important;
+    border-width:3px !important;
+}
+
+
+.burner-control-button::after {
+    width:3px !important;
+    height:15px !important;
+    top:8px !important;
+}
+
+
+/* Wrapper */
+.burner-control-wrapper {
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    gap:4px !important;
+    margin:0 !important;
+}
+
+
+/* START / STOP text */
+.burner-control-label {
+    font-size:9px !important;
+    font-weight:700 !important;
+    letter-spacing:.08em !important;
+    line-height:1 !important;
+}
+
+
+/* Mobile */
+@media (max-width:700px) {
+
+    .burner-alarm-control-row {
+        gap:8px !important;
+    }
+
+    .burner-control-button {
+        width:36px !important;
+        height:36px !important;
+        min-width:36px !important;
+        min-height:36px !important;
+        flex-basis:36px !important;
+    }
+
+    .burner-control-button::before {
+        width:14px !important;
+        height:14px !important;
+    }
+
+    .burner-control-button::after {
+        height:13px !important;
+        top:7px !important;
+    }
+
+    .burner-control-label {
+        font-size:8px !important;
+    }
+}
+
+</style>
+
+
+
+
+<style id="woody-history-ui-final">
+
+/* ----------------------------------------------------------
+   Parameter color selector
+   ---------------------------------------------------------- */
+
+#dashboardParameterList .parameter {
+    display:flex;
+    align-items:center;
+}
+
+#dashboardParameterList .history-color-choice {
+    width:20px !important;
+    height:20px !important;
+    min-width:20px !important;
+
+    padding:0 !important;
+
+    margin-left:7px !important;
+    margin-right:7px !important;
+
+    border:1px solid var(--border) !important;
+    border-radius:4px !important;
+
+
+
+    cursor:pointer;
+}
+
+
+
+
+
+
+
+
+/* ----------------------------------------------------------
+   Bottom controls + legend
+   ---------------------------------------------------------- */
+
+.history-bottom-row {
+    width:100%;
+
+    display:flex;
+    align-items:center;
+
+    gap:18px;
+
+    margin-top:10px;
+    margin-bottom:8px;
+}
+
+
+.history-bottom-controls {
+    flex:0 0 auto;
+
+    display:flex;
+    align-items:center;
+}
+
+
+.history-bottom-controls .button-group {
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+
+
+.history-external-legend {
+    min-width:0;
+
+    flex:1 1 auto;
+
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+
+    flex-wrap:wrap;
+
+    gap:7px 14px;
+}
+
+
+.history-legend-item {
+    display:inline-flex;
+    align-items:center;
+
+    gap:6px;
+
+    font-size:11px;
+    line-height:1;
+
+    color:var(--muted);
+
+    white-space:nowrap;
+}
+
+
+.history-legend-color {
+    width:18px;
+    height:3px;
+
+    flex:0 0 18px;
+
+    border-radius:3px;
+}
+
+
+/* ----------------------------------------------------------
+   Mobile
+   ---------------------------------------------------------- */
+
+@media (max-width:700px) {
+
+    .history-bottom-row {
+        align-items:flex-start;
+        flex-wrap:wrap;
+
+        gap:9px 12px;
+    }
+
+    .history-external-legend {
+        flex:1 1 100%;
+
+        justify-content:flex-start;
+
+        gap:7px 12px;
+    }
+
+    .history-legend-item {
+        font-size:10px;
+    }
+
+    #dashboardParameterList
+    .history-color-picker {
+        width:18px !important;
+        height:18px !important;
+        min-width:18px !important;
+    }
+}
+
+</style>
+
+
+<style id="woody-history-standard-colors">
+
+.history-color-choice {
+    appearance:none;
+
+    width:18px !important;
+    height:18px !important;
+    min-width:18px !important;
+
+    padding:0 !important;
+    margin:0 7px 0 3px !important;
+
+    border:2px solid rgba(255,255,255,.32) !important;
+    border-radius:50% !important;
+
+    cursor:pointer;
+
+    flex:0 0 18px;
+
+    box-shadow:
+        0 0 0 1px rgba(0,0,0,.25);
+}
+
+
+.history-color-choice:hover {
+    transform:scale(1.12);
+}
+
+
+.history-color-choice:active {
+    transform:scale(.95);
+}
+
+
+@media (max-width:700px) {
+
+    .history-color-choice {
+        width:17px !important;
+        height:17px !important;
+        min-width:17px !important;
+        flex-basis:17px;
+    }
+}
+
+</style>
+
 </head>
 
 <body>
@@ -3011,11 +3549,12 @@ strong {
             <div class="burner-modern-header">
 
                 <div class="burner-heading">
-                    <div class="burner-heading-icon">🔥</div>
 
-                    <div>
+
+
+<div>
                         <div class="card-title">Burner</div>
-                        
+
 <div id="burnerStatus"
      class="burner-status-under-title">
     --
@@ -3026,13 +3565,12 @@ strong {
                 <div class="burner-header-right">
 
 
-                    <div class="burner-header-alarm">
+                    <div class="burner-alarm-control-row"><div class="burner-header-alarm">
                         <span class="alarm-check">✓</span>
                         <span>Alarm</span>
                         <span id="burnerAlarm">None</span>
-                    </div>
-
-                    <button
+                    </div><div class="burner-control-wrapper">
+    <button
                         id="burnerControlButton"
                         class="burner-control-button"
                         type="button"
@@ -3041,12 +3579,19 @@ strong {
                     >
                         --
                     </button>
+    <div id="burnerControlLabel" class="burner-control-label">--</div>
+</div></div>
+
+
 
                 </div>
 
             </div>
 
-            <div class="burner-modern-body">
+
+
+
+<div class="burner-modern-body">
 
                 <div class="burner-visual">
                     <div class="burner-machine">
@@ -3346,11 +3891,18 @@ strong {
 
         </div>
 
-        <!-- PARAMETER VALG -->
-        <div class="toolbar"
-             style="margin-top:12px;">
 
-            <div class="button-group">
+
+        <!-- GRAF -->
+        <div class="dashboard-history-chart">
+            <canvas id="dashboardHistoryChart"></canvas>
+        </div>
+
+
+        <div class="history-bottom-row">
+
+            <div class="history-bottom-controls">
+<div class="button-group">
 
                 <button class="btn"
                         type="button"
@@ -3365,12 +3917,12 @@ strong {
                 </button>
 
             </div>
+            </div>
 
-        </div>
+            <div id="historyExternalLegend"
+                 class="history-external-legend">
+            </div>
 
-        <!-- GRAF -->
-        <div class="dashboard-history-chart">
-            <canvas id="dashboardHistoryChart"></canvas>
         </div>
 
         <!-- PARAMETRE -->
@@ -3580,7 +4132,7 @@ strong {
         <p>Activities and changes in Woody Monitor</p>
     </div>
 
-                
+
 
 <div class="card">
 
@@ -3693,7 +4245,7 @@ strong {
                 <span style="float:right;color:var(--green);">Active</span>
             </div>
 
-            
+
 
         </div>
 
@@ -3852,7 +4404,7 @@ strong {
                 </div>
             </div>
 
-            
+
             <div class="live-parameters-wrapper">
                 <div class="card-subtitle" style="margin-bottom:12px;">
                     Current values from the controller. Editable parameters can be changed and saved.
@@ -3864,11 +4416,11 @@ strong {
 
         </div>
 
-        
 
-        
 
-    
+
+
+
 
 <div class="card col-12">
 
@@ -3907,7 +4459,7 @@ strong {
                         <div>30 August 2026</div>
                     </div>
 
-                    
+
 
                 </div>
 
@@ -5310,6 +5862,31 @@ function buildHistoryParameterList() {
                     data-parameter="${esc(key)}"
                     ${selectedSet.has(key) ? "checked" : ""}
                     onchange="historyParameterChanged()">
+                <span class="history-color-control">
+                    <button
+                        class="history-color-choice"
+                        type="button"
+                        data-parameter="${esc(key)}"
+                        title="Choose graph color"
+                        style="background-color:${historyParameterColor(key)}"
+                        onclick="return toggleHistoryColorPalette(this,event)">
+                    </button>
+
+                    <span
+                        class="history-color-palette"
+                        onclick="event.preventDefault();event.stopPropagation()">
+                        ${HISTORY_COLOR_PALETTE.map(color => `
+                            <button
+                                type="button"
+                                class="history-color-swatch"
+                                style="background-color:${color}"
+                                title="${color}"
+                                onclick="return chooseHistoryParameterColor('${key}','${color}',event)">
+                            </button>
+                        `).join("")}
+                    </span>
+                </span>
+
                 <span class="parameter-name">${esc(niceName(key))}</span>
                 <span class="parameter-unit">${esc(unitFor(key))}</span>
             </label>
@@ -5333,6 +5910,32 @@ function buildHistoryParameterList() {
                         data-parameter="${esc(key)}"
                         ${selectedSet.has(key) ? "checked" : ""}
                         onchange="historyParameterChanged()">
+
+                    <span class="history-color-control">
+                    <button
+                        class="history-color-choice"
+                        type="button"
+                        data-parameter="${esc(key)}"
+                        title="Choose graph color"
+                        style="background-color:${historyParameterColor(key)}"
+                        onclick="return toggleHistoryColorPalette(this,event)">
+                    </button>
+
+                    <span
+                        class="history-color-palette"
+                        onclick="event.preventDefault();event.stopPropagation()">
+                        ${HISTORY_COLOR_PALETTE.map(color => `
+                            <button
+                                type="button"
+                                class="history-color-swatch"
+                                style="background-color:${color}"
+                                title="${color}"
+                                onclick="return chooseHistoryParameterColor('${key}','${color}',event)">
+                            </button>
+                        `).join("")}
+                    </span>
+                </span>
+
                     <span class="parameter-name">${esc(niceName(key))}</span>
                     <span class="parameter-unit">${esc(unitFor(key))}</span>
                 </label>
@@ -5341,6 +5944,301 @@ function buildHistoryParameterList() {
 
     updateHistoryChart();
 }
+
+
+/*
+ * History graph colors.
+ * User selected colors are stored locally in the browser.
+ */
+
+const HISTORY_COLOR_PALETTE = [
+    "#ff5b5b",
+    "#ff9f43",
+    "#ffd43b",
+    "#2ed573",
+    "#1dd1a1",
+    "#32c5ff",
+    "#45aaf2",
+    "#5f7cff",
+    "#9b7bff",
+    "#f368e0",
+    "#a4b0be",
+    "#ffffff",
+    "#8d6e63"
+];
+
+
+function nextHistoryParameterColor(parameter) {
+
+    const current =
+        historyParameterColor(parameter);
+
+    let index =
+        HISTORY_COLOR_PALETTE.indexOf(
+            current.toLowerCase()
+        );
+
+    if (index < 0) {
+        index = 0;
+    } else {
+        index =
+            (index + 1) %
+            HISTORY_COLOR_PALETTE.length;
+    }
+
+    const color =
+        HISTORY_COLOR_PALETTE[index];
+
+    saveHistoryParameterColor(
+        parameter,
+        color
+    );
+
+    /*
+     * Update visible color buttons immediately.
+     */
+    document
+        .querySelectorAll(
+            `.history-color-choice[data-parameter="${CSS.escape(parameter)}"]`
+        )
+        .forEach(button => {
+            button.style.backgroundColor = color;
+        });
+
+    updateHistoryChart();
+}
+
+
+
+let openHistoryColorPalette = null;
+
+
+function toggleHistoryColorPalette(button, event) {
+
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    const palette =
+        button.parentElement.querySelector(
+            ".history-color-palette"
+        );
+
+    if (!palette) {
+        console.error(
+            "History color palette not found"
+        );
+        return false;
+    }
+
+    /*
+     * Close another open palette first.
+     */
+    if (
+        openHistoryColorPalette &&
+        openHistoryColorPalette !== palette
+    ) {
+        openHistoryColorPalette
+            .classList.remove("open");
+    }
+
+    palette.classList.toggle("open");
+
+    openHistoryColorPalette =
+        palette.classList.contains("open")
+            ? palette
+            : null;
+
+    return false;
+}
+
+
+function chooseHistoryParameterColor(
+    parameter,
+    color,
+    event
+) {
+
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    saveHistoryParameterColor(
+        parameter,
+        color
+    );
+
+    /*
+     * Update the color indicator in all parameter lists.
+     */
+    document
+        .querySelectorAll(
+            ".history-color-choice"
+        )
+        .forEach(button => {
+
+            if (
+                button.dataset.parameter ===
+                parameter
+            ) {
+                button.style.backgroundColor =
+                    color;
+            }
+        });
+
+    /*
+     * Close palette.
+     */
+    document
+        .querySelectorAll(
+            ".history-color-palette.open"
+        )
+        .forEach(palette => {
+            palette.classList.remove("open");
+        });
+
+    openHistoryColorPalette = null;
+
+    /*
+     * Redraw History using the selected color.
+     */
+    updateHistoryChart();
+
+    return false;
+}
+
+
+function getSavedHistoryColors() {
+
+    try {
+        return JSON.parse(
+            localStorage.getItem(
+                "woodyHistoryParameterColors"
+            ) || "{}"
+        );
+    } catch (error) {
+        return {};
+    }
+}
+
+
+function saveHistoryParameterColor(parameter, color) {
+
+    const colors =
+        getSavedHistoryColors();
+
+    colors[parameter] = color;
+
+    localStorage.setItem(
+        "woodyHistoryParameterColors",
+        JSON.stringify(colors)
+    );
+}
+
+
+function historyParameterColor(parameter) {
+
+    const saved =
+        getSavedHistoryColors();
+
+    if (saved[parameter]) {
+        return saved[parameter];
+    }
+
+    const order = [
+        "boiler_return_temp",
+        "boiler_temp",
+        "chute_temp",
+        "feeder_time",
+        "flow",
+        "hotwater_temp",
+        "indoor_temp",
+        "light",
+        "outside_temp",
+        "oxygen",
+        "power",
+        "power_kW",
+        "smoke_temp"
+    ];
+
+    const index =
+        order.indexOf(parameter);
+
+    if (index >= 0) {
+        return HISTORY_COLOR_PALETTE[
+            index % HISTORY_COLOR_PALETTE.length
+        ];
+    }
+
+    /*
+     * Fallback for future parameters.
+     */
+    let hash = 0;
+
+    for (let i = 0; i < parameter.length; i++) {
+
+        hash =
+            ((hash << 5) - hash) +
+            parameter.charCodeAt(i);
+
+        hash |= 0;
+    }
+
+    return HISTORY_COLOR_PALETTE[
+        Math.abs(hash) %
+        HISTORY_COLOR_PALETTE.length
+    ];
+}
+
+
+function historyColorChanged(parameter, color) {
+
+    saveHistoryParameterColor(
+        parameter,
+        color
+    );
+
+    updateHistoryChart();
+}
+
+
+
+function updateHistoryExternalLegend(selected) {
+
+    const container =
+        document.getElementById(
+            "historyExternalLegend"
+        );
+
+    if (!container)
+        return;
+
+    container.innerHTML =
+        selected.map(parameter => {
+
+            const color =
+                historyParameterColor(parameter);
+
+            return `
+                <div class="history-legend-item">
+
+                    <span
+                        class="history-legend-color"
+                        style="background:${color}">
+                    </span>
+
+                    <span>
+                        ${esc(niceName(parameter))}
+                    </span>
+
+                </div>
+            `;
+
+        }).join("");
+}
+
 
 async function updateHistoryChart() {
 
@@ -5359,6 +6257,9 @@ async function updateHistoryChart() {
     const selected =
         [...document.querySelectorAll(parameterSelector)]
         .map(el => el.dataset.parameter);
+
+
+    updateHistoryExternalLegend(selected);
 
     if (!selected.length) {
 
@@ -5485,9 +6386,15 @@ async function updateHistoryChart() {
                         a.x.getTime() - b.x.getTime()
                 );
 
+            const color =
+                historyParameterColor(parameter);
+
             return {
                 label: niceName(parameter),
                 data: points,
+
+                borderColor: color,
+                backgroundColor: color,
 
                 borderWidth: 2,
 
@@ -5572,7 +6479,7 @@ async function updateHistoryChart() {
                 historyChart = null;
             }
 
-            historyChart = new Chart(ctx, {
+    historyChart = new Chart(ctx, {
 
             type: "line",
 
@@ -5597,6 +6504,7 @@ async function updateHistoryChart() {
                 plugins: {
 
                     legend: {
+                        display: false,
                         labels: {
                             color: "#f2f4f7",
                             usePointStyle: true,
@@ -5776,6 +6684,7 @@ async function updateHistoryChart() {
             historyRequestController = null;
         }
     }
+
 }
 
 
@@ -7568,7 +8477,7 @@ async function updatePelletChart() {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2
                         }
-                    ) + " kg/dag"
+                    ) + " kg/day"
                     : "--";
         }
 
@@ -8816,6 +9725,110 @@ function formatSiloDate(date) {
 }
 
 
+async function getSiloHistory() {
+
+    try {
+
+        const response = await fetch(
+            API +
+            "/history?parameter=magazine_content&hours=2160",
+            { cache: "no-store" }
+        );
+
+        if (!response.ok)
+            return [];
+
+        const result = await response.json();
+
+        const rows =
+            Array.isArray(result?.data)
+                ? result.data
+                : [];
+
+        return rows
+            .map(row => ({
+                date: new Date(row.timestamp),
+                kg: siloNumber(row.value)
+            }))
+            .filter(row =>
+                row.kg !== null &&
+                row.kg >= 0 &&
+                !Number.isNaN(row.date.getTime())
+            )
+            .sort(
+                (a, b) =>
+                    a.date.getTime() -
+                    b.date.getTime()
+            );
+
+    } catch(error) {
+
+        console.debug(
+            "Silo history:",
+            error
+        );
+
+        return [];
+    }
+}
+
+
+function findLastSiloRefillIndex(rows) {
+
+    /*
+     * A refill is detected when magazine content rises
+     * by at least 5 kg between two stored samples.
+     *
+     * Small corrections are therefore ignored.
+     */
+    const minimumRefillKg = 5;
+
+    let refillIndex = -1;
+
+    for (let i = 1; i < rows.length; i++) {
+
+        const increase =
+            rows[i].kg -
+            rows[i - 1].kg;
+
+        if (increase >= minimumRefillKg)
+            refillIndex = i;
+    }
+
+    return refillIndex;
+}
+
+
+function reduceSiloHistoryPoints(rows, maxPoints = 40) {
+
+    if (rows.length <= maxPoints)
+        return rows;
+
+    const reduced = [];
+
+    for (let i = 0; i < maxPoints; i++) {
+
+        const index =
+            Math.round(
+                i *
+                (rows.length - 1) /
+                (maxPoints - 1)
+            );
+
+        if (
+            !reduced.length ||
+            reduced[
+                reduced.length - 1
+            ] !== rows[index]
+        ) {
+            reduced.push(rows[index]);
+        }
+    }
+
+    return reduced;
+}
+
+
 async function updateSiloForecast() {
 
     if (siloForecastBusy)
@@ -8849,8 +9862,13 @@ async function updateSiloForecast() {
 
     try {
 
-        const sevenDayKg =
-            await getSevenDayPelletConsumption();
+        const [
+            sevenDayKg,
+            siloHistory
+        ] = await Promise.all([
+            getSevenDayPelletConsumption(),
+            getSiloHistory()
+        ]);
 
         const daily =
             sevenDayKg !== null
@@ -8891,18 +9909,20 @@ async function updateSiloForecast() {
             dailyEl.textContent =
                 daily.toFixed(1);
 
+        const now =
+            new Date();
+
         const daysToEmpty =
             currentKg / daily;
 
         const emptyDate =
-            new Date();
-
-        emptyDate.setTime(
-            emptyDate.getTime() +
-            daysToEmpty * 86400000
-        );
+            new Date(
+                now.getTime() +
+                daysToEmpty * 86400000
+            );
 
         if (emptyEl) {
+
             emptyEl.textContent =
                 emptyDate.toLocaleDateString(
                     undefined,
@@ -8915,67 +9935,232 @@ async function updateSiloForecast() {
         }
 
         /*
-         * Build forecast points.
-         * Keep enough points for a smooth curve without
-         * creating hundreds of Chart.js labels.
+         * Find the most recent refill.
+         *
+         * Until Woody Monitor has observed its first real
+         * refill, use the oldest available magazine-content
+         * measurement as the start of the graph.
          */
-        const totalDays =
-            Math.max(
-                1,
-                Math.ceil(daysToEmpty)
-            );
+        let actualRows =
+            siloHistory;
 
-        const pointCount =
+        if (actualRows.length) {
+
+            const refillIndex =
+                findLastSiloRefillIndex(
+                    actualRows
+                );
+
+            if (refillIndex >= 0)
+                actualRows =
+                    actualRows.slice(
+                        refillIndex
+                    );
+
+            actualRows =
+                reduceSiloHistoryPoints(
+                    actualRows
+                );
+        }
+
+        /*
+         * Add a current point so the historical line always
+         * finishes exactly at the live silo content.
+         */
+        if (
+            !actualRows.length ||
+            Math.abs(
+                actualRows[
+                    actualRows.length - 1
+                ].date.getTime() -
+                now.getTime()
+            ) > 30000
+        ) {
+            actualRows = [
+                ...actualRows,
+                {
+                    date: now,
+                    kg: currentKg
+                }
+            ];
+        } else {
+
+            actualRows[
+                actualRows.length - 1
+            ] = {
+                date: now,
+                kg: currentKg
+            };
+        }
+
+        const forecastPointCount =
             Math.min(
                 30,
-                Math.max(8, totalDays + 1)
+                Math.max(
+                    8,
+                    Math.ceil(daysToEmpty) + 1
+                )
             );
 
         const labels = [];
+        const actual = [];
         const forecast = [];
 
+        /*
+         * Historical section:
+         * last refill / oldest measurement -> today.
+         */
+        for (const row of actualRows) {
+
+            labels.push(
+                formatSiloDate(
+                    row.date
+                )
+            );
+
+            actual.push(
+                Number(
+                    row.kg.toFixed(1)
+                )
+            );
+
+            forecast.push(null);
+        }
+
+        const todayIndex =
+            labels.length - 1;
+
+        /*
+         * Let the forecast begin at the current live value
+         * so the two lines meet at Today.
+         */
+        forecast[
+            todayIndex
+        ] = Number(
+            currentKg.toFixed(1)
+        );
+
+        /*
+         * Forecast:
+         * today -> calculated empty date.
+         */
         for (
-            let i = 0;
-            i < pointCount;
+            let i = 1;
+            i < forecastPointCount;
             i++
         ) {
 
             const fraction =
-                pointCount === 1
-                    ? 0
-                    : i / (pointCount - 1);
+                i /
+                (forecastPointCount - 1);
 
-            const day =
-                fraction * totalDays;
+            const milliseconds =
+                fraction *
+                daysToEmpty *
+                86400000;
 
             const date =
                 new Date(
-                    Date.now() +
-                    day * 86400000
+                    now.getTime() +
+                    milliseconds
                 );
 
             const kg =
                 Math.max(
                     0,
                     currentKg -
-                    daily * day
+                    daily *
+                    daysToEmpty *
+                    fraction
                 );
 
             labels.push(
                 formatSiloDate(date)
             );
 
+            actual.push(null);
+
             forecast.push(
-                Number(kg.toFixed(1))
+                Number(
+                    kg.toFixed(1)
+                )
             );
         }
 
-        /*
-         * Guarantee final point is 0 kg.
-         */
         forecast[
             forecast.length - 1
         ] = 0;
+
+        /*
+         * Draw a vertical marker at Today.
+         */
+        const todayMarker = {
+
+            id: "siloTodayMarker",
+
+            afterDraw(chart) {
+
+                const xScale =
+                    chart.scales.x;
+
+                const chartArea =
+                    chart.chartArea;
+
+                if (
+                    !xScale ||
+                    !chartArea ||
+                    todayIndex < 0
+                )
+                    return;
+
+                const x =
+                    xScale.getPixelForValue(
+                        todayIndex
+                    );
+
+                const ctx =
+                    chart.ctx;
+
+                ctx.save();
+
+                ctx.beginPath();
+                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle =
+                    "rgba(255,255,255,.35)";
+                ctx.lineWidth = 1;
+
+                ctx.moveTo(
+                    x,
+                    chartArea.top
+                );
+
+                ctx.lineTo(
+                    x,
+                    chartArea.bottom
+                );
+
+                ctx.stroke();
+
+                ctx.setLineDash([]);
+
+                ctx.fillStyle =
+                    "rgba(255,255,255,.75)";
+
+                ctx.font =
+                    "11px sans-serif";
+
+                ctx.textAlign =
+                    "center";
+
+                ctx.fillText(
+                    "Today",
+                    x,
+                    chartArea.top + 12
+                );
+
+                ctx.restore();
+            }
+        };
 
         if (siloForecastChart) {
             siloForecastChart.destroy();
@@ -8993,17 +10178,35 @@ async function updateSiloForecast() {
                         datasets: [
                             {
                                 label:
+                                    "Actual silo content",
+                                data:
+                                    actual,
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                pointHoverRadius: 4,
+                                tension: 0.15,
+                                spanGaps: false,
+                                fill: false
+                            },
+                            {
+                                label:
                                     "Estimated silo content",
                                 data:
                                     forecast,
                                 borderWidth: 2,
+                                borderDash: [6, 4],
                                 pointRadius: 0,
                                 pointHoverRadius: 4,
-                                tension: 0.2,
+                                tension: 0.15,
+                                spanGaps: false,
                                 fill: false
                             }
                         ]
                     },
+
+                    plugins: [
+                        todayMarker
+                    ],
 
                     options: {
 
@@ -9025,7 +10228,15 @@ async function updateSiloForecast() {
                             tooltip: {
                                 callbacks: {
                                     label(context) {
+
+                                        if (
+                                            context.parsed.y === null
+                                        )
+                                            return "";
+
                                         return (
+                                            context.dataset.label +
+                                            ": " +
                                             context.parsed.y
                                                 .toFixed(1) +
                                             " kg"
@@ -9075,7 +10286,6 @@ async function updateSiloForecast() {
         siloForecastBusy = false;
     }
 }
-
 
 
 
@@ -9182,6 +10392,19 @@ function updateBurnerControlButton() {
         button.textContent =
             "▶ START";
     }
+
+    const burnerControlLabel =
+        document.getElementById("burnerControlLabel");
+
+    if (burnerControlLabel) {
+        burnerControlLabel.textContent =
+            burnerCommandBusy
+                ? "WAIT"
+                : running
+                    ? "STOP"
+                    : "START";
+    }
+
 }
 
 
@@ -9669,23 +10892,43 @@ async function saveControllerSetting(parameter) {
 
 
 
+
 async function initialize() {
 
-    await loadLive();
+    /*
+     * Dashboard startup:
+     *
+     * History starts immediately.
+     * Independent application data loads in parallel.
+     * Consumption chart is loaded only when the
+     * Consumption page is opened.
+     */
 
-    await loadControllerSettings();
+    const historyPromise =
+        loadHistoryParameters();
 
-    await loadStatus();
-
-    await loadHistoryParameters();
-
-    await updateSiloForecast();
-
-    await loadTimezoneSettings();
+    const startupPromises = [
+        loadLive(),
+        loadControllerSettings(),
+        loadStatus(),
+        loadTimezoneSettings()
+    ];
 
     updateAutoUpdateButtons();
 
-    await updatePelletChart();
+    await Promise.allSettled(
+        [
+            historyPromise,
+            ...startupPromises
+        ]
+    );
+
+    /*
+     * Silo forecast depends on live magazine content,
+     * so start it after live startup has had a chance
+     * to populate the dashboard.
+     */
+    updateSiloForecast();
 }
 
 initialize();
