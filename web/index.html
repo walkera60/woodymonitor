@@ -65,6 +65,14 @@ body { padding-bottom:20px; }
     gap:11px;
     font-size:20px;
     font-weight:700;
+    color:inherit;
+    text-decoration:none;
+    cursor:pointer;
+}
+
+.logo:hover {
+    text-decoration:none;
+    opacity:.88;
 }
 
 .logo-fire {
@@ -4000,6 +4008,7 @@ strong {
 }
 
 .pellet-overview-card {
+    background: var(--card);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 14px;
@@ -4023,6 +4032,36 @@ strong {
     height: 250px;
 }
 
+.pellet-overview-header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+}
+
+.pellet-overview-navigation {
+    display:flex;
+    align-items:center;
+    gap:5px;
+}
+
+.pellet-overview-nav-button {
+    min-width:30px;
+    width:30px;
+    height:28px;
+    padding:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+    line-height:1;
+}
+
+.pellet-overview-nav-button:disabled {
+    opacity:.35;
+    cursor:default;
+}
+
 .pellet-overview-footer {
     display: flex;
     justify-content: space-between;
@@ -4044,10 +4083,20 @@ strong {
 
     .pellet-overview-grid {
         grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .pellet-overview-card {
+        padding: 10px;
     }
 
     .pellet-overview-chart {
-        height: 230px;
+        height: 340px;
+    }
+
+    .pellet-overview-footer {
+        gap: 6px 10px;
+        font-size: 12px;
     }
 
 }
@@ -4059,10 +4108,13 @@ strong {
 <body>
 
 <header class="topbar">
-    <div class="logo">
+    <a class="logo"
+       href="#"
+       onclick="showPage('dashboard'); return false;"
+       aria-label="Go to Home">
         <div class="logo-fire">🔥</div>
         <div>WOODY MONITOR</div>
-    </div>
+    </a>
 
     <div id="connection" class="connection">
         <span class="connection-dot"></span>
@@ -4123,55 +4175,51 @@ strong {
 
             <div class="burner-modern-header">
 
-                <div class="burner-heading">
+                <div class="burner-header-left">
 
-
-
-<div>
-                        <div class="card-title">Burner
-        <span id="advancedTimerBurnerBadge"
-              class="advanced-timer-burner-badge"
-              style="display:none;">
-            ⏱ TIMER
-        </span>
-
-        <span id="weatherCompensationBurnerBadge"
-              class="advanced-timer-burner-badge"
-              style="display:none;">
-            🌡 AUTO
-        </span>
-    </div>
-
-<div id="burnerStatus"
-     class="burner-status-under-title">
-    --
-</div>
+                    <div class="burner-control-wrapper">
+                        <button
+                            id="burnerControlButton"
+                            class="burner-control-button"
+                            type="button"
+                            onclick="toggleBurner()"
+                            disabled
+                        >
+                            --
+                        </button>
+                        <div id="burnerControlLabel"
+                             class="burner-control-label">--</div>
                     </div>
+
+                    <div id="burnerStatus"
+                         class="burner-status-under-title">
+                        --
+                    </div>
+
+                    <span id="advancedTimerBurnerBadge"
+                          class="advanced-timer-burner-badge"
+                          style="display:none;">
+                        ⏱ TIMER
+                    </span>
+
+                    <span id="weatherCompensationBurnerBadge"
+                          class="advanced-timer-burner-badge"
+                          style="display:none;">
+                        🌡 AUTO
+                    </span>
+
                 </div>
 
                 <div class="burner-header-right">
 
-
-                    <div class="burner-alarm-control-row"><div class="burner-header-alarm">
-                        <span id="burnerAlarmIcon" class="alarm-check">✓</span>
-                        <span id="burnerAlarmLabel">Alarm</span>
-                        <span id="burnerAlarm">None</span>
+                    <div class="burner-alarm-control-row">
+                        <div class="burner-header-alarm">
+                            <span id="burnerAlarmIcon"
+                                  class="alarm-check">✓</span>
+                            <span id="burnerAlarmLabel">Alarm</span>
+                            <span id="burnerAlarm">None</span>
+                        </div>
                     </div>
-
-                    <div class="burner-control-wrapper">
-    <button
-                        id="burnerControlButton"
-                        class="burner-control-button"
-                        type="button"
-                        onclick="toggleBurner()"
-                        disabled
-                    >
-                        --
-                    </button>
-    <div id="burnerControlLabel" class="burner-control-label">--</div>
-</div></div>
-
-
 
                 </div>
 
@@ -4185,7 +4233,7 @@ strong {
         id="burnerCleaningButton"
         class="burner-cleaning-button"
         type="button"
-        onclick="registerCleaning()"
+        onclick="confirmRegisterCleaning()"
     >
         Cleaning
     </button>
@@ -4307,7 +4355,7 @@ strong {
                     </div>
 
                     <div class="burner-metric">
-                        <div class="burner-metric-icon">♨</div>
+                        <div class="burner-metric-icon">🏭</div>
                         <div>
                             <div class="burner-metric-label">
                                 Flue temp
@@ -4320,7 +4368,7 @@ strong {
                     </div>
 
                     <div class="burner-metric">
-                        <div class="burner-metric-icon">🌡️</div>
+                        <div class="burner-metric-icon">⬇️</div>
                         <div>
                             <div class="burner-metric-label">
                                 Chute temp
@@ -4333,7 +4381,7 @@ strong {
                     </div>
 
                     <div class="burner-metric">
-                        <div class="burner-metric-icon">☀</div>
+                        <div class="burner-metric-icon">🔥</div>
                         <div>
                             <div class="burner-metric-label">
                                 Light
@@ -4613,8 +4661,27 @@ strong {
 
             <div class="pellet-overview-card">
 
-                <div class="pellet-overview-title">
-                    Last 24 hours
+                <div class="pellet-overview-header">
+                    <div class="pellet-overview-title">
+                        Last 24 hours
+                    </div>
+
+                    <div class="pellet-overview-navigation">
+                        <button
+                            class="btn pellet-overview-nav-button"
+                            type="button"
+                            title="Previous period"
+                            onclick="pelletOverviewNavigate('pelletOverview24h', 'previous')"
+                        >‹</button>
+
+                        <button
+                            id="pelletOverview24hNext"
+                            class="btn pellet-overview-nav-button"
+                            type="button"
+                            title="Next period"
+                            onclick="pelletOverviewNavigate('pelletOverview24h', 'next')"
+                        >›</button>
+                    </div>
                 </div>
 
                 <div class="pellet-overview-subtitle">
@@ -4645,8 +4712,27 @@ strong {
 
             <div class="pellet-overview-card">
 
-                <div class="pellet-overview-title">
-                    Last 7 days
+                <div class="pellet-overview-header">
+                    <div class="pellet-overview-title">
+                        Last 7 days
+                    </div>
+
+                    <div class="pellet-overview-navigation">
+                        <button
+                            class="btn pellet-overview-nav-button"
+                            type="button"
+                            title="Previous period"
+                            onclick="pelletOverviewNavigate('pelletOverview7d', 'previous')"
+                        >‹</button>
+
+                        <button
+                            id="pelletOverview7dNext"
+                            class="btn pellet-overview-nav-button"
+                            type="button"
+                            title="Next period"
+                            onclick="pelletOverviewNavigate('pelletOverview7d', 'next')"
+                        >›</button>
+                    </div>
                 </div>
 
                 <div class="pellet-overview-subtitle">
@@ -4677,8 +4763,27 @@ strong {
 
             <div class="pellet-overview-card">
 
-                <div class="pellet-overview-title">
-                    Last 3 months
+                <div class="pellet-overview-header">
+                    <div class="pellet-overview-title">
+                        Last 3 months
+                    </div>
+
+                    <div class="pellet-overview-navigation">
+                        <button
+                            class="btn pellet-overview-nav-button"
+                            type="button"
+                            title="Previous period"
+                            onclick="pelletOverviewNavigate('pelletOverview3m', 'previous')"
+                        >‹</button>
+
+                        <button
+                            id="pelletOverview3mNext"
+                            class="btn pellet-overview-nav-button"
+                            type="button"
+                            title="Next period"
+                            onclick="pelletOverviewNavigate('pelletOverview3m', 'next')"
+                        >›</button>
+                    </div>
                 </div>
 
                 <div class="pellet-overview-subtitle">
@@ -4774,151 +4879,7 @@ strong {
 
         </div>
 
-<div class="card">
 
-        <div class="card-header">
-
-            <div>
-                <div class="card-title">
-                    Custom
-                </div>
-
-                <div class="card-subtitle">
-                    Select a custom period and explore pellet consumption
-                </div>
-            </div>
-
-        </div>
-
-
-        <!-- PELLET CHART TOOLBAR -->
-        <div class="chart-toolbar">
-
-            <div class="chart-toolbar-left">
-
-                <button class="btn pellet-range active"
-                        onclick="setConsumptionRange(1,this)">1h</button>
-
-                <button class="btn pellet-range"
-                        onclick="setConsumptionRange(6,this)">6h</button>
-
-                <button class="btn pellet-range"
-                        onclick="setConsumptionRange(12,this)">12h</button>
-
-                <button class="btn pellet-range"
-                        onclick="setConsumptionRange(24,this)">24h</button>
-
-                <button class="btn pellet-range"
-                        onclick="setConsumptionRange(48,this)">48h</button>
-
-                <button class="btn pellet-range"
-                        onclick="setConsumptionRange(168,this)">7d</button>
-
-                <button class="btn pellet-range"
-                        onclick="setConsumptionRange(720,this)">30d</button>
-
-                <button class="btn pellet-range"
-                        onclick="setConsumptionRange(2160,this)">90d</button>
-
-                <button class="btn pellet-range"
-                        onclick="setConsumptionRange(4320,this)">180d</button>
-
-                <button class="btn pellet-range"
-                        onclick="setConsumptionRange(8760,this)">1 year</button>
-
-            </div>
-
-            <div class="chart-toolbar-right">
-
-                <button class="btn"
-                        type="button"
-                        onclick="pelletZoomOut()">−</button>
-
-                <button class="btn"
-                        type="button"
-                        onclick="pelletResetZoom()">Reset zoom</button>
-
-                <button class="btn"
-                        type="button"
-                        onclick="pelletZoomIn()">+</button>
-
-                <button class="btn"
-                        id="pelletAutoUpdateButton"
-                        type="button"
-                        onclick="togglePelletAutoUpdate()">
-                    Auto update: On
-                </button>
-
-                <button class="btn"
-                        type="button"
-                        onclick="exportPelletCSV()">CSV</button>
-
-                <button class="btn"
-                        type="button"
-                        onclick="exportPelletExcel()">Excel</button>
-
-            </div>
-
-        </div>
-
-        <div class="toolbar" style="margin-top:12px;flex-wrap:wrap;">
-
-            <div class="button-group">
-
-                <label>
-                    From
-                    <input type="datetime-local"
-                           id="pelletFra">
-                </label>
-
-                <label>
-                    To
-                    <input type="datetime-local"
-                           id="pelletTil">
-                </label>
-
-                <button class="btn"
-                        onclick="applyPelletDateRange()">
-                    Show range
-                </button>
-
-                <button class="btn"
-                        onclick="clearPelletDateRange()">
-                    Clear
-                </button>
-
-            </div>
-
-        </div>
-
-        <div class="pellet-summary">
-
-            <div class="pellet-summary-item">
-                <div class="pellet-summary-label">TOTAL</div>
-                <div id="pelletTiltal" class="pellet-summary-value">--</div>
-            </div>
-
-            <div class="pellet-summary-item">
-                <div class="pellet-summary-label">AVERAGE / DAY</div>
-                <div id="pelletAverage" class="pellet-summary-value">--</div>
-            </div>
-
-            <div class="pellet-summary-item">
-                <div class="pellet-summary-label">COST</div>
-                <div id="pelletCost" class="pellet-summary-value">--</div>
-            </div>
-
-        </div>
-
-        <div class="chart-container small pellet-chart-container">
-
-            <canvas id="pelletChart"></canvas>
-
-        </div>
-
-        
-
-        </div>
 
         
 
@@ -5187,30 +5148,6 @@ strong {
                     Loading timezone...
                 </div>
 
-            <div style="
-                padding:12px 0 0 0;
-                margin-top:12px;
-                border-top:1px solid var(--border);
-                display:flex;
-                align-items:center;
-                justify-content:space-between;
-                gap:12px;
-            ">
-                <div>
-                    <div>Restart Woody Monitor</div>
-                    <div class="card-subtitle">
-                        Restarts the application without restarting the Raspberry Pi
-                    </div>
-                </div>
-
-                <button
-                    class="btn"
-                    type="button"
-                    onclick="restartWoodyMonitor()"
-                >
-                    Restart
-                </button>
-            </div>
 
             </div>
 
@@ -5236,7 +5173,26 @@ strong {
                         style="margin-left:auto;width:90px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
                     >
 
-                    <span>kr/kg</span>
+                    <select
+                        id="pelletCurrency"
+                        aria-label="Pellet price currency"
+                        onchange="savePelletCurrency()"
+                        style="
+                            width:82px;
+                            background:#202934;
+                            color:white;
+                            border:1px solid #2b3542;
+                            border-radius:8px;
+                            padding:8px;
+                        "
+                    >
+                        <option value="DKK">DKK</option>
+                        <option value="EUR">EUR</option>
+                        <option value="SEK">SEK</option>
+                        <option value="NOK">NOK</option>
+                        <option value="GBP">GBP</option>
+                        <option value="USD">USD</option>
+                    </select>
 
                     <button
                         class="btn"
@@ -5245,6 +5201,48 @@ strong {
                         Save
                     </button>
                 </div>
+            </div>
+
+            <div style="padding:12px 0;border-top:1px solid var(--border);">
+
+                <div style="font-weight:600;margin-bottom:8px;">
+                    Pellet history Export
+                </div>
+
+                <div style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
+                    Export measured pellet consumption for the selected period.
+                </div>
+
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+
+                    <select
+                        id="pelletExportPeriod"
+                        style="background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+                        <option value="1">1 month</option>
+                        <option value="3">3 months</option>
+                        <option value="12">12 months</option>
+                        <option value="total">Total</option>
+                    </select>
+
+                    <button
+                        class="btn"
+                        type="button"
+                        onclick="exportPelletPeriodCSV()"
+                    >
+                        Export CSV
+                    </button>
+
+                    <button
+                        class="btn"
+                        type="button"
+                        onclick="exportPelletPeriodExcel()"
+                    >
+                        Export Excel
+                    </button>
+
+                </div>
+
             </div>
 
             <div style="padding:12px 0;border-top:1px solid var(--border);">
@@ -5273,8 +5271,27 @@ strong {
                         id="pelletHistoryFile"
                         type="file"
                         accept=".csv,text/csv"
-                        style="max-width:260px;"
+                        onchange="updatePelletHistoryFilename()"
+                        style="display:none;"
                     >
+
+                    <button
+                        class="btn"
+                        type="button"
+                        onclick="document.getElementById('pelletHistoryFile').click()"
+                    >
+                        Choose CSV file
+                    </button>
+
+                    <span
+                        id="pelletHistoryFilename"
+                        style="
+                            font-size:13px;
+                            color:var(--muted);
+                        "
+                    >
+                        No file selected
+                    </span>
 
                     <button
                         class="btn"
@@ -5391,7 +5408,99 @@ strong {
 
 
 
-<div class="card col-12">
+<div class="card col-6">
+
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">System</div>
+                        <div class="card-subtitle">
+                            Raspberry Pi and storage information
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-list">
+
+                    <div class="settings-row">
+                        <div>
+                            <div>System uptime</div>
+                        </div>
+                        <div id="systemUptime">--</div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div>
+                            <div>Last Raspberry Pi boot</div>
+                        </div>
+                        <div id="systemLastBoot">--</div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div>
+                            <div>Wi-Fi uptime</div>
+                        </div>
+                        <div id="systemWifiUptime">--</div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div>
+                            <div>Woody Monitor size</div>
+                            <div class="card-subtitle">
+                                Application files excluding database
+                            </div>
+                        </div>
+                        <div id="systemApplicationSize">--</div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div>
+                            <div>Database size</div>
+                        </div>
+                        <div id="systemDatabaseSize">--</div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div>
+                            <div>SD card</div>
+                            <div class="card-subtitle">
+                                Used / total
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div id="systemSdUsage">--</div>
+                            <div id="systemSdFree"
+                                 class="card-subtitle">--</div>
+                        </div>
+                    </div>
+
+                    <div class="settings-row" style="flex-wrap:wrap;">
+                        <div style="flex:1 1 100%;">
+                            <div>Restart Woody Monitor</div>
+                            <div class="card-subtitle">
+                                Restarts the application without restarting the Raspberry Pi
+                            </div>
+                        </div>
+
+                        <button
+                            class="btn"
+                            type="button"
+                            onclick="restartWoodyMonitor()"
+                            style="
+                                margin-left:12px;
+                                margin-top:12px;
+                                align-self:flex-end;
+                            "
+                        >
+                            Restart
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+<div class="card col-6">
 
                 <div class="card-header">
                     <div>
@@ -6299,6 +6408,15 @@ async function saveCleaningInterval() {
 }
 
 
+function confirmRegisterCleaning() {
+    if (!confirm("Confirm cleaning registration?")) {
+        return;
+    }
+
+    registerCleaning();
+}
+
+
 async function registerCleaning() {
 
     if (
@@ -6459,6 +6577,37 @@ function makeSettingsCardCollapsible(
 
 
 function initializeCollapsibleSettingsCards() {
+
+    const allTitles =
+        Array.from(
+            document.querySelectorAll(
+                ".card-title"
+            )
+        );
+
+    const userSettingsTitle =
+        allTitles.find(
+            element =>
+                element.textContent
+                    .trim()
+                    .toLowerCase() ===
+                "user settings"
+        );
+
+    if (userSettingsTitle) {
+
+        const userSettingsCard =
+            userSettingsTitle.closest(
+                ".card"
+            );
+
+        makeSettingsCardCollapsible(
+            userSettingsCard,
+            "woodyUserSettingsCollapsed"
+        );
+    }
+
+
 
     // Advanced Timer is generated dynamically.
     const advancedTimer =
@@ -10439,7 +10588,7 @@ async function savePelletPrice() {
     ) {
 
         alert(
-            "Enter a pellet price between 0 and 100 kr/kg."
+            "Enter a pellet price between 0 and 100 per kg."
         );
 
         return;
@@ -10484,6 +10633,38 @@ async function savePelletPrice() {
     }
 }
 
+
+
+function updatePelletHistoryFilename() {
+
+    const input =
+        document.getElementById(
+            "pelletHistoryFile"
+        );
+
+    const label =
+        document.getElementById(
+            "pelletHistoryFilename"
+        );
+
+    if (!label)
+        return;
+
+    if (
+        input &&
+        input.files &&
+        input.files.length
+    ) {
+
+        label.textContent =
+            input.files[0].name;
+
+    } else {
+
+        label.textContent =
+            "No file selected";
+    }
+}
 
 
 function downloadPelletHistoryTemplate() {
@@ -10542,6 +10723,7 @@ async function importPelletHistory() {
             ").";
 
         input.value = "";
+        updatePelletHistoryFilename();
 
     } catch (error) {
         status.textContent =
@@ -11000,6 +11182,317 @@ function getPelletExportFilename(extension) {
 }
 
 
+async function getPelletPeriodExportRows() {
+
+    const select =
+        document.getElementById(
+            "pelletExportPeriod"
+        );
+
+    const selectedPeriod =
+        select
+            ? select.value
+            : "1";
+
+    const totalExport =
+        selectedPeriod === "total";
+
+    const months =
+        totalExport
+            ? null
+            : Math.max(
+                1,
+                Number(
+                    selectedPeriod
+                ) || 1
+            );
+
+    const end =
+        new Date();
+
+    const start =
+        new Date(end);
+
+    if (totalExport) {
+
+        /*
+         * Overview API supports up to 2000 days.
+         * This retrieves all history currently available
+         * within that API range.
+         */
+        start.setDate(
+            start.getDate() - 2000
+        );
+
+    } else {
+
+        start.setMonth(
+            start.getMonth() - months
+        );
+    }
+
+
+    const days =
+        totalExport
+            ? 2000
+            : Math.min(
+                2000,
+                Math.ceil(
+                    (
+                        end.getTime() -
+                        start.getTime()
+                    ) /
+                    86400000
+                ) + 3
+            );
+
+
+    const response =
+        await fetch(
+            "/api/v1/consumption/overview?days=" +
+            days
+        );
+
+    if (!response.ok) {
+        throw new Error(
+            "HTTP " +
+            response.status
+        );
+    }
+
+    const payload =
+        await response.json();
+
+    const daily =
+        Array.isArray(payload.daily)
+            ? payload.daily
+            : (
+                Array.isArray(payload.daily_stats)
+                    ? payload.daily_stats
+                    : []
+            );
+
+
+    return daily
+        .filter(row => {
+
+            const date =
+                new Date(
+                    row.date +
+                    "T00:00:00"
+                );
+
+            return (
+                Number.isFinite(
+                    date.getTime()
+                ) &&
+                date >= start &&
+                date <= end
+            );
+
+        })
+        .map(row => ({
+
+            Date:
+                row.date,
+
+            "Pellet consumption (kg)":
+                Number(
+                    row.pellet_kg || 0
+                )
+
+        }));
+}
+
+
+function getPelletPeriodExportFilename(
+    extension
+) {
+
+    const select =
+        document.getElementById(
+            "pelletExportPeriod"
+        );
+
+    const months =
+        select
+            ? select.value
+            : "1";
+
+    const now =
+        new Date();
+
+    const stamp =
+        now.getFullYear() +
+        "-" +
+        String(
+            now.getMonth() + 1
+        ).padStart(2, "0") +
+        "-" +
+        String(
+            now.getDate()
+        ).padStart(2, "0");
+
+    return (
+        "WoodyMonitor_Pellet_Consumption_" +
+        months +
+        "m_" +
+        stamp +
+        "." +
+        extension
+    );
+}
+
+
+async function exportPelletPeriodCSV() {
+
+    try {
+
+        const rows =
+            await getPelletPeriodExportRows();
+
+        if (!rows.length) {
+
+            alert(
+                "No pellet consumption data available for the selected period."
+            );
+
+            return;
+        }
+
+        const lines = [
+            [
+                "Date",
+                "Pellet consumption (kg)"
+            ].join(";")
+        ];
+
+        rows.forEach(row => {
+
+            lines.push(
+                [
+                    row.Date,
+                    row[
+                        "Pellet consumption (kg)"
+                    ]
+                ]
+                .map(value =>
+                    '"' +
+                    String(
+                        value ?? ""
+                    ).replaceAll(
+                        '"',
+                        '""'
+                    ) +
+                    '"'
+                )
+                .join(";")
+            );
+        });
+
+        const blob =
+            new Blob(
+                [
+                    "\uFEFF" +
+                    lines.join("\r\n")
+                ],
+                {
+                    type:
+                        "text/csv;charset=utf-8"
+                }
+            );
+
+        downloadBlob(
+            blob,
+            getPelletPeriodExportFilename(
+                "csv"
+            )
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Pellet export failed",
+            error
+        );
+
+        alert(
+            "Could not export pellet consumption. " +
+            error.message
+        );
+    }
+}
+
+
+async function exportPelletPeriodExcel() {
+
+    try {
+
+        const rows =
+            await getPelletPeriodExportRows();
+
+        if (!rows.length) {
+
+            alert(
+                "No pellet consumption data available for the selected period."
+            );
+
+            return;
+        }
+
+        if (
+            typeof XLSX ===
+            "undefined"
+        ) {
+
+            alert(
+                "Excel export library is not loaded."
+            );
+
+            return;
+        }
+
+        const worksheet =
+            XLSX.utils.json_to_sheet(
+                rows
+            );
+
+        worksheet["!cols"] = [
+            { wch: 16 },
+            { wch: 26 }
+        ];
+
+        const workbook =
+            XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            "Pellet consumption"
+        );
+
+        XLSX.writeFile(
+            workbook,
+            getPelletPeriodExportFilename(
+                "xlsx"
+            )
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Pellet export failed",
+            error
+        );
+
+        alert(
+            "Could not export pellet consumption. " +
+            error.message
+        );
+    }
+}
+
+
 function exportPelletCSV() {
 
     const rows =
@@ -11450,6 +11943,25 @@ function pelletOverviewBucketDate(timestamp, mode) {
         );
     }
 
+    if (mode === "week") {
+
+        const result = new Date(
+            d.getFullYear(),
+            d.getMonth(),
+            d.getDate(),
+            0, 0, 0, 0
+        );
+
+        const day =
+            (result.getDay() + 6) % 7;
+
+        result.setDate(
+            result.getDate() - day
+        );
+
+        return result;
+    }
+
     return new Date(
         d.getFullYear(),
         d.getMonth(),
@@ -11482,6 +11994,53 @@ function pelletOverviewLabel(date, mode) {
         );
     }
 
+    if (mode === "week") {
+
+        const d = new Date(
+            Date.UTC(
+                date.getFullYear(),
+                date.getMonth(),
+                date.getDate()
+            )
+        );
+
+        const day =
+            d.getUTCDay() || 7;
+
+        d.setUTCDate(
+            d.getUTCDate() +
+            4 -
+            day
+        );
+
+        const yearStart =
+            new Date(
+                Date.UTC(
+                    d.getUTCFullYear(),
+                    0,
+                    1
+                )
+            );
+
+        const week =
+            Math.ceil(
+                (
+                    (
+                        d -
+                        yearStart
+                    ) /
+                    86400000 +
+                    1
+                ) /
+                7
+            );
+
+        return (
+            "W" +
+            String(week).padStart(2, "0")
+        );
+    }
+
     return date.toLocaleDateString(
         "en-GB",
         {
@@ -11509,6 +12068,624 @@ function pelletOverviewFormatKg(value, decimals = 2) {
 
 
 
+function pelletOverviewShowAxisTitles() {
+    return window.innerWidth > 800;
+}
+
+
+let pelletOverviewConfigs = [];
+
+const pelletOverviewNavigation = {};
+
+
+function pelletOverviewNavigationState(config) {
+
+    if (
+        !pelletOverviewNavigation[
+            config.canvas
+        ]
+    ) {
+
+        pelletOverviewNavigation[
+            config.canvas
+        ] = {
+            offset: 0,
+            resetTimer: null
+        };
+    }
+
+    return pelletOverviewNavigation[
+        config.canvas
+    ];
+}
+
+
+function pelletOverviewRange(config) {
+
+    if (!config.navigationMode) {
+        return null;
+    }
+
+
+    const state =
+        pelletOverviewNavigationState(
+            config
+        );
+
+    const offset =
+        Math.max(
+            0,
+            state.offset || 0
+        );
+
+    const now =
+        new Date();
+
+
+    if (
+        config.navigationMode ===
+        "hour"
+    ) {
+
+        const end =
+            new Date(now);
+
+        end.setMinutes(
+            0, 0, 0
+        );
+
+        end.setHours(
+            end.getHours() +
+            1 -
+            offset
+        );
+
+        const start =
+            new Date(
+                end.getTime() -
+                24 * 60 * 60 * 1000
+            );
+
+        return {
+            start,
+            end
+        };
+    }
+
+
+    if (
+        config.navigationMode ===
+        "day"
+    ) {
+
+        const end =
+            new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate() + 1,
+                0, 0, 0, 0
+            );
+
+        end.setDate(
+            end.getDate() -
+            offset
+        );
+
+        const start =
+            new Date(end);
+
+        start.setDate(
+            start.getDate() - 7
+        );
+
+        return {
+            start,
+            end
+        };
+    }
+
+
+    if (
+        config.navigationMode ===
+        "week"
+    ) {
+
+        const end =
+            new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate() + 1,
+                0, 0, 0, 0
+            );
+
+        end.setDate(
+            end.getDate() -
+            offset * 7
+        );
+
+        const start =
+            new Date(end);
+
+        start.setMonth(
+            start.getMonth() - 3
+        );
+
+        return {
+            start,
+            end
+        };
+    }
+
+
+    return null;
+}
+
+
+function pelletOverviewSeedBuckets(
+    buckets,
+    config,
+    range
+) {
+
+    if (!range) {
+        return;
+    }
+
+
+    const addBucket =
+        function(date) {
+
+            const bucketDate =
+                pelletOverviewBucketDate(
+                    new Date(
+                        date.getTime() + 1
+                    ),
+                    config.mode
+                );
+
+            const key =
+                bucketDate.getTime();
+
+            if (!buckets.has(key)) {
+
+                buckets.set(
+                    key,
+                    {
+                        date:
+                            bucketDate,
+
+                        kg:
+                            0,
+
+                        temperatures:
+                            [],
+
+                        powers:
+                            []
+                    }
+                );
+            }
+        };
+
+
+    if (config.mode === "hour") {
+
+        let cursor =
+            new Date(range.start);
+
+        while (
+            cursor < range.end
+        ) {
+
+            addBucket(cursor);
+
+            cursor =
+                new Date(
+                    cursor.getTime() +
+                    60 * 60 * 1000
+                );
+        }
+
+        return;
+    }
+
+
+    if (config.mode === "day") {
+
+        let cursor =
+            new Date(range.start);
+
+        while (
+            cursor < range.end
+        ) {
+
+            addBucket(cursor);
+
+            cursor.setDate(
+                cursor.getDate() + 1
+            );
+        }
+
+        return;
+    }
+
+
+    if (config.mode === "week") {
+
+        let cursor =
+            pelletOverviewBucketDate(
+                new Date(
+                    range.start.getTime() +
+                    1
+                ),
+                "week"
+            );
+
+        while (
+            cursor < range.end
+        ) {
+
+            addBucket(cursor);
+
+            cursor =
+                new Date(cursor);
+
+            cursor.setDate(
+                cursor.getDate() + 7
+            );
+        }
+    }
+}
+
+
+function pelletOverviewUpdateNavigationButtons(
+    config
+) {
+
+    if (!config.navigationMode) {
+        return;
+    }
+
+    const state =
+        pelletOverviewNavigationState(
+            config
+        );
+
+    const nextButton =
+        document.getElementById(
+            config.canvas + "Next"
+        );
+
+    if (nextButton) {
+        nextButton.disabled =
+            !state.offset;
+    }
+}
+
+
+function pelletOverviewNavigate(
+    canvasId,
+    direction
+) {
+
+    const config =
+        pelletOverviewConfigs.find(
+            item =>
+                item.canvas === canvasId
+        );
+
+    if (!config) {
+        return;
+    }
+
+    const state =
+        pelletOverviewNavigationState(
+            config
+        );
+
+
+    /*
+     * Button navigation moves one complete
+     * visible period at a time.
+     *
+     * 24h = 24 hours
+     * 7d  = 7 days
+     * 3m  = approximately 13 weeks
+     */
+
+    let step = 1;
+
+    if (
+        config.navigationMode ===
+        "hour"
+    ) {
+        step = 24;
+
+    } else if (
+        config.navigationMode ===
+        "day"
+    ) {
+        step = 7;
+
+    } else if (
+        config.navigationMode ===
+        "week"
+    ) {
+        step = 13;
+    }
+
+
+    if (direction === "previous") {
+
+        state.offset += step;
+
+    } else {
+
+        state.offset =
+            Math.max(
+                0,
+                state.offset - step
+            );
+    }
+
+
+    pelletOverviewUpdateNavigationButtons(
+        config
+    );
+
+    updatePelletOverviewChart(
+        config
+    ).catch(
+        error =>
+            console.warn(
+                "Pellet chart navigation failed",
+                error
+            )
+    );
+
+    pelletOverviewScheduleReset(
+        config
+    );
+}
+
+
+function pelletOverviewScheduleReset(
+    config
+) {
+
+    const state =
+        pelletOverviewNavigationState(
+            config
+        );
+
+    if (state.resetTimer) {
+
+        clearTimeout(
+            state.resetTimer
+        );
+
+        state.resetTimer =
+            null;
+    }
+
+
+    if (!state.offset) {
+        return;
+    }
+
+
+    state.resetTimer =
+        setTimeout(
+            () => {
+
+                state.offset = 0;
+
+                pelletOverviewUpdateNavigationButtons(
+                    config
+                );
+
+                updatePelletOverviewChart(
+                    config
+                ).catch(
+                    error =>
+                        console.warn(
+                            "Pellet chart reset failed",
+                            error
+                        )
+                );
+
+            },
+            10000
+        );
+}
+
+
+function pelletOverviewEnableDrag(
+    canvas,
+    config
+) {
+
+    if (
+        !config.navigationMode
+    ) {
+        return;
+    }
+
+
+    canvas._pelletOverviewConfig =
+        config;
+
+    canvas.style.touchAction =
+        "pan-y";
+
+
+    if (
+        canvas._pelletOverviewDragReady
+    ) {
+        return;
+    }
+
+
+    canvas._pelletOverviewDragReady =
+        true;
+
+    let startX = null;
+
+
+    canvas.addEventListener(
+        "pointerdown",
+        event => {
+
+            if (
+                event.button !== undefined &&
+                event.button !== 0
+            ) {
+                return;
+            }
+
+            startX =
+                event.clientX;
+
+            try {
+                canvas.setPointerCapture(
+                    event.pointerId
+                );
+            } catch (_) {
+            }
+        }
+    );
+
+
+    canvas.addEventListener(
+        "pointerup",
+        event => {
+
+            if (startX === null) {
+                return;
+            }
+
+
+            const deltaX =
+                event.clientX -
+                startX;
+
+            startX =
+                null;
+
+
+            if (
+                Math.abs(deltaX) < 35
+            ) {
+                return;
+            }
+
+
+            const config =
+                canvas._pelletOverviewConfig;
+
+            if (!config) {
+                return;
+            }
+
+
+            const state =
+                pelletOverviewNavigationState(
+                    config
+                );
+
+
+            const steps =
+                Math.max(
+                    1,
+                    Math.round(
+                        Math.abs(deltaX) /
+                        80
+                    )
+                );
+
+
+            /*
+             * Drag right = older history.
+             * Drag left  = newer history.
+             */
+            if (deltaX > 0) {
+
+                state.offset +=
+                    steps;
+
+            } else {
+
+                state.offset =
+                    Math.max(
+                        0,
+                        state.offset -
+                        steps
+                    );
+            }
+
+
+            /*
+             * Prevent impractically old requests.
+             */
+            if (
+                config.navigationMode ===
+                "hour"
+            ) {
+
+                state.offset =
+                    Math.min(
+                        state.offset,
+                        365 * 24
+                    );
+
+            } else if (
+                config.navigationMode ===
+                "day"
+            ) {
+
+                state.offset =
+                    Math.min(
+                        state.offset,
+                        1900
+                    );
+
+            } else {
+
+                state.offset =
+                    Math.min(
+                        state.offset,
+                        250
+                    );
+            }
+
+
+            updatePelletOverviewChart(
+                config
+            ).catch(
+                error =>
+                    console.warn(
+                        "Pellet chart navigation failed",
+                        error
+                    )
+            );
+
+
+            pelletOverviewScheduleReset(
+                config
+            );
+        }
+    );
+
+
+    canvas.addEventListener(
+        "pointercancel",
+        () => {
+            startX = null;
+        }
+    );
+}
+
+
 async function updatePelletOverviewChart(config) {
 
     /*
@@ -11517,9 +12694,33 @@ async function updatePelletOverviewChart(config) {
      * --------------------------------------------------------
      */
 
+    const range =
+        pelletOverviewRange(
+            config
+        );
+
+
+    const pelletUrl =
+        range
+            ? (
+                "/consumption/pellets" +
+                "?start=" +
+                encodeURIComponent(
+                    range.start.toISOString()
+                ) +
+                "&end=" +
+                encodeURIComponent(
+                    range.end.toISOString()
+                )
+            )
+            : (
+                `/consumption/pellets?hours=${config.hours}`
+            );
+
+
     const result =
         await api(
-            `/consumption/pellets?hours=${config.hours}`
+            pelletUrl
         );
 
     const rows =
@@ -11585,9 +12786,27 @@ async function updatePelletOverviewChart(config) {
 
         if (config.mode === "hour") {
 
+            const hourlyMetricsUrl =
+                range
+                    ? (
+                        "/consumption/overview/hourly" +
+                        "?start=" +
+                        encodeURIComponent(
+                            range.start.toISOString()
+                        ) +
+                        "&end=" +
+                        encodeURIComponent(
+                            range.end.toISOString()
+                        )
+                    )
+                    : (
+                        `/consumption/overview/hourly?hours=${config.hours}`
+                    );
+
+
             const metrics =
                 await api(
-                    `/consumption/overview/hourly?hours=${config.hours}`
+                    hourlyMetricsUrl
                 );
 
             const metricRows =
@@ -11671,9 +12890,22 @@ async function updatePelletOverviewChart(config) {
         } else {
 
             const days =
-                Math.ceil(
-                    config.hours / 24
-                ) + 2;
+                range
+                    ? Math.min(
+                        2000,
+                        Math.ceil(
+                            (
+                                Date.now() -
+                                range.start.getTime()
+                            ) /
+                            86400000
+                        ) + 3
+                    )
+                    : (
+                        Math.ceil(
+                            config.hours / 24
+                        ) + 2
+                    );
 
             const metrics =
                 await api(
@@ -11693,6 +12925,17 @@ async function updatePelletOverviewChart(config) {
                         row.date +
                         "T12:00:00"
                     );
+
+
+                if (
+                    range &&
+                    (
+                        timestamp < range.start ||
+                        timestamp >= range.end
+                    )
+                ) {
+                    continue;
+                }
 
 
                 const bucketDate =
@@ -11763,6 +13006,13 @@ async function updatePelletOverviewChart(config) {
     }
 
 
+    pelletOverviewSeedBuckets(
+        buckets,
+        config,
+        range
+    );
+
+
     const items =
         Array.from(
             buckets.values()
@@ -11790,22 +13040,24 @@ async function updatePelletOverviewChart(config) {
 
 
     /*
-     * CUMULATIVE CONSUMPTION
+     * CONSUMPTION PER PERIOD
+     *
+     * Each bar represents consumption in that specific
+     * hour/day/month. It is intentionally NOT cumulative.
      */
 
-    let cumulative = 0;
-
     const actual =
-        items.map(item => {
-
-            cumulative += item.kg;
-
-            return cumulative;
-        });
+        items.map(
+            item => item.kg
+        );
 
 
     const totalKg =
-        cumulative;
+        items.reduce(
+            (sum, item) =>
+                sum + item.kg,
+            0
+        );
 
 
     const bucketCount =
@@ -11820,11 +13072,15 @@ async function updatePelletOverviewChart(config) {
         bucketCount;
 
 
+    /*
+     * Estimated consumption is shown as the average
+     * consumption for one bucket, not as a cumulative
+     * running total.
+     */
+
     const estimated =
         items.map(
-            (_, index) =>
-                averagePerBucket *
-                (index + 1)
+            () => averagePerBucket
         );
 
 
@@ -11917,10 +13173,10 @@ async function updatePelletOverviewChart(config) {
                             estimated,
 
                         backgroundColor:
-                            "rgba(148, 163, 184, 0.20)",
+                            "rgba(148, 163, 184, 0.14)",
 
                         borderColor:
-                            "rgba(148, 163, 184, 0.35)",
+                            "rgba(148, 163, 184, 0.28)",
 
                         borderWidth:
                             1,
@@ -12053,6 +13309,12 @@ async function updatePelletOverviewChart(config) {
 
                 interaction: {
                     mode: "index",
+                    intersect: false,
+                    axis: "x"
+                },
+
+                hover: {
+                    mode: "nearest",
                     intersect: false
                 },
 
@@ -12178,8 +13440,9 @@ async function updatePelletOverviewChart(config) {
                             "left",
 
                         title: {
-                            display: true,
-                            text: "Cumulative kg"
+                            display:
+                                pelletOverviewShowAxisTitles(),
+                            text: "Pellet consumption kg"
                         }
 
                     },
@@ -12198,7 +13461,8 @@ async function updatePelletOverviewChart(config) {
                         },
 
                         title: {
-                            display: true,
+                            display:
+                                pelletOverviewShowAxisTitles(),
                             text: "Outdoor temperature °C"
                         },
 
@@ -12234,7 +13498,8 @@ async function updatePelletOverviewChart(config) {
                         },
 
                         title: {
-                            display: true,
+                            display:
+                                pelletOverviewShowAxisTitles(),
                             text: "Boiler power %"
                         },
 
@@ -12255,6 +13520,16 @@ async function updatePelletOverviewChart(config) {
             }
 
         }
+    );
+
+
+    pelletOverviewEnableDrag(
+        canvas,
+        config
+    );
+
+    pelletOverviewUpdateNavigationButtons(
+        config
     );
 
 
@@ -12304,6 +13579,20 @@ async function updatePelletOverviewChart(config) {
         averageUnit =
             " kg/month";
 
+    } else if (
+        config.mode === "week"
+    ) {
+
+        averageValue =
+            totalKg /
+            Math.max(
+                items.length,
+                1
+            );
+
+        averageUnit =
+            " kg/week";
+
     } else {
 
         averageValue =
@@ -12342,6 +13631,39 @@ async function updatePelletOverviewChart(config) {
 
 
     if (highestElement) {
+
+        const highestPower =
+            highest
+                ? arrayAverage(
+                    highest.powers
+                )
+                : null;
+
+        const highestPeriod =
+            highest
+                ? pelletOverviewLabel(
+                    highest.date,
+                    config.mode
+                )
+                : "--";
+
+        highestElement.title =
+            (
+                highestPeriod +
+                " • Average boiler power: " +
+                (
+                    Number.isFinite(
+                        highestPower
+                    )
+                        ? highestPower.toFixed(1) +
+                          " %"
+                        : "--"
+                )
+            );
+
+        highestElement.style.cursor =
+            "help";
+
 
         if (!highest) {
 
@@ -12713,14 +14035,35 @@ async function updatePelletFiveYearChart() {
                 datasets: [
 
                     {
+                        type:
+                            "bar",
+
                         label:
                             "Pellet consumption",
 
                         data:
                             pelletValues,
 
+                        yAxisID:
+                            "y",
+
+                        backgroundColor:
+                            "rgba(59, 130, 246, 0.55)",
+
+                        borderColor:
+                            "rgba(59, 130, 246, 0.95)",
+
                         borderWidth:
                             1,
+
+                        borderRadius:
+                            3,
+
+                        barPercentage:
+                            0.65,
+
+                        categoryPercentage:
+                            0.75,
 
                         order:
                             2
@@ -12852,7 +14195,8 @@ async function updatePelletFiveYearChart() {
                             "left",
 
                         title: {
-                            display: true,
+                            display:
+                                pelletOverviewShowAxisTitles(),
                             text: "Pellet consumption kg"
                         }
 
@@ -12872,7 +14216,8 @@ async function updatePelletFiveYearChart() {
                         },
 
                         title: {
-                            display: true,
+                            display:
+                                pelletOverviewShowAxisTitles(),
                             text: "Outdoor temperature °C"
                         }
 
@@ -12898,7 +14243,8 @@ async function updatePelletFiveYearChart() {
                         },
 
                         title: {
-                            display: true,
+                            display:
+                                pelletOverviewShowAxisTitles(),
                             text: "Boiler power %"
                         }
 
@@ -12998,6 +14344,36 @@ async function updatePelletFiveYearChart() {
         }
 
 
+        if (highestIndex !== -1) {
+
+            const highestPower =
+                Number(
+                    powers[
+                        highestIndex
+                    ]
+                );
+
+            highestElement.title =
+                (
+                    labels[
+                        highestIndex
+                    ] +
+                    " • Average boiler power: " +
+                    (
+                        Number.isFinite(
+                            highestPower
+                        )
+                            ? highestPower.toFixed(1) +
+                              " %"
+                            : "--"
+                    )
+                );
+
+            highestElement.style.cursor =
+                "help";
+        }
+
+
         if (highestIndex === -1) {
 
             highestElement.textContent =
@@ -13044,11 +14420,12 @@ async function updatePelletOverviewCharts() {
                 )
         );
 
-    const configs = [
+    pelletOverviewConfigs = [
 
         {
             hours: 24,
             mode: "hour",
+            navigationMode: "hour",
             canvas: "pelletOverview24h",
             averageElement:
                 "pelletOverview24hAverage",
@@ -13061,6 +14438,7 @@ async function updatePelletOverviewCharts() {
         {
             hours: 168,
             mode: "day",
+            navigationMode: "day",
             canvas: "pelletOverview7d",
             averageElement:
                 "pelletOverview7dAverage",
@@ -13072,7 +14450,8 @@ async function updatePelletOverviewCharts() {
 
         {
             hours: 2160,
-            mode: "day",
+            mode: "week",
+            navigationMode: "week",
             canvas: "pelletOverview3m",
             averageElement:
                 "pelletOverview3mAverage",
@@ -13098,7 +14477,7 @@ async function updatePelletOverviewCharts() {
 
 
     await Promise.allSettled(
-        configs.map(
+        pelletOverviewConfigs.map(
             config =>
                 updatePelletOverviewChart(
                     config
@@ -16406,6 +17785,238 @@ if (
 </script>
 
 
+<script id="woody-pellet-currency">
+
+let woodyPelletCurrency = "DKK";
+
+
+async function loadPelletCurrency() {
+
+    const select =
+        document.getElementById(
+            "pelletCurrency"
+        );
+
+    if (!select)
+        return;
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/v1/settings/pellet-currency",
+                {
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                "Could not load currency"
+            );
+
+        const data =
+            await response.json();
+
+        woodyPelletCurrency =
+            data.currency || "DKK";
+
+        select.value =
+            woodyPelletCurrency;
+
+    } catch (error) {
+
+        console.error(
+            "Pellet currency:",
+            error
+        );
+    }
+}
+
+
+async function savePelletCurrency() {
+
+    const select =
+        document.getElementById(
+            "pelletCurrency"
+        );
+
+    if (!select)
+        return;
+
+    const currency =
+        select.value;
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/v1/settings/pellet-currency?currency=" +
+                encodeURIComponent(currency),
+                {
+                    method: "POST",
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                "Could not save currency"
+            );
+
+        const data =
+            await response.json();
+
+        woodyPelletCurrency =
+            data.currency || currency;
+
+    } catch (error) {
+
+        console.error(
+            "Save pellet currency:",
+            error
+        );
+
+        alert(
+            "Could not save pellet currency."
+        );
+
+        await loadPelletCurrency();
+    }
+}
+
+
+if (document.readyState === "loading") {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        loadPelletCurrency
+    );
+
+} else {
+
+    loadPelletCurrency();
+}
+
+</script>
+
+
+<script id="woody-system-info">
+
+function formatSystemBootTime(value) {
+    if (!value) {
+        return "--";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "--";
+    }
+
+    return date.toLocaleString("en-GB", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+    });
+}
+
+
+async function loadSystemInfo() {
+
+    try {
+
+        const response =
+            await fetch("/api/v1/system/info");
+
+        if (!response.ok) {
+            throw new Error("System API request failed");
+        }
+
+        const data = await response.json();
+
+        const setText = (id, value) => {
+            const element = document.getElementById(id);
+
+            if (element) {
+                element.textContent =
+                    value === null ||
+                    value === undefined ||
+                    value === ""
+                        ? "--"
+                        : value;
+            }
+        };
+
+        setText(
+            "systemUptime",
+            data.system_uptime
+        );
+
+        setText(
+            "systemLastBoot",
+            formatSystemBootTime(data.last_boot)
+        );
+
+        setText(
+            "systemWifiUptime",
+            data.wifi_uptime
+        );
+
+        setText(
+            "systemApplicationSize",
+            data.application_size
+        );
+
+        setText(
+            "systemDatabaseSize",
+            data.database_size
+        );
+
+        setText(
+            "systemSdUsage",
+            `${data.sd_used} / ${data.sd_total} (${data.sd_used_percent}%)`
+        );
+
+        setText(
+            "systemSdFree",
+            `${data.sd_free} free`
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Could not load system information:",
+            error
+        );
+    }
+}
+
+
+if (document.readyState === "loading") {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        loadSystemInfo
+    );
+
+} else {
+
+    loadSystemInfo();
+}
+
+
+setInterval(
+    loadSystemInfo,
+    30000
+);
+
+</script>
+
+
 <script id="woody-about-info">
 
 async function loadAboutInfo() {
@@ -16476,6 +18087,69 @@ document.addEventListener(
 );
 
 </script>
+
+
+<style id="woody-burner-header-layout">
+
+.burner-modern-header {
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+}
+
+.burner-header-left {
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    min-width:0;
+    flex-wrap:wrap;
+}
+
+.burner-header-left .burner-control-wrapper {
+    flex:0 0 auto;
+}
+
+.burner-header-left .burner-status-under-title {
+    margin-top:0;
+    margin-left:8px;
+    flex:0 0 auto;
+    align-self:center;
+}
+
+.burner-header-left .advanced-timer-burner-badge {
+    margin-top:5px;
+}
+
+.burner-header-right {
+    margin-left:auto;
+    flex:0 0 auto;
+}
+
+@media (max-width:700px) {
+
+    .burner-modern-header {
+        gap:8px;
+    }
+
+    .burner-header-left {
+        gap:7px;
+    }
+
+    .burner-header-left .burner-status-under-title {
+        margin-top:0;
+        margin-left:5px;
+        align-self:center;
+        font-size:11px;
+    }
+
+    .burner-header-left .advanced-timer-burner-badge {
+        font-size:10px;
+    }
+
+}
+
+</style>
 
 </body>
 </html>

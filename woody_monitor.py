@@ -267,6 +267,7 @@ network_log_state = {
     "initialized": False,
     "connected": False,
     "ip": None,
+    "changed_monotonic": None,
 }
 
 
@@ -341,6 +342,7 @@ def log_network_state(
         network_log_state["initialized"] = True
         network_log_state["connected"] = connected
         network_log_state["ip"] = ip
+        network_log_state["changed_monotonic"] = time.monotonic()
 
         if connected:
 
@@ -373,6 +375,7 @@ def log_network_state(
 
         network_log_state["connected"] = connected
         network_log_state["ip"] = ip
+        network_log_state["changed_monotonic"] = time.monotonic()
 
         if connected:
 
@@ -1310,6 +1313,311 @@ def get_about():
 
 
 # ============================================================
+# PELLET CURRENCY
+# ============================================================
+
+PELLET_CURRENCY_FILE = (
+    BASE_DIR / "data" / "pellet_currency.json"
+)
+
+PELLET_CURRENCIES = {
+    "DKK",
+    "EUR",
+    "SEK",
+    "NOK",
+    "GBP",
+    "USD",
+}
+
+
+def load_pellet_currency():
+
+    try:
+
+        if not PELLET_CURRENCY_FILE.exists():
+            return "DKK"
+
+        with PELLET_CURRENCY_FILE.open(
+            "r",
+            encoding="utf-8"
+        ) as f:
+            data = json.load(f)
+
+        currency = str(
+            data.get("currency", "DKK")
+        ).upper()
+
+        if currency not in PELLET_CURRENCIES:
+            return "DKK"
+
+        return currency
+
+    except Exception:
+
+        logger.exception(
+            "Could not load pellet currency"
+        )
+
+        return "DKK"
+
+
+def save_pellet_currency(currency):
+
+    PELLET_CURRENCY_FILE.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    with PELLET_CURRENCY_FILE.open(
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            {
+                "currency": currency
+            },
+            f,
+            indent=2
+        )
+
+
+@app.get("/api/v1/settings/pellet-currency")
+def get_pellet_currency():
+
+    return {
+        "currency": load_pellet_currency()
+    }
+
+
+@app.post("/api/v1/settings/pellet-currency")
+def set_pellet_currency(
+    currency: str = Query(...)
+):
+
+    currency = currency.upper().strip()
+
+    if currency not in PELLET_CURRENCIES:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported currency"
+        )
+
+    save_pellet_currency(currency)
+
+    db.add_activity(
+        "SETTING",
+        "Pellet currency",
+        currency,
+        response="OK"
+    )
+
+    return {
+        "currency": currency
+    }
+
+
+# ============================================================
+# API: SYSTEM INFORMATION
+# ============================================================
+
+def _format_duration(seconds):
+    try:
+        seconds = max(0, int(seconds))
+    except (TypeError, ValueError):
+        return "--"
+
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, _ = divmod(seconds, 60)
+
+    if days:
+        return f"{days}d {hours}h {minutes}m"
+
+    if hours:
+        return f"{hours}h {minutes}m"
+
+    return f"{minutes}m"
+
+
+def _format_bytes(value):
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return "--"
+
+    units = ["B", "KB", "MB", "GB", "TB"]
+
+    for unit in units:
+        if value < 1024 or unit == units[-1]:
+            if unit == "B":
+                return f"{int(value)} {unit}"
+            return f"{value:.1f} {unit}"
+        value /= 1024
+
+    return "--"
+
+
+def _directory_size(path, exclude=None):
+    total = 0
+
+    try:
+        root_path = Path(path).resolve()
+        excluded = Path(exclude).resolve() if exclude else None
+
+        for root, dirs, files in os.walk(root_path):
+            root_obj = Path(root)
+
+            if excluded is not None:
+                dirs[:] = [
+                    name
+                    for name in dirs
+                    if not (
+                        root_obj / name
+                    ).resolve().is_relative_to(excluded)
+                ]
+
+            for filename in files:
+                file_path = root_obj / filename
+
+                if excluded is not None:
+                    try:
+                        file_path.resolve().relative_to(excluded)
+                        continue
+                    except ValueError:
+                        pass
+
+                try:
+                    if not file_path.is_symlink():
+                        total += file_path.stat().st_size
+                except (OSError, FileNotFoundError):
+                    pass
+
+    except Exception:
+        logger.exception("Could not calculate application size")
+
+    return total
+
+
+def _wifi_uptime_seconds(interface="wlan0"):
+    try:
+        operstate = Path(
+            f"/sys/class/net/{interface}/operstate"
+        ).read_text().strip()
+
+        if operstate != "up":
+            return None
+
+        result = os.popen(
+            f"nmcli -t -f GENERAL.CONNECTION device show {interface} 2>/dev/null"
+        ).read().strip()
+
+        if not result:
+            return None
+
+        # NetworkManager does not expose a reliable connection-start
+        # timestamp through sysfs. Use Woody Monitor's network state
+        # transition timestamp when available.
+        if (
+            network_log_state.get("initialized")
+            and network_log_state.get("connected")
+            and network_log_state.get("changed_monotonic")
+        ):
+            return (
+                time.monotonic()
+                - network_log_state["changed_monotonic"]
+            )
+
+    except Exception:
+        pass
+
+    return None
+
+
+@app.get("/api/v1/system/info")
+def get_system_info():
+
+    now = datetime.now(timezone.utc)
+
+    try:
+        with open("/proc/uptime", "r", encoding="utf-8") as f:
+            system_uptime_seconds = float(
+                f.read().split()[0]
+            )
+    except Exception:
+        system_uptime_seconds = 0
+
+    boot_time = (
+        now - timedelta(seconds=system_uptime_seconds)
+    )
+
+    try:
+        database_path = BASE_DIR / "data" / "woody.db"
+        database_size = database_path.stat().st_size
+    except Exception:
+        database_size = 0
+
+    application_size = _directory_size(
+        BASE_DIR,
+        exclude=BASE_DIR / "data"
+    )
+
+    try:
+        disk = os.statvfs(BASE_DIR)
+
+        disk_total = disk.f_blocks * disk.f_frsize
+        disk_free = disk.f_bavail * disk.f_frsize
+        disk_used = disk_total - disk_free
+
+        disk_percent = (
+            (disk_used / disk_total) * 100
+            if disk_total
+            else 0
+        )
+
+    except Exception:
+        disk_total = 0
+        disk_used = 0
+        disk_free = 0
+        disk_percent = 0
+
+    wifi_seconds = _wifi_uptime_seconds("wlan0")
+
+    return {
+        "system_uptime": _format_duration(
+            system_uptime_seconds
+        ),
+        "system_uptime_seconds": int(
+            system_uptime_seconds
+        ),
+        "last_boot": boot_time.isoformat(),
+        "wifi_uptime": (
+            _format_duration(wifi_seconds)
+            if wifi_seconds is not None
+            else "--"
+        ),
+        "wifi_uptime_seconds": (
+            int(wifi_seconds)
+            if wifi_seconds is not None
+            else None
+        ),
+        "application_size": _format_bytes(
+            application_size
+        ),
+        "application_size_bytes": application_size,
+        "database_size": _format_bytes(
+            database_size
+        ),
+        "database_size_bytes": database_size,
+        "sd_total": _format_bytes(disk_total),
+        "sd_used": _format_bytes(disk_used),
+        "sd_free": _format_bytes(disk_free),
+        "sd_used_percent": round(disk_percent, 1)
+    }
+
+
+# ============================================================
 # CONTROLLER CONNECTION
 # ============================================================
 
@@ -1603,6 +1911,23 @@ def collector_loop():
 mqtt_client = None
 mqtt_connected = False
 
+# MQTT recovery state.
+# Access is protected because callbacks run in the Paho
+# network thread while the publish loop runs separately.
+mqtt_recovery_lock = threading.Lock()
+mqtt_last_reconnect_attempt = 0.0
+mqtt_last_publish_success = 0.0
+
+MQTT_RECONNECT_MIN_DELAY = 2
+MQTT_RECONNECT_MAX_DELAY = 60
+MQTT_RECOVERY_INTERVAL = 15
+
+# QoS 1 heartbeat verifies that the broker is actually
+# acknowledging MQTT traffic. This detects connections that
+# appear alive locally but no longer reach the broker.
+MQTT_HEARTBEAT_INTERVAL = 15
+MQTT_HEARTBEAT_TIMEOUT = 10
+
 mqtt_log_state = {
     "initialized": False,
     "connected": False,
@@ -1677,6 +2002,7 @@ def log_mqtt_connection_state(
 
 def mqtt_on_connect(client, userdata, flags, reason_code, properties):
     global mqtt_connected
+    global mqtt_last_publish_success
 
     if reason_code.is_failure:
 
@@ -1695,6 +2021,9 @@ def mqtt_on_connect(client, userdata, flags, reason_code, properties):
     else:
 
         mqtt_connected = True
+
+        with mqtt_recovery_lock:
+            mqtt_last_publish_success = time.monotonic()
 
         log_mqtt_connection_state(
             True,
@@ -1978,6 +2307,11 @@ def mqtt_setup():
         mqtt_client.on_disconnect = mqtt_on_disconnect
         mqtt_client.on_message = mqtt_on_message
 
+        mqtt_client.reconnect_delay_set(
+            min_delay=MQTT_RECONNECT_MIN_DELAY,
+            max_delay=MQTT_RECONNECT_MAX_DELAY
+        )
+
         mqtt_client.connect(
             MQTT_BROKER,
             MQTT_PORT,
@@ -1985,6 +2319,13 @@ def mqtt_setup():
         )
 
         mqtt_client.loop_start()
+
+        # Give the normal asynchronous MQTT connection callback
+        # time to complete before active recovery is allowed.
+        global mqtt_last_reconnect_attempt
+
+        with mqtt_recovery_lock:
+            mqtt_last_reconnect_attempt = time.monotonic()
 
         logger.info(
             "MQTT client started"
@@ -1999,13 +2340,225 @@ def mqtt_setup():
         )
 
 
+def mqtt_try_reconnect():
+
+    global mqtt_client
+    global mqtt_last_reconnect_attempt
+
+    if mqtt_client is None:
+        return False
+
+    if mqtt_connected:
+        return True
+
+    now = time.monotonic()
+
+    with mqtt_recovery_lock:
+
+        if (
+            now - mqtt_last_reconnect_attempt
+            < MQTT_RECOVERY_INTERVAL
+        ):
+            return False
+
+        mqtt_last_reconnect_attempt = now
+
+    try:
+
+        logger.warning(
+            "MQTT connection unavailable - attempting reconnect"
+        )
+
+        result = mqtt_client.reconnect()
+
+        if result != mqtt.MQTT_ERR_SUCCESS:
+
+            logger.warning(
+                "MQTT reconnect returned status %s",
+                result
+            )
+
+            return False
+
+        return True
+
+    except Exception as error:
+
+        logger.warning(
+            "MQTT reconnect attempt failed: %s",
+            error
+        )
+
+        return False
+
+
+def mqtt_publish_checked(
+    topic,
+    payload,
+    *,
+    retain=True
+):
+
+    global mqtt_connected
+    global mqtt_last_publish_success
+
+    if mqtt_client is None:
+        return False
+
+    try:
+
+        info = mqtt_client.publish(
+            topic,
+            payload,
+            qos=0,
+            retain=retain
+        )
+
+        if info.rc != mqtt.MQTT_ERR_SUCCESS:
+
+            logger.warning(
+                "MQTT publish rejected for %s: rc=%s",
+                topic,
+                info.rc
+            )
+
+            mqtt_connected = False
+
+            log_mqtt_connection_state(
+                False,
+                f"MQTT publish failed with status {info.rc}"
+            )
+
+            return False
+
+        with mqtt_recovery_lock:
+            mqtt_last_publish_success = time.monotonic()
+
+        return True
+
+    except Exception as error:
+
+        mqtt_connected = False
+
+        logger.warning(
+            "MQTT publish failed for %s: %s",
+            topic,
+            error
+        )
+
+        log_mqtt_connection_state(
+            False,
+            f"MQTT publish error: {error}"
+        )
+
+        return False
+
+
+def mqtt_heartbeat():
+
+    global mqtt_connected
+    global mqtt_last_publish_success
+
+    if mqtt_client is None or not mqtt_connected:
+        return False
+
+    try:
+
+        info = mqtt_client.publish(
+            f"{MQTT_TOPIC}/status/heartbeat",
+            str(int(time.time())),
+            qos=1,
+            retain=False
+        )
+
+        if info.rc != mqtt.MQTT_ERR_SUCCESS:
+
+            raise RuntimeError(
+                f"publish returned status {info.rc}"
+            )
+
+        # QoS 1 requires PUBACK from the broker.
+        info.wait_for_publish(
+            timeout=MQTT_HEARTBEAT_TIMEOUT
+        )
+
+        if not info.is_published():
+
+            raise TimeoutError(
+                "broker acknowledgement timeout"
+            )
+
+        with mqtt_recovery_lock:
+            mqtt_last_publish_success = time.monotonic()
+
+        return True
+
+    except Exception as error:
+
+        mqtt_connected = False
+
+        logger.warning(
+            "MQTT heartbeat failed: %s",
+            error
+        )
+
+        log_mqtt_connection_state(
+            False,
+            f"MQTT heartbeat failed: {error}"
+        )
+
+        # Force the current Paho connection down so that
+        # reconnect starts from a clean socket.
+        try:
+            mqtt_client.disconnect()
+        except Exception:
+            pass
+
+        return False
+
+
 def mqtt_publish_loop():
 
     global mqtt_client
 
+    last_heartbeat = 0.0
+
     while True:
 
         try:
+
+            if mqtt_client is None:
+
+                time.sleep(MQTT_INTERVAL)
+                continue
+
+
+            # If Paho has not restored the connection itself,
+            # make a rate-limited active reconnect attempt.
+            if not mqtt_connected:
+
+                mqtt_try_reconnect()
+
+                time.sleep(MQTT_INTERVAL)
+                continue
+
+
+            now = time.monotonic()
+
+            if (
+                now - last_heartbeat
+                >= MQTT_HEARTBEAT_INTERVAL
+            ):
+
+                last_heartbeat = now
+
+                if not mqtt_heartbeat():
+
+                    mqtt_try_reconnect()
+
+                    time.sleep(MQTT_INTERVAL)
+                    continue
+
 
             with state_lock:
 
@@ -2015,42 +2568,68 @@ def mqtt_publish_loop():
                     live_data["values"]
                 )
 
-            if connected and values and mqtt_client is not None:
 
-                # Complete dataset
+            if connected and values:
+
                 payload = {
                     "connected": connected,
                     "timestamp": timestamp,
                     "values": values
                 }
 
-                mqtt_client.publish(
+
+                # Publish the complete dataset first.
+                # If this fails, do not queue another 81
+                # messages against a dead connection.
+                if not mqtt_publish_checked(
                     f"{MQTT_TOPIC}/live",
                     json.dumps(payload),
-                    qos=0,
                     retain=True
-                )
+                ):
 
-                # Individual values
+                    mqtt_try_reconnect()
+
+                    time.sleep(MQTT_INTERVAL)
+                    continue
+
+
+                successful_values = 0
+
                 for name, value in values.items():
 
-                    mqtt_client.publish(
+                    if mqtt_publish_checked(
                         f"{MQTT_TOPIC}/{name}",
                         str(value),
-                        qos=0,
                         retain=True
+                    ):
+
+                        successful_values += 1
+
+                    else:
+
+                        # Connection has failed while publishing.
+                        # Stop this batch and let recovery handle it.
+                        break
+
+
+                if successful_values == len(values):
+
+                    logger.debug(
+                        "MQTT live data published: %d values",
+                        len(values)
                     )
 
-                logger.debug(
-                    "MQTT live data published: %d values",
-                    len(values)
-                )
+                elif not mqtt_connected:
+
+                    mqtt_try_reconnect()
+
 
         except Exception:
 
             logger.exception(
-                "MQTT publish error"
+                "MQTT publish loop error"
             )
+
 
         time.sleep(MQTT_INTERVAL)
 
@@ -5014,11 +5593,52 @@ def pellet_consumption_overview(
 
 @app.get("/api/v1/consumption/overview/hourly")
 def pellet_consumption_overview_hourly(
-    hours: int = Query(24, gt=0, le=48)
+    hours: int = Query(24, gt=0, le=8760),
+    start: str | None = Query(None),
+    end: str | None = Query(None)
 ):
 
-    end_dt = datetime.now(timezone.utc)
-    start_dt = end_dt - timedelta(hours=hours)
+    if start and end:
+
+        try:
+            start_dt = datetime.fromisoformat(
+                start.replace("Z", "+00:00")
+            )
+            end_dt = datetime.fromisoformat(
+                end.replace("Z", "+00:00")
+            )
+        except ValueError:
+            raise HTTPException(
+                400,
+                "Invalid start or end timestamp"
+            )
+
+    else:
+
+        end_dt = datetime.now(timezone.utc)
+        start_dt = (
+            end_dt -
+            timedelta(hours=hours)
+        )
+
+
+    if start_dt >= end_dt:
+        raise HTTPException(
+            400,
+            "start must be before end"
+        )
+
+
+    # Prevent accidentally requesting an excessive
+    # amount of raw hourly measurement history.
+    if (
+        end_dt - start_dt
+    ) > timedelta(days=365):
+        raise HTTPException(
+            400,
+            "Hourly range cannot exceed 365 days"
+        )
+
 
     with db.lock:
 
@@ -5079,7 +5699,7 @@ def pellet_consumption_overview_hourly(
                 ":00:00+00:00"
             )
 
-            # Existing pellet chart timestamps represent
+            # Pellet chart timestamps represent
             # the END of an interval.
             timestamp = (
                 hour_start +
@@ -5114,15 +5734,15 @@ def pellet_consumption_overview_hourly(
 
 
     return {
-        "hours": hours,
-        "data": data
+        "start":
+            start_dt.isoformat(),
+
+        "end":
+            end_dt.isoformat(),
+
+        "data":
+            data
     }
-
-
-
-# ============================================================
-# API: HOURLY PELLET CONSUMPTION
-# ============================================================
 
 
 @app.get("/api/v1/statistics/daily")
