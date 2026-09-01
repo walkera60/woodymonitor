@@ -1862,6 +1862,255 @@ body { padding-bottom:20px; }
     border-color: #fff;
 }
 
+
+
+/* ==========================================================
+   Unified Settings
+   ========================================================== */
+
+.woody-settings-master {
+    padding:0;
+    overflow:hidden;
+}
+
+.woody-settings-master > summary {
+    list-style:none;
+}
+
+.woody-settings-master > summary::-webkit-details-marker {
+    display:none;
+}
+
+.woody-settings-summary {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:18px 20px;
+    cursor:pointer;
+    user-select:none;
+}
+
+.woody-settings-summary:hover {
+    background:rgba(255,255,255,.02);
+}
+
+.woody-settings-chevron {
+    flex:0 0 auto;
+    color:var(--muted);
+    font-size:22px;
+    line-height:1;
+    transition:transform .18s ease;
+}
+
+.woody-settings-master[open] .woody-settings-chevron {
+    transform:rotate(180deg);
+}
+
+.woody-settings-master-body {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:14px;
+    padding:0 18px 18px;
+    border-top:1px solid var(--border);
+}
+
+.woody-settings-group {
+    min-width:0;
+    margin-top:18px;
+    padding:16px;
+    border:1px solid var(--border);
+    border-radius:10px;
+    background:rgba(255,255,255,.015);
+}
+
+.woody-settings-group .woody-user-settings-heading {
+    margin-bottom:6px;
+}
+
+.woody-settings-group .settings-list {
+    margin:0;
+}
+
+@media (max-width:1100px) {
+
+    .woody-settings-master-body {
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+}
+
+@media (max-width:700px) {
+
+    .woody-settings-master-body {
+        grid-template-columns:1fr;
+        gap:10px;
+        padding:0 12px 12px;
+    }
+
+    .woody-settings-summary {
+        padding:16px;
+    }
+
+    .woody-settings-group {
+        margin-top:12px;
+        padding:14px;
+    }
+
+}
+
+
+
+/* ==========================================================
+   Settings polish
+   ========================================================== */
+
+.woody-settings-master {
+    padding: 0;
+    overflow: hidden;
+}
+
+.woody-settings-master > .card-header {
+    padding: 18px 20px;
+    margin: 0;
+}
+
+.woody-settings-master-body {
+    border-top: 1px solid var(--border);
+}
+
+.woody-settings-group-description {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.45;
+    margin: 2px 0 12px;
+}
+
+/* Backup / restore */
+
+.woody-backup-block,
+.woody-restore-block {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 14px 0 !important;
+}
+
+.woody-backup-block {
+    border-top: 0 !important;
+}
+
+.woody-restore-block {
+    border-top: 1px solid var(--border);
+}
+
+.woody-backup-section-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.woody-backup-block button,
+.woody-restore-block button {
+    margin-top: 10px !important;
+}
+
+.woody-operation-status {
+    display: block;
+    margin-top: 8px !important;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    line-height: 1.4;
+    transition:
+        background .15s ease,
+        border-color .15s ease,
+        color .15s ease;
+}
+
+.woody-operation-status.status-neutral {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.woody-operation-status.status-working {
+    color: var(--yellow);
+    border-color: rgba(255, 190, 70, .28);
+    background: rgba(255, 190, 70, .07);
+}
+
+.woody-operation-status.status-success {
+    color: var(--green);
+    border-color: rgba(70, 200, 120, .40);
+    background: rgba(70, 200, 120, .10);
+    font-weight: 600;
+}
+
+.woody-operation-status.status-error {
+    color: var(--red);
+    border-color: rgba(255, 90, 90, .40);
+    background: rgba(255, 90, 90, .10);
+    font-weight: 600;
+}
+
+
+/* System information */
+
+.woody-system-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.woody-system-grid .woody-system-tile {
+    min-width: 0;
+    min-height: 58px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255,255,255,.018);
+}
+
+.woody-system-grid .woody-system-tile > div:last-child {
+    margin-left: auto;
+    padding-left: 12px;
+    font-weight: 600;
+    text-align: right;
+}
+
+.woody-system-grid #systemStorageWarning {
+    grid-column: 1 / -1;
+}
+
+.woody-system-grid .settings-row:last-child {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+}
+
+@media (max-width: 700px) {
+
+    .woody-system-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .woody-system-grid #systemStorageWarning,
+    .woody-system-grid .settings-row:last-child {
+        grid-column: auto;
+    }
+
+    .woody-backup-block,
+    .woody-restore-block {
+        align-items: stretch;
+    }
+
+    .woody-backup-block button,
+    .woody-restore-block button {
+        margin-left: 0 !important;
+    }
+
+}
+
 </style>
 
 <style id="nav-font-fix">
@@ -4355,7 +4604,7 @@ strong {
                     </div>
 
                     <div class="burner-metric">
-                        <div class="burner-metric-icon">🏭</div>
+                        <div class="burner-metric-icon">💨</div>
                         <div>
                             <div class="burner-metric-label">
                                 Flue temp
@@ -4368,7 +4617,7 @@ strong {
                     </div>
 
                     <div class="burner-metric">
-                        <div class="burner-metric-icon">⬇️</div>
+                        <div class="burner-metric-icon">➿</div>
                         <div>
                             <div class="burner-metric-label">
                                 Chute temp
@@ -4655,7 +4904,7 @@ strong {
         <p>Pellet consumption calculated from feeder runtime</p>
     </div>
 
-    
+
 
     <div class="pellet-overview-grid">
 
@@ -4814,8 +5063,31 @@ strong {
 
             <div class="pellet-overview-card">
 
-                <div class="pellet-overview-title">
-                    Last 12 months
+                <div class="pellet-overview-header">
+
+                    <div class="pellet-overview-title">
+                        Last 12 months
+                    </div>
+
+                    <div class="pellet-overview-navigation">
+
+                        <button
+                            class="btn pellet-overview-nav-button"
+                            type="button"
+                            title="Previous period"
+                            onclick="pelletOverviewNavigate('pelletOverview12m', 'previous')"
+                        >‹</button>
+
+                        <button
+                            id="pelletOverview12mNext"
+                            class="btn pellet-overview-nav-button"
+                            type="button"
+                            title="Next period"
+                            onclick="pelletOverviewNavigate('pelletOverview12m', 'next')"
+                        >›</button>
+
+                    </div>
+
                 </div>
 
                 <div class="pellet-overview-subtitle">
@@ -4846,7 +5118,7 @@ strong {
             <div class="pellet-overview-card pellet-overview-card-wide">
 
                 <div class="pellet-overview-title">
-                    Last 5 years
+                    Last 10 years
                 </div>
 
                 <div class="pellet-overview-subtitle">
@@ -4881,15 +5153,15 @@ strong {
 
 
 
-        
+
 
         </div>
 
-        
 
-        
 
-        
+
+
+
 
     </div>
 
@@ -4971,26 +5243,42 @@ strong {
 
     <div class="grid">
 
-        <div class="card col-12">
 
-    <div class="card-header">
-        <div>
-            <div class="card-title">User settings</div>
-            <div class="card-subtitle">
-                Application, timezone and pellet configuration
+        <div class="card col-12 woody-settings-master">
+
+            <div
+                class="card-header collapsible-card-header"
+                onclick="toggleUnifiedSettings()"
+            >
+                <div>
+                    <div class="card-title">System</div>
+                    <div class="card-subtitle">
+                        Application, connections, pellets, backup and system configuration
+                    </div>
+                </div>
+
+                <button
+                    id="unifiedSettingsToggle"
+                    class="collapsible-card-toggle"
+                    type="button"
+                    aria-label="Expand or collapse"
+                    onclick="event.stopPropagation(); toggleUnifiedSettings();"
+                >
+                    ▼
+                </button>
             </div>
-        </div>
-    </div>
 
-    <div class="woody-user-settings-columns">
+            <div
+                id="unifiedSettingsContent"
+                class="woody-settings-master-body collapsible-card-content"
+            >
 
-        <div class="woody-user-settings-column">
+                <div class="woody-settings-group">
+                    <div class="woody-user-settings-heading">
+                        Connections
+                    </div>
 
-            <div class="woody-user-settings-heading">
-                Connections
-            </div>
-
-            <div style="padding:12px 0;">
+                    <div style="padding:12px 0;">
                 Automatic updates
                 <span style="float:right;color:var(--green);">5 seconds</span>
             </div>
@@ -5101,65 +5389,15 @@ strong {
                 </div>
 
             </div>
-
-
-
-        </div>
-
-        <div class="woody-user-settings-column">
-
-            <div class="woody-user-settings-heading">
-                Date, time and timezone
-            </div>
-
-            <div style="padding:12px 0;">
-
-                <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">
-                    Select the timezone used for dates, history and
-                    consumption periods. Daylight saving time is handled automatically.
-                </div>
-
-                <div style="display:flex;align-items:center;gap:10px;">
-
-                    <span>Timezone</span>
-
-                    <select
-                        id="timezoneSetting"
-                        style="margin-left:auto;min-width:190px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
-                    >
-                        <option value="Europe/Copenhagen">
-                            Europe/Copenhagen
-                        </option>
-                    </select>
-
-                    <button
-                        class="btn"
-                        onclick="saveTimezoneSettings()"
-                    >
-                        Save
-                    </button>
-
-                </div>
-
-                <div
-                    id="timezoneInfo"
-                    style="font-size:13px;color:var(--muted);margin-top:10px;"
-                >
-                    Loading timezone...
                 </div>
 
 
-            </div>
+                <div class="woody-settings-group">
+                    <div class="woody-user-settings-heading">
+                        Pellet settings
+                    </div>
 
-        </div>
-
-        <div class="woody-user-settings-column">
-
-            <div class="woody-user-settings-heading">
-                Pellet settings
-            </div>
-
-            <div style="padding:12px 0;">
+                    <div style="padding:12px 0;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <span>Pellet price</span>
 
@@ -5203,7 +5441,123 @@ strong {
                 </div>
             </div>
 
+<div style="padding:12px 0;border-top:1px solid var(--border);">
+
+                <div style="display:flex;align-items:center;gap:10px;">
+
+                    <span>Silo capacity</span>
+
+                    <input
+                        id="siloCapacitySetting"
+                        type="number"
+                        value="215"
+                        min="1"
+                        max="5000"
+                        step="1"
+                        style="margin-left:auto;width:90px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+
+                    <span>kg</span>
+
+                    <button
+                        class="btn"
+                        onclick="saveSiloCapacity()"
+                    >
+                        Save
+                    </button>
+
+                </div>
+
+                <div
+                    id="siloCapacityInfo"
+                    style="font-size:12px;color:var(--muted);margin-top:8px;"
+                >
+                    Silo scale on the dashboard
+                </div>
+
+            </div>
+
             <div style="padding:12px 0;border-top:1px solid var(--border);">
+                <div style="display:flex;align-items:center;gap:10px;">
+
+                    <span>Cleaning interval</span>
+
+                    <input
+                        id="cleaningInterval"
+                        type="number"
+                        value="30"
+                        min="1"
+                        max="3650"
+                        step="1"
+                        style="margin-left:auto;width:90px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+
+                    <span>days</span>
+
+                    <button
+                        class="btn"
+                        onclick="saveCleaningInterval()"
+                    >
+                        Save
+                    </button>
+
+                </div>
+            </div>
+                </div>
+
+
+                <div class="woody-settings-group">
+                    <div class="woody-user-settings-heading">
+                        Date, time and timezone
+                    </div>
+
+                    <div style="padding:12px 0;">
+
+                <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">
+                    Select the timezone used for dates, history and
+                    consumption periods. Daylight saving time is handled automatically.
+                </div>
+
+                <div style="display:flex;align-items:center;gap:10px;">
+
+                    <span>Timezone</span>
+
+                    <select
+                        id="timezoneSetting"
+                        style="margin-left:auto;min-width:190px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+                        <option value="Europe/Copenhagen">
+                            Europe/Copenhagen
+                        </option>
+                    </select>
+
+                    <button
+                        class="btn"
+                        onclick="saveTimezoneSettings()"
+                    >
+                        Save
+                    </button>
+
+                </div>
+
+                <div
+                    id="timezoneInfo"
+                    style="font-size:13px;color:var(--muted);margin-top:10px;"
+                >
+                    Loading timezone...
+                </div>
+
+
+            </div>
+                </div>
+
+
+                <div class="woody-settings-group">
+                    <div class="woody-user-settings-heading">
+                        Pellet data
+                    </div>
+
+                    <div style="padding:12px 0;border-top:1px solid var(--border);">
 
                 <div style="font-weight:600;margin-bottom:8px;">
                     Pellet history Export
@@ -5309,77 +5663,226 @@ strong {
                 ></div>
 
             </div>
+                </div>
 
-            <div style="padding:12px 0;border-top:1px solid var(--border);">
 
-                <div style="display:flex;align-items:center;gap:10px;">
+                <div class="woody-settings-group">
+                    <div class="woody-user-settings-heading">
+                        Backup &amp; restore
+                    </div>
 
-                    <span>Silo capacity</span>
+                    <div class="woody-settings-group-description">
+                        Create a backup or restore Woody Monitor from an existing backup file.
+                    </div>
 
-                    <input
-                        id="siloCapacitySetting"
-                        type="number"
-                        value="215"
-                        min="1"
-                        max="5000"
-                        step="1"
-                        style="margin-left:auto;width:90px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
-                    >
-
-                    <span>kg</span>
+                    <div class="settings-row woody-backup-block" style="flex-wrap:wrap;">
+                    <div style="flex:1 1 100%;">
+                        <div class="woody-backup-section-title">Create backup</div>
+                        <div class="card-subtitle">
+                            Download a backup of history and Woody Monitor settings
+                        </div>
+                        <div id="backupStatus"
+                             class="card-subtitle woody-operation-status"
+                             style="margin-top:4px;">
+                            Sensitive credentials are not included
+                        </div>
+                    </div>
 
                     <button
+                        id="downloadBackupButton"
                         class="btn"
-                        onclick="saveSiloCapacity()"
+                        type="button"
+                        onclick="downloadWoodyBackup()"
+                        style="
+                            margin-left:12px;
+                            margin-top:12px;
+                            align-self:flex-end;
+                        "
                     >
-                        Save
+                        Download backup
                     </button>
-
                 </div>
 
-                <div
-                    id="siloCapacityInfo"
-                    style="font-size:12px;color:var(--muted);margin-top:8px;"
-                >
-                    Silo scale on the dashboard
-                </div>
+                    <div class="settings-row woody-restore-block" style="flex-wrap:wrap;">
+                    <div style="flex:1 1 100%;">
+                        <div class="woody-backup-section-title">Restore backup</div>
 
-            </div>
+                        <div class="card-subtitle">
+                            Select a Woody Monitor backup file and validate it before restoring
+                        </div>
 
-            <div style="padding:12px 0;border-top:1px solid var(--border);">
-                <div style="display:flex;align-items:center;gap:10px;">
+                        <div
+                            id="restoreValidationStatus"
+                            class="card-subtitle woody-operation-status"
+                            style="margin-top:4px;"
+                        >
+                            No backup file selected
+                        </div>
 
-                    <span>Cleaning interval</span>
+                        <div
+                            id="restoreValidationDetails"
+                            class="card-subtitle"
+                            style="
+                                margin-top:8px;
+                                display:none;
+                                white-space:pre-line;
+                            "
+                        ></div>
+                    </div>
 
                     <input
-                        id="cleaningInterval"
-                        type="number"
-                        value="30"
-                        min="1"
-                        max="3650"
-                        step="1"
-                        style="margin-left:auto;width:90px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                        id="restoreBackupFile"
+                        type="file"
+                        accept=".zip,application/zip"
+                        style="display:none;"
+                        onchange="restoreBackupFileSelected()"
                     >
-
-                    <span>days</span>
 
                     <button
+                        id="selectRestoreBackupButton"
                         class="btn"
-                        onclick="saveCleaningInterval()"
+                        type="button"
+                        onclick="selectRestoreBackupFile()"
+                        style="
+                            margin-left:12px;
+                            margin-top:12px;
+                            align-self:flex-end;
+                        "
                     >
-                        Save
+                        Select backup file
                     </button>
 
+                    <button
+                        id="validateRestoreBackupButton"
+                        class="btn"
+                        type="button"
+                        onclick="validateRestoreBackup()"
+                        disabled
+                        style="
+                            margin-left:8px;
+                            margin-top:12px;
+                            align-self:flex-end;
+                        "
+                    >
+                        Validate backup
+                    </button>
+
+                    <button
+                        id="executeRestoreBackupButton"
+                        class="btn"
+                        type="button"
+                        onclick="executeRestoreBackup()"
+                        style="
+                            display:none;
+                            margin-left:8px;
+                            margin-top:12px;
+                            align-self:flex-end;
+                        "
+                    >
+                        Restore backup
+                    </button>
                 </div>
+                </div>
+
+
+                <div class="woody-settings-group">
+                    <div class="woody-user-settings-heading">
+                        System
+                    </div>
+
+                    <div class="woody-settings-group-description">
+                        Raspberry Pi, application and storage status.
+                    </div>
+
+                    <div class="settings-list woody-system-grid">
+                        <div class="settings-row woody-system-tile">
+                        <div>
+                            <div>System uptime</div>
+                        </div>
+                        <div id="systemUptime">--</div>
+                    </div>
+                        <div class="settings-row woody-system-tile">
+                        <div>
+                            <div>Last Raspberry Pi boot</div>
+                        </div>
+                        <div id="systemLastBoot">--</div>
+                    </div>
+                        <div class="settings-row woody-system-tile">
+                        <div>
+                            <div>Wi-Fi uptime</div>
+                        </div>
+                        <div id="systemWifiUptime">--</div>
+                    </div>
+                        <div class="settings-row woody-system-tile">
+                        <div>
+                            <div>Woody Monitor size</div>
+                            <div class="card-subtitle">
+                                Application files excluding database
+                            </div>
+                        </div>
+                        <div id="systemApplicationSize">--</div>
+                    </div>
+                        <div class="settings-row woody-system-tile">
+                        <div>
+                            <div>Database size</div>
+                        </div>
+                        <div id="systemDatabaseSize">--</div>
+                    </div>
+                        <div class="settings-row woody-system-tile">
+                        <div>
+                            <div>SD card</div>
+                            <div class="card-subtitle">
+                                Used / total
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div id="systemSdUsage">--</div>
+                            <div id="systemSdFree"
+                                 class="card-subtitle">--</div>
+                        </div>
+                    </div>
+
+                        <div id="systemStorageWarning"
+     style="
+        display:none;
+        margin:12px 0;
+        padding:10px 12px;
+        border:1px solid rgba(255,170,0,.45);
+        border-radius:8px;
+        background:rgba(255,170,0,.10);
+        font-weight:600;
+     ">
+</div>
+
+                        <div class="settings-row" style="flex-wrap:wrap;">
+                        <div style="flex:1 1 100%;">
+                            <div>Restart Woody Monitor</div>
+                            <div class="card-subtitle">
+                                Restarts the application without restarting the Raspberry Pi
+                            </div>
+                        </div>
+
+                        <button
+                            class="btn"
+                            type="button"
+                            onclick="restartWoodyMonitor()"
+                            style="
+                                margin-left:12px;
+                                margin-top:12px;
+                                align-self:flex-end;
+                            "
+                        >
+                            Restart
+                        </button>
+                    </div>
+                    </div>
+                </div>
+
             </div>
 
         </div>
 
-    </div>
-
-</div>
-
-        <div class="card col-12">
+<div class="card col-12">
 
             <div class="card-header">
                 <div>
@@ -5408,99 +5911,7 @@ strong {
 
 
 
-<div class="card col-6">
-
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">System</div>
-                        <div class="card-subtitle">
-                            Raspberry Pi and storage information
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-list">
-
-                    <div class="settings-row">
-                        <div>
-                            <div>System uptime</div>
-                        </div>
-                        <div id="systemUptime">--</div>
-                    </div>
-
-                    <div class="settings-row">
-                        <div>
-                            <div>Last Raspberry Pi boot</div>
-                        </div>
-                        <div id="systemLastBoot">--</div>
-                    </div>
-
-                    <div class="settings-row">
-                        <div>
-                            <div>Wi-Fi uptime</div>
-                        </div>
-                        <div id="systemWifiUptime">--</div>
-                    </div>
-
-                    <div class="settings-row">
-                        <div>
-                            <div>Woody Monitor size</div>
-                            <div class="card-subtitle">
-                                Application files excluding database
-                            </div>
-                        </div>
-                        <div id="systemApplicationSize">--</div>
-                    </div>
-
-                    <div class="settings-row">
-                        <div>
-                            <div>Database size</div>
-                        </div>
-                        <div id="systemDatabaseSize">--</div>
-                    </div>
-
-                    <div class="settings-row">
-                        <div>
-                            <div>SD card</div>
-                            <div class="card-subtitle">
-                                Used / total
-                            </div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div id="systemSdUsage">--</div>
-                            <div id="systemSdFree"
-                                 class="card-subtitle">--</div>
-                        </div>
-                    </div>
-
-                    <div class="settings-row" style="flex-wrap:wrap;">
-                        <div style="flex:1 1 100%;">
-                            <div>Restart Woody Monitor</div>
-                            <div class="card-subtitle">
-                                Restarts the application without restarting the Raspberry Pi
-                            </div>
-                        </div>
-
-                        <button
-                            class="btn"
-                            type="button"
-                            onclick="restartWoodyMonitor()"
-                            style="
-                                margin-left:12px;
-                                margin-top:12px;
-                                align-self:flex-end;
-                            "
-                        >
-                            Restart
-                        </button>
-                    </div>
-
-                </div>
-
-            </div>
-
-
-<div class="card col-6">
+<div class="card col-12">
 
                 <div class="card-header">
                     <div>
@@ -5534,7 +5945,7 @@ strong {
                         <div>
                             <div>Release date</div>
                         </div>
-                        <div>30 August 2026</div>
+                        <div>1 September 2026</div>
                     </div>
 
 
@@ -5550,6 +5961,226 @@ strong {
 
 
 <script>
+
+/* ==========================================================
+   Unified Settings card
+   ========================================================== */
+
+function setUnifiedSettingsCollapsed(collapsed) {
+
+    const content =
+        document.getElementById(
+            "unifiedSettingsContent"
+        );
+
+    const button =
+        document.getElementById(
+            "unifiedSettingsToggle"
+        );
+
+    if (!content || !button) {
+        return;
+    }
+
+    content.classList.toggle(
+        "collapsed",
+        collapsed
+    );
+
+    button.textContent =
+        collapsed ? "▶" : "▼";
+
+    button.setAttribute(
+        "aria-expanded",
+        collapsed ? "false" : "true"
+    );
+
+    try {
+        localStorage.setItem(
+            "woody-settings-card",
+            collapsed
+                ? "collapsed"
+                : "expanded"
+        );
+    } catch (_) {}
+}
+
+
+function toggleUnifiedSettings() {
+
+    const content =
+        document.getElementById(
+            "unifiedSettingsContent"
+        );
+
+    if (!content) {
+        return;
+    }
+
+    setUnifiedSettingsCollapsed(
+        !content.classList.contains(
+            "collapsed"
+        )
+    );
+}
+
+
+function initializeUnifiedSettingsCard() {
+
+    let collapsed = false;
+
+    try {
+        collapsed =
+            localStorage.getItem(
+                "woody-settings-card"
+            ) === "collapsed";
+    } catch (_) {}
+
+    setUnifiedSettingsCollapsed(
+        collapsed
+    );
+}
+
+
+/* ==========================================================
+   Backup / restore status appearance
+   ========================================================== */
+
+function updateOperationStatusAppearance(element) {
+
+    if (!element) {
+        return;
+    }
+
+    const text =
+        String(
+            element.textContent || ""
+        )
+        .trim()
+        .toLowerCase();
+
+    element.classList.remove(
+        "status-neutral",
+        "status-working",
+        "status-success",
+        "status-error"
+    );
+
+    if (
+        !text ||
+        text.includes(
+            "sensitive credentials"
+        ) ||
+        text.includes(
+            "no backup file selected"
+        ) ||
+        text.includes(
+            "select a backup file"
+        )
+    ) {
+        element.classList.add(
+            "status-neutral"
+        );
+        return;
+    }
+
+    if (
+        text.includes("failed") ||
+        text.includes("error") ||
+        text.includes("could not") ||
+        text.includes("invalid")
+    ) {
+        element.classList.add(
+            "status-error"
+        );
+        return;
+    }
+
+    if (
+        text.includes("creating") ||
+        text.includes("validating") ||
+        text.includes("restoring") ||
+        text.includes("restarting") ||
+        text.includes("waiting")
+    ) {
+        element.classList.add(
+            "status-working"
+        );
+        return;
+    }
+
+    if (
+        text.includes("success") ||
+        text.includes("complete") ||
+        text.includes("completed") ||
+        text.includes("downloaded") ||
+        text.includes("backup is valid") ||
+        text.includes("restored") ||
+        text.includes("online again")
+    ) {
+        element.classList.add(
+            "status-success"
+        );
+        return;
+    }
+
+    element.classList.add(
+        "status-neutral"
+    );
+}
+
+
+function initializeOperationStatusObservers() {
+
+    [
+        "backupStatus",
+        "restoreValidationStatus"
+    ].forEach(
+        elementId => {
+
+            const element =
+                document.getElementById(
+                    elementId
+                );
+
+            if (!element) {
+                return;
+            }
+
+            updateOperationStatusAppearance(
+                element
+            );
+
+            const observer =
+                new MutationObserver(
+                    () =>
+                        updateOperationStatusAppearance(
+                            element
+                        )
+                );
+
+            observer.observe(
+                element,
+                {
+                    childList: true,
+                    subtree: true,
+                    characterData: true
+                }
+            );
+        }
+    );
+}
+
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+        initializeUnifiedSettingsCard();
+        initializeOperationStatusObservers();
+    }
+);
+
+
 const API = "/api/v1";
 
 let liveData = {};
@@ -5557,7 +6188,7 @@ let historyChart = null;
 let pelletChart = null;
 let historyRequestController = null;
 let historyRequestGeneration = 0;
-let historyHours = 24;
+let historyHours = 1;
 let consumptionHours = 24;
 
 let historyStart = null;
@@ -5808,10 +6439,6 @@ async function loadLive() {
         try {
             updateDashboard();
 
-        // Refresh silo graph after current silo content is updated
-        if (typeof updateSiloForecast === "function") {
-            updateSiloForecast();
-        }
         } catch(error) {
             console.error("Dashboard error:", error);
             document.getElementById("lastUpdate").textContent = "Dashboard error: " + error.message;
@@ -9064,6 +9691,8 @@ function updateHistoryExternalLegend(selected) {
 
 async function updateHistoryChart() {
 
+    const historyTimingStart = performance.now();
+
     const activePage =
         document.querySelector(".page.active");
 
@@ -9148,6 +9777,8 @@ async function updateHistoryChart() {
                 `&hours=${historyHours}`;
         }
 
+        const historyFetchStart = performance.now();
+
         const response = await fetch(
             API + url,
             {
@@ -9156,13 +9787,19 @@ async function updateHistoryChart() {
             }
         );
 
+        const historyFetchEnd = performance.now();
+
         if (!response.ok) {
             throw new Error(
                 `${response.status} ${response.statusText}`
             );
         }
 
+        const historyJsonStart = performance.now();
+
         const result = await response.json();
+
+        const historyJsonEnd = performance.now();
 
         if (
             requestGeneration !==
@@ -9188,6 +9825,8 @@ async function updateHistoryChart() {
          * common timestamp array. With many parameters this
          * created thousands of unnecessary null values.
          */
+        const historyDatasetStart = performance.now();
+
         const datasets = selected.map(parameter => {
 
             const points = rows
@@ -9232,6 +9871,8 @@ async function updateHistoryChart() {
                         : "other"
             };
         });
+
+        const historyDatasetEnd = performance.now();
 
         const canvas =
             document.getElementById(
@@ -9292,7 +9933,25 @@ async function updateHistoryChart() {
                 .ticks.maxTicksLimit =
                     isMobile ? 6 : 10;
 
+            const historyRenderStart = performance.now();
+
             historyChart.update("none");
+
+            const historyRenderEnd = performance.now();
+
+            console.log(
+                "[Woody History Timing]",
+                {
+                    parameters: selected.length,
+                    rows: rows.length,
+                    bucket: result.bucket_seconds,
+                    fetch_ms: Math.round(historyFetchEnd - historyFetchStart),
+                    json_ms: Math.round(historyJsonEnd - historyJsonStart),
+                    datasets_ms: Math.round(historyDatasetEnd - historyDatasetStart),
+                    chart_ms: Math.round(historyRenderEnd - historyRenderStart),
+                    total_ms: Math.round(performance.now() - historyTimingStart)
+                }
+            );
 
         } else {
 
@@ -9300,6 +9959,8 @@ async function updateHistoryChart() {
                 historyChart.destroy();
                 historyChart = null;
             }
+
+    const historyFirstRenderStart = performance.now();
 
     historyChart = new Chart(ctx, {
 
@@ -9479,6 +10140,32 @@ async function updateHistoryChart() {
                 }
             }
         });
+
+        const historyFirstRenderEnd = performance.now();
+
+        console.log(
+            "[Woody History First Render Timing]",
+            {
+                parameters: selected.length,
+                rows: rows.length,
+                bucket: result.bucket_seconds,
+                fetch_ms: Math.round(
+                    historyFetchEnd - historyFetchStart
+                ),
+                json_ms: Math.round(
+                    historyJsonEnd - historyJsonStart
+                ),
+                datasets_ms: Math.round(
+                    historyDatasetEnd - historyDatasetStart
+                ),
+                chart_ms: Math.round(
+                    historyFirstRenderEnd - historyFirstRenderStart
+                ),
+                total_ms: Math.round(
+                    performance.now() - historyTimingStart
+                )
+            }
+        );
 
         }
 
@@ -10147,17 +10834,6 @@ function updateHomeAssistantUI(data) {
         && Object.keys(liveData).length
     ) {
         renderLiveParameters();
-    }
-
-    /*
-     * indoor_temp may only appear in history after the first
-     * Home Assistant sample has been stored.
-     */
-    if (
-        ha.connected &&
-        typeof loadHistoryParameters === "function"
-    ) {
-        loadHistoryParameters();
     }
 
     if (status) {
@@ -11216,12 +11892,12 @@ async function getPelletPeriodExportRows() {
     if (totalExport) {
 
         /*
-         * Overview API supports up to 2000 days.
+         * Overview API supports up to 4000 days.
          * This retrieves all history currently available
          * within that API range.
          */
         start.setDate(
-            start.getDate() - 2000
+            start.getDate() - 4000
         );
 
     } else {
@@ -11234,9 +11910,9 @@ async function getPelletPeriodExportRows() {
 
     const days =
         totalExport
-            ? 2000
+            ? 4000
             : Math.min(
-                2000,
+                4000,
                 Math.ceil(
                     (
                         end.getTime() -
@@ -12217,6 +12893,38 @@ function pelletOverviewRange(config) {
     }
 
 
+    if (
+        config.navigationMode ===
+        "month"
+    ) {
+
+        const end =
+            new Date(
+                now.getFullYear(),
+                now.getMonth() + 1,
+                1,
+                0, 0, 0, 0
+            );
+
+        end.setMonth(
+            end.getMonth() -
+            offset
+        );
+
+        const start =
+            new Date(end);
+
+        start.setMonth(
+            start.getMonth() - 12
+        );
+
+        return {
+            start,
+            end
+        };
+    }
+
+
     return null;
 }
 
@@ -12260,6 +12968,7 @@ function pelletOverviewSeedBuckets(
                         temperatures:
                             [],
 
+                        temperaturesAll: [],
                         powers:
                             []
                     }
@@ -12335,6 +13044,32 @@ function pelletOverviewSeedBuckets(
             );
         }
     }
+    if (config.mode === "month") {
+
+        let cursor =
+            new Date(
+                range.start.getFullYear(),
+                range.start.getMonth(),
+                1
+            );
+
+        while (
+            cursor < range.end
+        ) {
+
+            addBucket(cursor);
+
+            cursor =
+                new Date(cursor);
+
+            cursor.setMonth(
+                cursor.getMonth() + 1
+            );
+        }
+
+        return;
+    }
+
 }
 
 
@@ -12412,6 +13147,12 @@ function pelletOverviewNavigate(
         "week"
     ) {
         step = 13;
+
+    } else if (
+        config.navigationMode ===
+        "month"
+    ) {
+        step = 12;
     }
 
 
@@ -12766,6 +13507,7 @@ async function updatePelletOverviewChart(config) {
                     date: bucketDate,
                     kg: 0,
                     temperatures: [],
+                    temperaturesAll: [],
                     powers: []
                 }
             );
@@ -12847,6 +13589,7 @@ async function updatePelletOverviewChart(config) {
                             date: bucketDate,
                             kg: 0,
                             temperatures: [],
+                            temperaturesAll: [],
                             powers: []
                         }
                     );
@@ -12956,6 +13699,7 @@ async function updatePelletOverviewChart(config) {
                             date: bucketDate,
                             kg: 0,
                             temperatures: [],
+                            temperaturesAll: [],
                             powers: []
                         }
                     );
@@ -13001,6 +13745,171 @@ async function updatePelletOverviewChart(config) {
 
         console.warn(
             "Unable to load chart metrics",
+            error
+        );
+    }
+
+
+    /*
+     * --------------------------------------------------------
+     * COMPLETE-PERIOD OUTDOOR TEMPERATURE
+     * --------------------------------------------------------
+     *
+     * This is separate from the temperature measured only
+     * while pellets are being fed.
+     */
+
+    try {
+
+        let allTemperatureUrl;
+
+        if (config.mode === "hour") {
+
+            allTemperatureUrl =
+                range
+                    ? (
+                        "/consumption/outdoor-temperature" +
+                        "?mode=hour" +
+                        "&start=" +
+                        encodeURIComponent(
+                            range.start.toISOString()
+                        ) +
+                        "&end=" +
+                        encodeURIComponent(
+                            range.end.toISOString()
+                        )
+                    )
+                    : (
+                        "/consumption/outdoor-temperature" +
+                        `?mode=hour&hours=${config.hours}`
+                    );
+
+        } else {
+
+            allTemperatureUrl =
+                range
+                    ? (
+                        "/consumption/outdoor-temperature" +
+                        "?mode=day" +
+                        "&start=" +
+                        encodeURIComponent(
+                            range.start.toISOString()
+                        ) +
+                        "&end=" +
+                        encodeURIComponent(
+                            range.end.toISOString()
+                        )
+                    )
+                    : (
+                        "/consumption/outdoor-temperature" +
+                        "?mode=day&days=" +
+                        Math.min(
+                            4000,
+                            Math.ceil(
+                                config.hours / 24
+                            ) + 2
+                        )
+                    );
+        }
+
+
+        const allTemperatureResult =
+            await api(
+                allTemperatureUrl
+            );
+
+        const allTemperatureRows =
+            Array.isArray(
+                allTemperatureResult.data
+            )
+                ? allTemperatureResult.data
+                : [];
+
+
+        for (
+            const row of allTemperatureRows
+        ) {
+
+            const timestamp =
+                config.mode === "hour"
+                    ? new Date(
+                        row.timestamp
+                    )
+                    : new Date(
+                        row.date +
+                        "T12:00:00"
+                    );
+
+            if (
+                !Number.isFinite(
+                    timestamp.getTime()
+                )
+            ) {
+                continue;
+            }
+
+
+            if (
+                range &&
+                (
+                    timestamp < range.start ||
+                    timestamp >= range.end
+                )
+            ) {
+                continue;
+            }
+
+
+            const bucketDate =
+                pelletOverviewBucketDate(
+                    timestamp,
+                    config.mode
+                );
+
+            const key =
+                bucketDate.getTime();
+
+
+            if (!buckets.has(key)) {
+
+                buckets.set(
+                    key,
+                    {
+                        date: bucketDate,
+                        kg: 0,
+                        temperatures: [],
+                        temperaturesAll: [],
+                        powers: []
+                    }
+                );
+            }
+
+
+            const temperature =
+                Number(
+                    row.outside_temp_avg
+                );
+
+            if (
+                row.outside_temp_avg !== null &&
+                Number.isFinite(
+                    temperature
+                )
+            ) {
+
+                buckets
+                    .get(key)
+                    .temperaturesAll
+                    .push(
+                        temperature
+                    );
+            }
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Unable to load complete-period outdoor temperature",
             error
         );
     }
@@ -13089,6 +13998,15 @@ async function updatePelletOverviewChart(config) {
             item =>
                 arrayAverage(
                     item.temperatures
+                )
+        );
+
+
+    const averageOutdoorTemperatures =
+        items.map(
+            item =>
+                arrayAverage(
+                    item.temperaturesAll
                 )
         );
 
@@ -13225,6 +14143,45 @@ async function updatePelletOverviewChart(config) {
 
                         label:
                             "Average outdoor temperature",
+
+                        data:
+                            averageOutdoorTemperatures,
+
+                        yAxisID:
+                            "temperature",
+
+                        borderColor:
+                            "rgba(56, 189, 248, 0.95)",
+
+                        backgroundColor:
+                            "rgba(56, 189, 248, 0.12)",
+
+                        borderWidth:
+                            2,
+
+                        pointRadius:
+                            2,
+
+                        pointHoverRadius:
+                            4,
+
+                        tension:
+                            0.25,
+
+                        spanGaps:
+                            false,
+
+                        order:
+                            1
+                    },
+
+
+                    {
+                        type:
+                            "line",
+
+                        label:
+                            "Outdoor temp while heating",
 
                         data:
                             outdoorTemperatures,
@@ -13747,7 +14704,7 @@ async function updatePelletFiveYearChart() {
 
     const result =
         await api(
-            "/consumption/overview?days=1827"
+            "/consumption/overview?days=3653"
         );
 
 
@@ -13763,11 +14720,37 @@ async function updatePelletFiveYearChart() {
             : [];
 
 
+    let completeTemperatureRows = [];
+
+    try {
+
+        const completeTemperatureResult =
+            await api(
+                "/consumption/outdoor-temperature" +
+                "?mode=day&days=3653"
+            );
+
+        completeTemperatureRows =
+            Array.isArray(
+                completeTemperatureResult.data
+            )
+                ? completeTemperatureResult.data
+                : [];
+
+    } catch (error) {
+
+        console.warn(
+            "Unable to load 10-year outdoor temperature",
+            error
+        );
+    }
+
+
     const now =
         new Date();
 
     const firstYear =
-        now.getFullYear() - 4;
+        now.getFullYear() - 9;
 
 
     const years = [];
@@ -13782,6 +14765,7 @@ async function updatePelletFiveYearChart() {
             year: year,
             pelletKg: 0,
             temperatures: [],
+            temperaturesAll: [],
             powers: []
         });
     }
@@ -13859,6 +14843,51 @@ async function updatePelletFiveYearChart() {
                         String(row.period)
                 )
         );
+
+
+    /*
+     * COMPLETE-PERIOD OUTDOOR TEMPERATURE
+     */
+
+    for (const row of completeTemperatureRows) {
+
+        const date =
+            String(
+                row.date || ""
+            );
+
+        const year =
+            Number(
+                date.slice(
+                    0,
+                    4
+                )
+            );
+
+        const target =
+            yearMap.get(year);
+
+        if (!target) {
+            continue;
+        }
+
+        const temperature =
+            Number(
+                row.outside_temp_avg
+            );
+
+        if (
+            row.outside_temp_avg !== null &&
+            Number.isFinite(
+                temperature
+            )
+        ) {
+
+            target.temperaturesAll.push(
+                temperature
+            );
+        }
+    }
 
 
     /*
@@ -13978,11 +15007,89 @@ async function updatePelletFiveYearChart() {
         );
 
 
+    /*
+     * Estimated full-year pellet consumption.
+     *
+     * Only the current year gets an estimate.
+     * Previous years remain null and therefore have no
+     * estimated bar.
+     */
+
+    const currentYear =
+        now.getFullYear();
+
+    const startOfYear =
+        new Date(
+            currentYear,
+            0,
+            1
+        );
+
+    const startOfToday =
+        new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate()
+        );
+
+    const elapsedDays =
+        Math.max(
+            1,
+            Math.floor(
+                (
+                    startOfToday -
+                    startOfYear
+                ) /
+                86400000
+            ) + 1
+        );
+
+    const daysInCurrentYear =
+        (
+            new Date(
+                currentYear + 1,
+                0,
+                1
+            ) -
+            startOfYear
+        ) /
+        86400000;
+
+
+    const estimatedAnnualValues =
+        years.map(
+            item => {
+
+                if (
+                    item.year !==
+                    currentYear
+                ) {
+                    return null;
+                }
+
+                return (
+                    item.pelletKg /
+                    elapsedDays *
+                    daysInCurrentYear
+                );
+            }
+        );
+
+
     const temperatures =
         years.map(
             item =>
                 avg(
                     item.temperatures
+                )
+        );
+
+
+    const averageOutdoorTemperatures =
+        years.map(
+            item =>
+                avg(
+                    item.temperaturesAll
                 )
         );
 
@@ -14039,7 +15146,49 @@ async function updatePelletFiveYearChart() {
                             "bar",
 
                         label:
+                            "Estimated annual consumption",
+
+                        data:
+                            estimatedAnnualValues,
+
+                        yAxisID:
+                            "y",
+
+                        backgroundColor:
+                            "rgba(148, 163, 184, 0.20)",
+
+                        borderColor:
+                            "rgba(148, 163, 184, 0.55)",
+
+                        borderWidth:
+                            1,
+
+                        borderRadius:
+                            3,
+
+                        barPercentage:
+                            0.82,
+
+                        categoryPercentage:
+                            0.75,
+
+                        grouped:
+                            false,
+
+                        order:
+                            4
+                    },
+
+
+                    {
+                        type:
+                            "bar",
+
+                        label:
                             "Pellet consumption",
+
+                        grouped:
+                            false,
 
                         data:
                             pelletValues,
@@ -14060,7 +15209,7 @@ async function updatePelletFiveYearChart() {
                             3,
 
                         barPercentage:
-                            0.65,
+                            0.58,
 
                         categoryPercentage:
                             0.75,
@@ -14076,6 +15225,45 @@ async function updatePelletFiveYearChart() {
 
                         label:
                             "Average outdoor temperature",
+
+                        data:
+                            averageOutdoorTemperatures,
+
+                        yAxisID:
+                            "temperature",
+
+                        borderColor:
+                            "rgba(56, 189, 248, 0.95)",
+
+                        backgroundColor:
+                            "rgba(56, 189, 248, 0.12)",
+
+                        borderWidth:
+                            2,
+
+                        pointRadius:
+                            3,
+
+                        pointHoverRadius:
+                            5,
+
+                        tension:
+                            0.25,
+
+                        spanGaps:
+                            false,
+
+                        order:
+                            1
+                    },
+
+
+                    {
+                        type:
+                            "line",
+
+                        label:
+                            "Outdoor temp while heating",
 
                         data:
                             temperatures,
@@ -14464,6 +15652,7 @@ async function updatePelletOverviewCharts() {
         {
             hours: 8760,
             mode: "month",
+            navigationMode: "month",
             canvas: "pelletOverview12m",
             averageElement:
                 "pelletOverview12mAverage",
@@ -15614,6 +16803,574 @@ async function clearActivityLog() {
     }
 }
 
+
+
+async function downloadWoodyBackup() {
+
+    const button = document.getElementById(
+        "downloadBackupButton"
+    );
+
+    const status = document.getElementById(
+        "backupStatus"
+    );
+
+    if (!button || !status) {
+        return;
+    }
+
+    const originalText = button.textContent;
+
+    button.disabled = true;
+    button.textContent = "Creating backup...";
+
+    status.textContent =
+        "Creating a consistent database backup. This may take about 30 seconds.";
+
+    try {
+
+        const response = await fetch(
+            API + "/system/backup"
+        );
+
+        if (!response.ok) {
+
+            let message = "Backup failed";
+
+            try {
+                const data = await response.json();
+                message = data.detail || message;
+            } catch (_) {
+            }
+
+            throw new Error(message);
+        }
+
+        const blob = await response.blob();
+
+        let filename =
+            "woody-monitor-backup.zip";
+
+        const disposition =
+            response.headers.get(
+                "content-disposition"
+            );
+
+        if (disposition) {
+
+            const match = disposition.match(
+                /filename="?([^";]+)"?/i
+            );
+
+            if (match && match[1]) {
+                filename = match[1];
+            }
+        }
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const link =
+            document.createElement("a");
+
+        link.href = url;
+        link.download = filename;
+
+        document.body.appendChild(link);
+
+        link.click();
+        link.remove();
+
+        setTimeout(
+            () => URL.revokeObjectURL(url),
+            1000
+        );
+
+        status.textContent =
+            "Backup created successfully. Sensitive credentials were not included.";
+
+    } catch (error) {
+
+        console.error(
+            "Woody Monitor backup failed:",
+            error
+        );
+
+        status.textContent =
+            "Backup failed: " +
+            error.message;
+
+    } finally {
+
+        button.disabled = false;
+        button.textContent = originalText;
+    }
+}
+
+
+
+let selectedRestoreBackupFile = null;
+
+
+function selectRestoreBackupFile() {
+
+    const input = document.getElementById(
+        "restoreBackupFile"
+    );
+
+    if (!input) {
+        return;
+    }
+
+    input.click();
+}
+
+
+function restoreBackupFileSelected() {
+
+    const input = document.getElementById(
+        "restoreBackupFile"
+    );
+
+    const status = document.getElementById(
+        "restoreValidationStatus"
+    );
+
+    const details = document.getElementById(
+        "restoreValidationDetails"
+    );
+
+    const validateButton = document.getElementById(
+        "validateRestoreBackupButton"
+    );
+
+    selectedRestoreBackupFile =
+        input && input.files && input.files.length
+            ? input.files[0]
+            : null;
+
+    const restoreButton = document.getElementById(
+        "executeRestoreBackupButton"
+    );
+
+    if (restoreButton) {
+        restoreButton.style.display = "none";
+        restoreButton.disabled = true;
+    }
+
+    if (details) {
+        details.style.display = "none";
+        details.textContent = "";
+    }
+
+    if (!selectedRestoreBackupFile) {
+
+        if (status) {
+            status.textContent =
+                "No backup file selected";
+        }
+
+        if (validateButton) {
+            validateButton.disabled = true;
+        }
+
+        return;
+    }
+
+    const sizeMb =
+        selectedRestoreBackupFile.size /
+        1024 /
+        1024;
+
+    if (status) {
+        status.textContent =
+            "Selected: " +
+            selectedRestoreBackupFile.name +
+            " (" +
+            sizeMb.toFixed(2) +
+            " MB)";
+    }
+
+    if (validateButton) {
+        validateButton.disabled = false;
+    }
+}
+
+
+async function validateRestoreBackup() {
+
+    const file = selectedRestoreBackupFile;
+
+    const status = document.getElementById(
+        "restoreValidationStatus"
+    );
+
+    const details = document.getElementById(
+        "restoreValidationDetails"
+    );
+
+    const validateButton = document.getElementById(
+        "validateRestoreBackupButton"
+    );
+
+    const selectButton = document.getElementById(
+        "selectRestoreBackupButton"
+    );
+
+    if (!file) {
+
+        if (status) {
+            status.textContent =
+                "Select a backup file first";
+        }
+
+        return;
+    }
+
+    if (validateButton) {
+        validateButton.disabled = true;
+        validateButton.textContent =
+            "Validating...";
+    }
+
+    if (selectButton) {
+        selectButton.disabled = true;
+    }
+
+    if (status) {
+        status.textContent =
+            "Uploading and validating backup. No files will be restored.";
+    }
+
+    if (details) {
+        details.style.display = "none";
+        details.textContent = "";
+    }
+
+    try {
+
+        const formData = new FormData();
+
+        formData.append(
+            "backup",
+            file,
+            file.name
+        );
+
+        const response = await fetch(
+            API + "/system/restore/validate",
+            {
+                method: "POST",
+                body: formData
+            }
+        );
+
+        let data = {};
+
+        try {
+            data = await response.json();
+        } catch (_) {
+        }
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Backup validation failed"
+            );
+        }
+
+        if (!data.valid) {
+            throw new Error(
+                "Backup validation failed"
+            );
+        }
+
+        if (status) {
+            status.textContent =
+                "Backup is valid. No files have been restored.";
+        }
+
+        const restoreButtonAfterValidation =
+            document.getElementById(
+                "executeRestoreBackupButton"
+            );
+
+        if (restoreButtonAfterValidation) {
+            restoreButtonAfterValidation.disabled = false;
+            restoreButtonAfterValidation.style.display = "inline-block";
+        }
+
+        const dbMb =
+            Number(data.database_size_bytes || 0) /
+            1024 /
+            1024;
+
+        const configFiles =
+            Array.isArray(data.config_files)
+                ? data.config_files
+                : [];
+
+        let createdText =
+            data.created || "Unknown";
+
+        try {
+
+            if (data.created) {
+                createdText =
+                    new Date(
+                        data.created
+                    ).toLocaleString();
+            }
+
+        } catch (_) {
+        }
+
+        const lines = [
+            "File: " + (
+                data.filename ||
+                file.name
+            ),
+            "Woody Monitor version: " + (
+                data.application_version ||
+                "Unknown"
+            ),
+            "Created: " + createdText,
+            "Database: " +
+                dbMb.toFixed(2) +
+                " MB",
+            "Configuration files: " +
+                configFiles.length,
+            "Credentials included: No"
+        ];
+
+        if (details) {
+            details.textContent =
+                lines.join("\n");
+
+            details.style.display =
+                "block";
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Restore validation failed:",
+            error
+        );
+
+        const restoreButtonAfterError =
+            document.getElementById(
+                "executeRestoreBackupButton"
+            );
+
+        if (restoreButtonAfterError) {
+            restoreButtonAfterError.style.display = "none";
+            restoreButtonAfterError.disabled = true;
+        }
+
+        if (status) {
+            status.textContent =
+                "Backup validation failed: " +
+                error.message;
+        }
+
+        if (details) {
+            details.style.display =
+                "none";
+
+            details.textContent = "";
+        }
+
+    } finally {
+
+        if (validateButton) {
+            validateButton.disabled = false;
+            validateButton.textContent =
+                "Validate backup";
+        }
+
+        if (selectButton) {
+            selectButton.disabled = false;
+        }
+    }
+}
+
+
+
+async function executeRestoreBackup() {
+
+    const file = selectedRestoreBackupFile;
+
+    const status = document.getElementById(
+        "restoreValidationStatus"
+    );
+
+    const restoreButton = document.getElementById(
+        "executeRestoreBackupButton"
+    );
+
+    const validateButton = document.getElementById(
+        "validateRestoreBackupButton"
+    );
+
+    const selectButton = document.getElementById(
+        "selectRestoreBackupButton"
+    );
+
+    if (!file) {
+        return;
+    }
+
+    const confirmed = window.confirm(
+        "Restore this Woody Monitor backup?\n\n" +
+        "The current database and settings will be replaced.\n" +
+        "An emergency backup will be created first.\n" +
+        "Credentials will not be changed.\n\n" +
+        "Woody Monitor will restart automatically."
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    if (restoreButton) {
+        restoreButton.disabled = true;
+        restoreButton.textContent = "Restoring...";
+    }
+
+    if (validateButton) {
+        validateButton.disabled = true;
+    }
+
+    if (selectButton) {
+        selectButton.disabled = true;
+    }
+
+    if (status) {
+        status.textContent =
+            "Restoring backup. Do not close or reload this page.";
+    }
+
+    try {
+
+        const formData = new FormData();
+
+        formData.append(
+            "backup",
+            file,
+            file.name
+        );
+
+        const response = await fetch(
+            API + "/system/restore",
+            {
+                method: "POST",
+                body: formData
+            }
+        );
+
+        let data = {};
+
+        try {
+            data = await response.json();
+        } catch (_) {
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail ||
+                "Restore failed"
+            );
+        }
+
+        if (status) {
+            status.textContent =
+                "Backup restored successfully. Woody Monitor is restarting...";
+        }
+
+        /*
+         * Give systemd time to restart Woody Monitor,
+         * then wait until the API becomes available again.
+         */
+        await new Promise(
+            resolve => setTimeout(resolve, 4000)
+        );
+
+        let online = false;
+
+        for (let attempt = 0; attempt < 30; attempt++) {
+
+            try {
+
+                const check = await fetch(
+                    API + "/status",
+                    {
+                        cache: "no-store"
+                    }
+                );
+
+                if (check.ok) {
+                    online = true;
+                    break;
+                }
+
+            } catch (_) {
+            }
+
+            await new Promise(
+                resolve => setTimeout(resolve, 1000)
+            );
+        }
+
+        if (online) {
+
+            if (status) {
+                status.textContent =
+                    "Restore completed successfully. Woody Monitor is online.";
+            }
+
+            setTimeout(
+                () => window.location.reload(),
+                1500
+            );
+
+        } else {
+
+            if (status) {
+                status.textContent =
+                    "Restore completed, but Woody Monitor has not come back online yet.";
+            }
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Woody Monitor restore failed:",
+            error
+        );
+
+        if (status) {
+            status.textContent =
+                "Restore failed: " +
+                error.message;
+        }
+
+        if (restoreButton) {
+            restoreButton.disabled = false;
+            restoreButton.textContent =
+                "Restore backup";
+        }
+
+        if (validateButton) {
+            validateButton.disabled = false;
+        }
+
+        if (selectButton) {
+            selectButton.disabled = false;
+        }
+    }
+}
 
 
 async function restartWoodyMonitor() {
@@ -17209,12 +18966,22 @@ async function initialize() {
      * so start it after live startup has had a chance
      * to populate the dashboard.
      */
-    updateSiloForecast();
+    /*
+     * Silo forecast is not critical for initial dashboard rendering.
+     * Delay it slightly so History can finish first.
+     */
+    setTimeout(updateSiloForecast, 5000);
 }
 
-initialize();
+initialize().finally(() => {
+    /*
+     * WiFi/system status uses the same /status endpoint as the
+     * main startup status request. Load it after critical startup
+     * has completed to avoid two simultaneous /status requests.
+     */
+    loadSystemStatus();
+});
 
-loadSystemStatus();
 setInterval(loadSystemStatus, 30000);
 
 setInterval(loadLive,5000);
@@ -17980,6 +19747,19 @@ async function loadSystemInfo() {
             "systemSdUsage",
             `${data.sd_used} / ${data.sd_total} (${data.sd_used_percent}%)`
         );
+
+        const storageWarning = document.getElementById('systemStorageWarning');
+
+        if (storageWarning) {
+            if (data.storage_warning) {
+                storageWarning.style.display = 'block';
+                storageWarning.textContent =
+                    `⚠ Storage warning: SD card usage is ${data.sd_used_percent}%`;
+            } else {
+                storageWarning.style.display = 'none';
+                storageWarning.textContent = '';
+            }
+        }
 
         setText(
             "systemSdFree",

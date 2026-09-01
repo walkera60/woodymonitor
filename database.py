@@ -96,9 +96,61 @@ class Database:
                     CREATE TABLE IF NOT EXISTS pellet_consumption_hourly (
                         hour_start TEXT PRIMARY KEY,
                         feeder_seconds REAL NOT NULL,
-                        kg REAL NOT NULL
+                        kg REAL NOT NULL,
+                        outside_temp_avg REAL,
+                        outside_temp_samples INTEGER NOT NULL DEFAULT 0,
+                        power_avg REAL,
+                        power_samples INTEGER NOT NULL DEFAULT 0,
+                        power_max REAL,
+                        power_kw_avg REAL,
+                        power_kw_samples INTEGER NOT NULL DEFAULT 0,
+                        power_kw_max REAL
                     )
                 """)
+
+                # Add active-heating metrics to older databases.
+                existing_columns = {
+                    row[1]
+                    for row in conn.execute(
+                        "PRAGMA table_info(pellet_consumption_hourly)"
+                    ).fetchall()
+                }
+
+                pellet_hour_migrations = (
+                    ("outside_temp_avg", "REAL"),
+                    (
+                        "outside_temp_samples",
+                        "INTEGER NOT NULL DEFAULT 0"
+                    ),
+                    ("power_avg", "REAL"),
+                    (
+                        "power_samples",
+                        "INTEGER NOT NULL DEFAULT 0"
+                    ),
+                    ("power_max", "REAL"),
+                    ("power_kw_avg", "REAL"),
+                    (
+                        "power_kw_samples",
+                        "INTEGER NOT NULL DEFAULT 0"
+                    ),
+                    ("power_kw_max", "REAL"),
+                )
+
+                schema_changed = False
+
+                for column_name, column_type in pellet_hour_migrations:
+
+                    if column_name not in existing_columns:
+
+                        conn.execute(
+                            "ALTER TABLE pellet_consumption_hourly "
+                            f"ADD COLUMN {column_name} {column_type}"
+                        )
+
+                        schema_changed = True
+
+                if schema_changed:
+                    conn.commit()
 
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS pellet_consumption_imported (
@@ -188,17 +240,77 @@ class Database:
                     rows
                 )
 
-                hourly_rows = [
-                    (
-                        timestamp[:13] + ":00:00+00:00",
+                conn.commit()
+
+            finally:
+                conn.close()
+
+    def rebuild_history_hour(self, hour_start, hour_end):
+        """
+        Build one completed hourly history bucket from raw measurements.
+
+        The hourly cache is written once for a completed hour instead of
+        being updated for every one-minute history sample. This reduces
+        unnecessary SD-card writes while keeping the cache recoverable
+        from raw measurements.
+        """
+
+        start = hour_start.isoformat()
+        end = hour_end.isoformat()
+        hour_key = hour_start.isoformat()
+
+        with self.lock:
+            conn = self._connect()
+
+            try:
+                rows = conn.execute(
+                    """
+                    SELECT
                         parameter,
-                        value,
-                        1,
-                        value,
-                        timestamp
+                        SUM(value) AS value_sum,
+                        COUNT(*) AS value_count
+                    FROM measurements
+                    WHERE timestamp >= ?
+                      AND timestamp < ?
+                    GROUP BY parameter
+                    """,
+                    (start, end)
+                ).fetchall()
+
+                if not rows:
+                    return 0
+
+                hourly_rows = []
+
+                for row in rows:
+                    parameter = row["parameter"]
+
+                    last = conn.execute(
+                        """
+                        SELECT value, timestamp
+                        FROM measurements
+                        WHERE parameter = ?
+                          AND timestamp >= ?
+                          AND timestamp < ?
+                        ORDER BY timestamp DESC
+                        LIMIT 1
+                        """,
+                        (parameter, start, end)
+                    ).fetchone()
+
+                    if last is None:
+                        continue
+
+                    hourly_rows.append(
+                        (
+                            hour_key,
+                            parameter,
+                            row["value_sum"],
+                            row["value_count"],
+                            last["value"],
+                            last["timestamp"]
+                        )
                     )
-                    for timestamp, parameter, value in rows
-                ]
 
                 conn.executemany(
                     """
@@ -214,35 +326,17 @@ class Database:
 
                     ON CONFLICT(hour_start, parameter)
                     DO UPDATE SET
-
-                        value_sum =
-                            history_hourly.value_sum +
-                            excluded.value_sum,
-
-                        value_count =
-                            history_hourly.value_count +
-                            excluded.value_count,
-
-                        last_value =
-                            CASE
-                                WHEN excluded.last_timestamp >=
-                                     history_hourly.last_timestamp
-                                THEN excluded.last_value
-                                ELSE history_hourly.last_value
-                            END,
-
-                        last_timestamp =
-                            CASE
-                                WHEN excluded.last_timestamp >=
-                                     history_hourly.last_timestamp
-                                THEN excluded.last_timestamp
-                                ELSE history_hourly.last_timestamp
-                            END
+                        value_sum = excluded.value_sum,
+                        value_count = excluded.value_count,
+                        last_value = excluded.last_value,
+                        last_timestamp = excluded.last_timestamp
                     """,
                     hourly_rows
                 )
 
                 conn.commit()
+
+                return len(hourly_rows)
 
             finally:
                 conn.close()
@@ -648,7 +742,15 @@ class Database:
         self,
         hour_start,
         feeder_seconds,
-        kg
+        kg,
+        outside_temp_avg=None,
+        outside_temp_samples=0,
+        power_avg=None,
+        power_samples=0,
+        power_max=None,
+        power_kw_avg=None,
+        power_kw_samples=0,
+        power_kw_max=None
     ):
 
         with self.lock:
@@ -662,19 +764,45 @@ class Database:
                     INSERT INTO pellet_consumption_hourly (
                         hour_start,
                         feeder_seconds,
-                        kg
+                        kg,
+                        outside_temp_avg,
+                        outside_temp_samples,
+                        power_avg,
+                        power_samples,
+                        power_max,
+                        power_kw_avg,
+                        power_kw_samples,
+                        power_kw_max
                     )
-                    VALUES (?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
                     ON CONFLICT(hour_start)
                     DO UPDATE SET
                         feeder_seconds = excluded.feeder_seconds,
-                        kg = excluded.kg
+                        kg = excluded.kg,
+                        outside_temp_avg = excluded.outside_temp_avg,
+                        outside_temp_samples =
+                            excluded.outside_temp_samples,
+                        power_avg = excluded.power_avg,
+                        power_samples = excluded.power_samples,
+                        power_max = excluded.power_max,
+                        power_kw_avg = excluded.power_kw_avg,
+                        power_kw_samples =
+                            excluded.power_kw_samples,
+                        power_kw_max = excluded.power_kw_max
                     """,
                     (
                         hour_start,
                         float(feeder_seconds),
-                        float(kg)
+                        float(kg),
+                        outside_temp_avg,
+                        int(outside_temp_samples or 0),
+                        power_avg,
+                        int(power_samples or 0),
+                        power_max,
+                        power_kw_avg,
+                        int(power_kw_samples or 0),
+                        power_kw_max
                     )
                 )
 

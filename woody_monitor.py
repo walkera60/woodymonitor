@@ -17,9 +17,10 @@ sys.path.insert(0, str(BASE_DIR))
 
 APP_VERSION = "1.1"
 
-from fastapi import FastAPI, Query, HTTPException, Request
+from fastapi import FastAPI, Query, HTTPException, Request, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.background import BackgroundTask
 import uvicorn
 
 from Scotteprotocol.protocol import Protocol
@@ -30,6 +31,10 @@ import io
 import paho.mqtt.client as mqtt
 import urllib.request
 import urllib.error
+import sqlite3
+import tempfile
+import zipfile
+import shutil
 
 
 
@@ -1422,6 +1427,13 @@ def set_pellet_currency(
 # API: SYSTEM INFORMATION
 # ============================================================
 
+SD_STORAGE_WARNING_PERCENT = 80.0
+
+storage_warning_state = {
+    "active": False,
+}
+
+
 def _format_duration(seconds):
     try:
         seconds = max(0, int(seconds))
@@ -1582,6 +1594,26 @@ def get_system_info():
         disk_free = 0
         disk_percent = 0
 
+    storage_warning = disk_percent >= SD_STORAGE_WARNING_PERCENT
+
+    # Log only when the storage warning changes from inactive to active.
+    # It becomes eligible for a new warning after usage drops below 80%.
+    if storage_warning and not storage_warning_state["active"]:
+        try:
+            db.add_activity(
+                "SYSTEM",
+                "Storage warning",
+                (
+                    f"SD card usage is {disk_percent:.1f}% "
+                    f"(warning threshold {SD_STORAGE_WARNING_PERCENT:.0f}%)"
+                ),
+                response="WARNING"
+            )
+        except Exception:
+            logger.exception("Could not log storage warning")
+
+    storage_warning_state["active"] = storage_warning
+
     wifi_seconds = _wifi_uptime_seconds("wlan0")
 
     return {
@@ -1613,7 +1645,9 @@ def get_system_info():
         "sd_total": _format_bytes(disk_total),
         "sd_used": _format_bytes(disk_used),
         "sd_free": _format_bytes(disk_free),
-        "sd_used_percent": round(disk_percent, 1)
+        "sd_used_percent": round(disk_percent, 1),
+        "storage_warning": storage_warning,
+        "storage_warning_threshold": SD_STORAGE_WARNING_PERCENT
     }
 
 
@@ -2638,7 +2672,46 @@ def mqtt_publish_loop():
 # DAILY STATISTICS
 # ============================================================
 
+_daily_outdoor_temperature_table_ready = False
+
+
+def ensure_daily_outdoor_temperature_table():
+
+    global _daily_outdoor_temperature_table_ready
+
+    if _daily_outdoor_temperature_table_ready:
+        return
+
+    with db.lock:
+
+        conn = db._connect()
+
+        try:
+
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS
+                daily_outdoor_temperature (
+                    local_date TEXT PRIMARY KEY,
+                    outside_temp_avg REAL,
+                    sample_count INTEGER NOT NULL DEFAULT 0,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+
+            conn.commit()
+
+        finally:
+
+            conn.close()
+
+    _daily_outdoor_temperature_table_ready = True
+
+
 def calculate_daily_stats(local_date):
+
+    ensure_daily_outdoor_temperature_table()
 
     zone = get_timezone()
     timezone_name = get_timezone_name()
@@ -2703,54 +2776,80 @@ def calculate_daily_stats(local_date):
                 )
             ).fetchone()
 
+            # Complete-day outdoor temperature.
+            #
+            # This is intentionally independent of pellet consumption
+            # and is stored separately from outside_temp_avg below,
+            # which represents temperature only while pellets are fed.
+            all_temperature_row = conn.execute(
+                """
+                SELECT
+                    AVG(value) AS outside_temp_all_avg,
+                    COUNT(*) AS sample_count
+                FROM measurements
+                WHERE timestamp >= ?
+                  AND timestamp < ?
+                  AND parameter = 'outside_temp'
+                """,
+                (
+                    start_utc,
+                    end_utc
+                )
+            ).fetchone()
+
+            # Temperature and burner output are meaningful for
+            # pellet-consumption comparisons only while pellets are
+            # actually being fed.
+            #
+            # feeder_time is a cumulative counter. A positive change
+            # therefore marks a real feeder-active measurement interval.
+            # The sample immediately before the requested period is
+            # included only to calculate the first delta correctly.
             measurement_row = conn.execute(
                 """
                 SELECT
 
-                    AVG(
-                        CASE
-                            WHEN parameter = 'outside_temp'
-                            THEN value
-                        END
-                    ) AS outside_temp_avg,
+                    CASE
+                        WHEN SUM(outside_temp_samples) > 0
+                        THEN
+                            SUM(
+                                outside_temp_avg *
+                                outside_temp_samples
+                            ) /
+                            SUM(outside_temp_samples)
+                    END AS outside_temp_avg,
 
-                    AVG(
-                        CASE
-                            WHEN parameter = 'power'
-                            THEN value
-                        END
-                    ) AS power_avg,
+                    CASE
+                        WHEN SUM(power_samples) > 0
+                        THEN
+                            SUM(
+                                power_avg *
+                                power_samples
+                            ) /
+                            SUM(power_samples)
+                    END AS power_avg,
 
-                    MAX(
-                        CASE
-                            WHEN parameter = 'power'
-                            THEN value
-                        END
-                    ) AS power_max,
+                    MAX(power_max)
+                        AS power_max,
 
-                    AVG(
-                        CASE
-                            WHEN parameter = 'power_kW'
-                            THEN value
-                        END
-                    ) AS power_kw_avg,
+                    CASE
+                        WHEN SUM(power_kw_samples) > 0
+                        THEN
+                            SUM(
+                                power_kw_avg *
+                                power_kw_samples
+                            ) /
+                            SUM(power_kw_samples)
+                    END AS power_kw_avg,
 
-                    MAX(
-                        CASE
-                            WHEN parameter = 'power_kW'
-                            THEN value
-                        END
-                    ) AS power_kw_max
+                    MAX(power_kw_max)
+                        AS power_kw_max
 
-                FROM measurements
+                FROM pellet_consumption_hourly
 
-                WHERE timestamp >= ?
-                  AND timestamp < ?
-                  AND parameter IN (
-                      'outside_temp',
-                      'power',
-                      'power_kW'
-                  )
+                WHERE hour_start >= ?
+                  AND hour_start < ?
+                  AND kg > 0
                 """,
                 (
                     start_utc,
@@ -2775,6 +2874,72 @@ def calculate_daily_stats(local_date):
         power_kw_avg=measurement_row["power_kw_avg"],
         power_kw_max=measurement_row["power_kw_max"]
     )
+
+    all_temperature_avg = (
+        float(
+            all_temperature_row[
+                "outside_temp_all_avg"
+            ]
+        )
+        if (
+            all_temperature_row is not None
+            and all_temperature_row[
+                "outside_temp_all_avg"
+            ] is not None
+        )
+        else None
+    )
+
+    all_temperature_samples = (
+        int(
+            all_temperature_row[
+                "sample_count"
+            ] or 0
+        )
+        if all_temperature_row is not None
+        else 0
+    )
+
+    with db.lock:
+
+        conn = db._connect()
+
+        try:
+
+            conn.execute(
+                """
+                INSERT INTO daily_outdoor_temperature (
+                    local_date,
+                    outside_temp_avg,
+                    sample_count,
+                    updated_at
+                )
+                VALUES (?, ?, ?, ?)
+
+                ON CONFLICT(local_date)
+                DO UPDATE SET
+                    outside_temp_avg =
+                        excluded.outside_temp_avg,
+                    sample_count =
+                        excluded.sample_count,
+                    updated_at =
+                        excluded.updated_at
+                """,
+                (
+                    local_date.isoformat(),
+                    all_temperature_avg,
+                    all_temperature_samples,
+                    datetime.now(
+                        timezone.utc
+                    ).isoformat()
+                )
+            )
+
+            conn.commit()
+
+        finally:
+
+            conn.close()
 
     logger.info(
         "Daily stats stored: %s -> "
@@ -2908,13 +3073,13 @@ def calculate_pellet_hour(
     start_iso = hour_start.isoformat()
     end_iso = hour_end.isoformat()
 
-    # We need the latest feeder_time value at/before
-    # the beginning of the hour plus all samples during
-    # the hour. Positive counter differences are summed.
+    # feeder_time is cumulative. A positive difference between
+    # consecutive feeder_time samples identifies a real interval
+    # where pellets were fed.
     #
-    # This also handles a feeder_time counter reset:
-    # negative differences contribute zero instead of
-    # producing negative pellet consumption.
+    # Temperature and burner output are stored only for those
+    # feeder-active timestamps. Idle/standby periods therefore
+    # cannot reduce the averages shown in pellet-consumption charts.
 
     with db.lock:
 
@@ -2936,11 +3101,19 @@ def calculate_pellet_hour(
 
             rows = conn.execute(
                 """
-                SELECT timestamp, value
+                SELECT
+                    timestamp,
+                    parameter,
+                    value
                 FROM measurements
-                WHERE parameter = 'feeder_time'
-                  AND timestamp > ?
+                WHERE timestamp > ?
                   AND timestamp <= ?
+                  AND parameter IN (
+                      'feeder_time',
+                      'outside_temp',
+                      'power',
+                      'power_kW'
+                  )
                 ORDER BY timestamp ASC
                 """,
                 (
@@ -2961,22 +3134,97 @@ def calculate_pellet_hour(
     )
 
     feeder_seconds = 0.0
+    active_timestamps = set()
+    metrics_by_timestamp = {}
 
     for row in rows:
 
-        current_value = float(
-            row["value"]
+        timestamp = row["timestamp"]
+        parameter = row["parameter"]
+        value = float(row["value"])
+
+        if parameter == "feeder_time":
+
+            delta = (
+                value -
+                previous_value
+            )
+
+            if delta > 0:
+
+                feeder_seconds += delta
+                active_timestamps.add(
+                    timestamp
+                )
+
+            previous_value = value
+
+        else:
+
+            metrics_by_timestamp.setdefault(
+                timestamp,
+                {}
+            )[parameter] = value
+
+    outside_values = []
+    power_values = []
+    power_kw_values = []
+
+    for timestamp in active_timestamps:
+
+        values = metrics_by_timestamp.get(
+            timestamp,
+            {}
         )
 
-        delta = (
-            current_value -
-            previous_value
+        if "outside_temp" in values:
+            outside_values.append(
+                values["outside_temp"]
+            )
+
+        if "power" in values:
+            power_values.append(
+                values["power"]
+            )
+
+        if "power_kW" in values:
+            power_kw_values.append(
+                values["power_kW"]
+            )
+
+    def avg(values):
+
+        if not values:
+            return None
+
+        return (
+            sum(values) /
+            len(values)
         )
 
-        if delta > 0:
-            feeder_seconds += delta
+    outside_temp_avg = avg(
+        outside_values
+    )
 
-        previous_value = current_value
+    power_avg = avg(
+        power_values
+    )
+
+    power_max = (
+        max(power_values)
+        if power_values
+        else None
+    )
+
+    power_kw_avg = avg(
+        power_kw_values
+    )
+
+    power_kw_max = (
+        max(power_kw_values)
+        if power_kw_values
+        else None
+    )
 
     kg = (
         feeder_seconds *
@@ -2984,9 +3232,23 @@ def calculate_pellet_hour(
     )
 
     db.upsert_pellet_hour(
-        start_iso,
-        feeder_seconds,
-        kg
+        hour_start=start_iso,
+        feeder_seconds=feeder_seconds,
+        kg=kg,
+        outside_temp_avg=outside_temp_avg,
+        outside_temp_samples=len(
+            outside_values
+        ),
+        power_avg=power_avg,
+        power_samples=len(
+            power_values
+        ),
+        power_max=power_max,
+        power_kw_avg=power_kw_avg,
+        power_kw_samples=len(
+            power_kw_values
+        ),
+        power_kw_max=power_kw_max
     )
 
     try:
@@ -3009,14 +3271,15 @@ def calculate_pellet_hour(
         )
 
     logger.info(
-        "Pellet hour stored: %s -> %.3f kg (%.0f feeder sec)",
+        "Pellet hour stored: %s -> %.3f kg "
+        "(%.0f feeder sec, %d active samples)",
         start_iso,
         kg,
-        feeder_seconds
+        feeder_seconds,
+        len(active_timestamps)
     )
 
     return True
-
 
 def pellet_hourly_loop():
 
@@ -3067,6 +3330,56 @@ def pellet_hourly_loop():
 
 
 # ============================================================
+# HOURLY HISTORY CACHE
+# ============================================================
+
+def history_hourly_loop():
+
+    last_completed_hour = None
+
+    while True:
+
+        try:
+            hour_end = datetime.now(
+                timezone.utc
+            ).replace(
+                minute=0,
+                second=0,
+                microsecond=0
+            )
+
+            hour_start = (
+                hour_end -
+                timedelta(hours=1)
+            )
+
+            hour_key = hour_start.isoformat()
+
+            if hour_key != last_completed_hour:
+
+                stored = db.rebuild_history_hour(
+                    hour_start,
+                    hour_end
+                )
+
+                if stored:
+                    last_completed_hour = hour_key
+
+                    logger.info(
+                        "Hourly history stored: %s (%d parameters)",
+                        hour_key,
+                        stored
+                    )
+
+        except Exception:
+            logger.exception(
+                "Hourly history writer error"
+            )
+
+        time.sleep(60)
+
+
+# ============================================================
 # FEEDER HISTORY RETENTION
 # ============================================================
 
@@ -3092,7 +3405,7 @@ def feeder_retention_loop():
             )
 
             history_cutoff = (
-                now - timedelta(days=30)
+                now - timedelta(days=7)
             ).isoformat()
 
             history_deleted = db.cleanup_measurement_history(
@@ -3100,7 +3413,7 @@ def feeder_retention_loop():
             )
 
             logger.info(
-                "30-day history cleanup: %d rows deleted",
+                "7-day raw history cleanup: %d rows deleted",
                 history_deleted
             )
 
@@ -3198,6 +3511,1082 @@ def woody_manifest():
         str(BASE_DIR / "web" / "manifest.webmanifest"),
         media_type="application/manifest+json"
     )
+
+
+# ============================================================
+# API: WOODY MONITOR BACKUP
+# ============================================================
+
+BACKUP_CONFIG_FILES = (
+    "advanced_timer.json",
+    "cleaning_settings.json",
+    "feeder_settings.json",
+    "silo_settings.json",
+    "timezone_settings.json",
+    "weather_compensation.json",
+)
+
+
+
+# ============================================================
+# API: WOODY MONITOR RESTORE VALIDATION
+# ============================================================
+
+RESTORE_REQUIRED_TABLES = {
+    "measurements",
+    "history_hourly",
+    "pellet_consumption_hourly",
+    "pellet_prices",
+    "daily_stats",
+    "activity_log",
+}
+
+RESTORE_MAX_UPLOAD_BYTES = 250 * 1024 * 1024
+RESTORE_MAX_DATABASE_BYTES = 1024 * 1024 * 1024
+
+
+@app.post("/api/v1/system/restore/validate")
+async def validate_woody_monitor_restore(
+    backup: UploadFile = File(...)
+):
+    """
+    Validate a Woody Monitor backup without changing any
+    existing database or configuration files.
+    """
+
+    filename = backup.filename or ""
+
+    if not filename.lower().endswith(".zip"):
+        raise HTTPException(
+            status_code=400,
+            detail="Backup file must be a ZIP file"
+        )
+
+    restore_dir = Path(tempfile.mkdtemp(
+        prefix="woody-monitor-restore-validation-"
+    ))
+
+    archive_path = restore_dir / "backup.zip"
+    extracted_db = restore_dir / "woody.db"
+
+    try:
+
+        # ----------------------------------------------------
+        # Store uploaded ZIP with a strict size limit
+        # ----------------------------------------------------
+
+        total_size = 0
+
+        with archive_path.open("wb") as output:
+
+            while True:
+
+                chunk = await backup.read(1024 * 1024)
+
+                if not chunk:
+                    break
+
+                total_size += len(chunk)
+
+                if total_size > RESTORE_MAX_UPLOAD_BYTES:
+                    raise HTTPException(
+                        status_code=413,
+                        detail="Backup file is too large"
+                    )
+
+                output.write(chunk)
+
+        if total_size == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Backup file is empty"
+            )
+
+        # ----------------------------------------------------
+        # Open ZIP and validate structure
+        # ----------------------------------------------------
+
+        try:
+            archive = zipfile.ZipFile(
+                archive_path,
+                "r"
+            )
+        except zipfile.BadZipFile:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid or damaged ZIP file"
+            )
+
+        with archive:
+
+            names = archive.namelist()
+
+            if len(names) != len(set(names)):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Backup contains duplicate file names"
+                )
+
+            allowed_files = {
+                "woody.db",
+                "backup_manifest.json",
+                *BACKUP_CONFIG_FILES,
+            }
+
+            unexpected = sorted(
+                name
+                for name in names
+                if name not in allowed_files
+            )
+
+            if unexpected:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Backup contains unexpected files: " +
+                        ", ".join(unexpected)
+                    )
+                )
+
+            required_files = {
+                "woody.db",
+                "backup_manifest.json",
+            }
+
+            missing_files = sorted(
+                required_files - set(names)
+            )
+
+            if missing_files:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Backup is missing required files: " +
+                        ", ".join(missing_files)
+                    )
+                )
+
+            # Reject suspicious paths even if future backup
+            # formats allow more files.
+            for info in archive.infolist():
+
+                name_path = Path(info.filename)
+
+                if (
+                    name_path.is_absolute()
+                    or ".." in name_path.parts
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Backup contains an unsafe file path"
+                    )
+
+            # ------------------------------------------------
+            # Validate manifest
+            # ------------------------------------------------
+
+            try:
+                manifest = json.loads(
+                    archive.read(
+                        "backup_manifest.json"
+                    ).decode("utf-8")
+                )
+            except Exception:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid backup manifest"
+                )
+
+            if manifest.get("format") != "woody-monitor-backup":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Not a Woody Monitor backup"
+                )
+
+            if manifest.get("format_version") != 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Unsupported backup format version"
+                )
+
+            if manifest.get("database") != "woody.db":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid database entry in backup manifest"
+                )
+
+            # ------------------------------------------------
+            # Validate database size before extracting
+            # ------------------------------------------------
+
+            db_info = archive.getinfo("woody.db")
+
+            if db_info.file_size <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Backup database is empty"
+                )
+
+            if db_info.file_size > RESTORE_MAX_DATABASE_BYTES:
+                raise HTTPException(
+                    status_code=413,
+                    detail="Backup database is too large"
+                )
+
+            # ------------------------------------------------
+            # Extract database only
+            # ------------------------------------------------
+
+            with archive.open("woody.db") as source:
+                with extracted_db.open("wb") as destination:
+
+                    copied = 0
+
+                    while True:
+
+                        chunk = source.read(1024 * 1024)
+
+                        if not chunk:
+                            break
+
+                        copied += len(chunk)
+
+                        if copied > RESTORE_MAX_DATABASE_BYTES:
+                            raise HTTPException(
+                                status_code=413,
+                                detail="Backup database is too large"
+                            )
+
+                        destination.write(chunk)
+
+            # ------------------------------------------------
+            # Validate SQLite database
+            # ------------------------------------------------
+
+            try:
+
+                connection = sqlite3.connect(
+                    str(extracted_db)
+                )
+
+                try:
+
+                    integrity = connection.execute(
+                        "PRAGMA integrity_check"
+                    ).fetchone()
+
+                    if (
+                        not integrity
+                        or integrity[0] != "ok"
+                    ):
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Backup database integrity check failed"
+                        )
+
+                    tables = {
+                        row[0]
+                        for row in connection.execute(
+                            """
+                            SELECT name
+                            FROM sqlite_master
+                            WHERE type='table'
+                            """
+                        )
+                    }
+
+                finally:
+                    connection.close()
+
+            except HTTPException:
+                raise
+
+            except sqlite3.DatabaseError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Backup does not contain a valid SQLite database"
+                )
+
+            missing_tables = sorted(
+                RESTORE_REQUIRED_TABLES - tables
+            )
+
+            if missing_tables:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Backup database is missing required tables: " +
+                        ", ".join(missing_tables)
+                    )
+                )
+
+            # ------------------------------------------------
+            # Validate JSON configuration files
+            # ------------------------------------------------
+
+            config_files = []
+
+            for config_name in BACKUP_CONFIG_FILES:
+
+                if config_name not in names:
+                    continue
+
+                try:
+                    json.loads(
+                        archive.read(
+                            config_name
+                        ).decode("utf-8")
+                    )
+                except Exception:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            "Invalid JSON configuration file: " +
+                            config_name
+                        )
+                    )
+
+                config_files.append(config_name)
+
+        return {
+            "valid": True,
+            "filename": filename,
+            "upload_size_bytes": total_size,
+            "database_size_bytes": db_info.file_size,
+            "application_version": manifest.get(
+                "application_version"
+            ),
+            "created": manifest.get("created"),
+            "config_files": config_files,
+            "credentials_included": False,
+            "message": (
+                "Backup is valid. No files have been restored."
+            )
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+
+        logger.exception(
+            "Could not validate Woody Monitor backup"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not validate backup: {exc}"
+        )
+
+    finally:
+
+        try:
+            await backup.close()
+        except Exception:
+            pass
+
+        # Validation must leave no uploaded backup behind.
+        shutil.rmtree(
+            restore_dir,
+            ignore_errors=True
+        )
+
+
+
+def cleanup_woody_backup_directory(path):
+    """
+    Remove temporary backup files after FileResponse has
+    completed sending the archive.
+    """
+    try:
+        shutil.rmtree(
+            str(path),
+            ignore_errors=True
+        )
+    except Exception:
+        logger.exception(
+            "Could not remove temporary backup directory"
+        )
+
+
+@app.get("/api/v1/system/backup")
+def download_woody_monitor_backup():
+    """
+    Create a consistent Woody Monitor backup.
+
+    Sensitive files such as .env and home_assistant.json are
+    deliberately excluded.
+    """
+
+    source_db = BASE_DIR / "data" / "woody.db"
+
+    if not source_db.exists():
+        raise HTTPException(
+            status_code=500,
+            detail="Woody Monitor database not found"
+        )
+
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+
+    backup_dir = Path(tempfile.mkdtemp(
+        prefix="woody-monitor-backup-"
+    ))
+
+    backup_db = backup_dir / "woody.db"
+
+    try:
+        # SQLite's backup API creates a transactionally
+        # consistent copy while Woody Monitor remains online.
+        source = sqlite3.connect(
+            str(source_db),
+            timeout=30
+        )
+
+        destination = sqlite3.connect(
+            str(backup_db)
+        )
+
+        try:
+            source.backup(destination)
+        finally:
+            destination.close()
+            source.close()
+
+        # Verify the copied database before packaging it.
+        verify = sqlite3.connect(str(backup_db))
+
+        try:
+            result = verify.execute(
+                "PRAGMA integrity_check"
+            ).fetchone()
+
+            if not result or result[0] != "ok":
+                raise RuntimeError(
+                    "Database integrity check failed"
+                )
+
+        finally:
+            verify.close()
+
+        manifest = {
+            "format": "woody-monitor-backup",
+            "format_version": 1,
+            "application": "Woody Monitor",
+            "application_version": APP_VERSION,
+            "created": datetime.now(timezone.utc).isoformat(),
+            "database": "woody.db",
+            "credentials_included": False,
+            "excluded_sensitive_files": [
+                ".env",
+                "home_assistant.json"
+            ]
+        }
+
+        manifest_path = backup_dir / "backup_manifest.json"
+
+        with manifest_path.open(
+            "w",
+            encoding="utf-8"
+        ) as f:
+            json.dump(
+                manifest,
+                f,
+                indent=2
+            )
+
+        archive_path = (
+            backup_dir /
+            f"woody-monitor-backup-{timestamp}.zip"
+        )
+
+        with zipfile.ZipFile(
+            archive_path,
+            "w",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=6
+        ) as archive:
+
+            archive.write(
+                backup_db,
+                arcname="woody.db"
+            )
+
+            archive.write(
+                manifest_path,
+                arcname="backup_manifest.json"
+            )
+
+            for filename in BACKUP_CONFIG_FILES:
+
+                config_path = BASE_DIR / "data" / filename
+
+                if config_path.exists():
+                    archive.write(
+                        config_path,
+                        arcname=filename
+                    )
+
+        logger.info(
+            "Woody Monitor backup created: %s",
+            archive_path.name
+        )
+
+        return FileResponse(
+            str(archive_path),
+            media_type="application/zip",
+            filename=archive_path.name,
+            background=BackgroundTask(
+                cleanup_woody_backup_directory,
+                backup_dir
+            )
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+
+        logger.exception(
+            "Could not create Woody Monitor backup"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not create backup: {exc}"
+        )
+
+
+
+# ============================================================
+# API: RESTORE WOODY MONITOR BACKUP
+# ============================================================
+
+@app.post("/api/v1/system/restore")
+async def restore_woody_monitor_backup(
+    backup: UploadFile = File(...)
+):
+    """
+    Validate and restore a Woody Monitor backup.
+
+    Existing data is copied to an emergency backup before any
+    active files are replaced. Sensitive credential files are
+    never restored.
+    """
+
+    filename = backup.filename or ""
+
+    if not filename.lower().endswith(".zip"):
+        raise HTTPException(
+            status_code=400,
+            detail="Backup file must be a ZIP file"
+        )
+
+    data_dir = BASE_DIR / "data"
+
+    restore_dir = Path(tempfile.mkdtemp(
+        prefix="woody-monitor-restore-"
+    ))
+
+    archive_path = restore_dir / "backup.zip"
+    staging_dir = restore_dir / "staging"
+
+    staging_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    emergency_root = (
+        BASE_DIR /
+        "data" /
+        "restore-emergency"
+    )
+
+    timestamp = datetime.now().strftime(
+        "%Y%m%d-%H%M%S"
+    )
+
+    emergency_dir = (
+        emergency_root /
+        timestamp
+    )
+
+    try:
+
+        # ----------------------------------------------------
+        # Receive uploaded ZIP
+        # ----------------------------------------------------
+
+        total_size = 0
+
+        with archive_path.open("wb") as output:
+
+            while True:
+
+                chunk = await backup.read(
+                    1024 * 1024
+                )
+
+                if not chunk:
+                    break
+
+                total_size += len(chunk)
+
+                if total_size > RESTORE_MAX_UPLOAD_BYTES:
+                    raise HTTPException(
+                        status_code=413,
+                        detail="Backup file is too large"
+                    )
+
+                output.write(chunk)
+
+        if total_size == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Backup file is empty"
+            )
+
+        # ----------------------------------------------------
+        # Validate ZIP
+        # ----------------------------------------------------
+
+        try:
+            archive = zipfile.ZipFile(
+                archive_path,
+                "r"
+            )
+        except zipfile.BadZipFile:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid or damaged ZIP file"
+            )
+
+        with archive:
+
+            names = archive.namelist()
+
+            if len(names) != len(set(names)):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Backup contains duplicate file names"
+                )
+
+            allowed_files = {
+                "woody.db",
+                "backup_manifest.json",
+                *BACKUP_CONFIG_FILES,
+            }
+
+            unexpected = sorted(
+                name
+                for name in names
+                if name not in allowed_files
+            )
+
+            if unexpected:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Backup contains unexpected files: " +
+                        ", ".join(unexpected)
+                    )
+                )
+
+            required_files = {
+                "woody.db",
+                "backup_manifest.json",
+            }
+
+            missing_files = sorted(
+                required_files - set(names)
+            )
+
+            if missing_files:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Backup is missing required files: " +
+                        ", ".join(missing_files)
+                    )
+                )
+
+            for info in archive.infolist():
+
+                name_path = Path(info.filename)
+
+                if (
+                    name_path.is_absolute()
+                    or ".." in name_path.parts
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Backup contains an unsafe file path"
+                    )
+
+            # ------------------------------------------------
+            # Manifest
+            # ------------------------------------------------
+
+            try:
+                manifest = json.loads(
+                    archive.read(
+                        "backup_manifest.json"
+                    ).decode("utf-8")
+                )
+            except Exception:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid backup manifest"
+                )
+
+            if manifest.get("format") != "woody-monitor-backup":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Not a Woody Monitor backup"
+                )
+
+            if manifest.get("format_version") != 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Unsupported backup format version"
+                )
+
+            if manifest.get("database") != "woody.db":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid database entry in backup manifest"
+                )
+
+            # ------------------------------------------------
+            # Extract allowed restore files to staging
+            # ------------------------------------------------
+
+            files_to_restore = [
+                "woody.db"
+            ]
+
+            files_to_restore.extend(
+                name
+                for name in BACKUP_CONFIG_FILES
+                if name in names
+            )
+
+            for name in files_to_restore:
+
+                info = archive.getinfo(name)
+
+                if (
+                    name == "woody.db"
+                    and info.file_size > RESTORE_MAX_DATABASE_BYTES
+                ):
+                    raise HTTPException(
+                        status_code=413,
+                        detail="Backup database is too large"
+                    )
+
+                destination = (
+                    staging_dir /
+                    name
+                )
+
+                copied = 0
+
+                with archive.open(name) as source:
+                    with destination.open("wb") as output:
+
+                        while True:
+
+                            chunk = source.read(
+                                1024 * 1024
+                            )
+
+                            if not chunk:
+                                break
+
+                            copied += len(chunk)
+
+                            if (
+                                name == "woody.db"
+                                and copied >
+                                RESTORE_MAX_DATABASE_BYTES
+                            ):
+                                raise HTTPException(
+                                    status_code=413,
+                                    detail="Backup database is too large"
+                                )
+
+                            output.write(chunk)
+
+            # ------------------------------------------------
+            # Validate staged database
+            # ------------------------------------------------
+
+            staged_db = (
+                staging_dir /
+                "woody.db"
+            )
+
+            try:
+
+                connection = sqlite3.connect(
+                    str(staged_db)
+                )
+
+                try:
+
+                    integrity = connection.execute(
+                        "PRAGMA integrity_check"
+                    ).fetchone()
+
+                    if (
+                        not integrity
+                        or integrity[0] != "ok"
+                    ):
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Backup database integrity check failed"
+                        )
+
+                    tables = {
+                        row[0]
+                        for row in connection.execute(
+                            """
+                            SELECT name
+                            FROM sqlite_master
+                            WHERE type='table'
+                            """
+                        )
+                    }
+
+                finally:
+                    connection.close()
+
+            except HTTPException:
+                raise
+
+            except sqlite3.DatabaseError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Backup does not contain a valid SQLite database"
+                )
+
+            missing_tables = sorted(
+                RESTORE_REQUIRED_TABLES - tables
+            )
+
+            if missing_tables:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Backup database is missing required tables: " +
+                        ", ".join(missing_tables)
+                    )
+                )
+
+            # ------------------------------------------------
+            # Validate staged JSON
+            # ------------------------------------------------
+
+            for name in BACKUP_CONFIG_FILES:
+
+                staged_file = (
+                    staging_dir /
+                    name
+                )
+
+                if not staged_file.exists():
+                    continue
+
+                try:
+                    json.loads(
+                        staged_file.read_text(
+                            encoding="utf-8"
+                        )
+                    )
+                except Exception:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            "Invalid JSON configuration file: " +
+                            name
+                        )
+                    )
+
+        # ----------------------------------------------------
+        # Create emergency backup BEFORE replacement
+        # ----------------------------------------------------
+
+        emergency_dir.mkdir(
+            parents=True,
+            exist_ok=False
+        )
+
+        current_db = (
+            data_dir /
+            "woody.db"
+        )
+
+        if not current_db.exists():
+            raise HTTPException(
+                status_code=500,
+                detail="Current Woody Monitor database not found"
+            )
+
+        emergency_db = (
+            emergency_dir /
+            "woody.db"
+        )
+
+        source = sqlite3.connect(
+            str(current_db),
+            timeout=30
+        )
+
+        destination = sqlite3.connect(
+            str(emergency_db)
+        )
+
+        try:
+            source.backup(destination)
+        finally:
+            destination.close()
+            source.close()
+
+        # Verify emergency database before continuing.
+        verify = sqlite3.connect(
+            str(emergency_db)
+        )
+
+        try:
+
+            result = verify.execute(
+                "PRAGMA integrity_check"
+            ).fetchone()
+
+            if (
+                not result
+                or result[0] != "ok"
+            ):
+                raise RuntimeError(
+                    "Emergency database backup failed integrity check"
+                )
+
+        finally:
+            verify.close()
+
+        for name in BACKUP_CONFIG_FILES:
+
+            current_file = (
+                data_dir /
+                name
+            )
+
+            if current_file.exists():
+                shutil.copy2(
+                    current_file,
+                    emergency_dir / name
+                )
+
+        # ----------------------------------------------------
+        # Replace active files
+        # ----------------------------------------------------
+
+        replacement_files = [
+            "woody.db"
+        ]
+
+        replacement_files.extend(
+            name
+            for name in BACKUP_CONFIG_FILES
+            if (staging_dir / name).exists()
+        )
+
+        for name in replacement_files:
+
+            staged_file = (
+                staging_dir /
+                name
+            )
+
+            active_file = (
+                data_dir /
+                name
+            )
+
+            replacement = (
+                data_dir /
+                f".{name}.restore-new"
+            )
+
+            shutil.copy2(
+                staged_file,
+                replacement
+            )
+
+            os.replace(
+                replacement,
+                active_file
+            )
+
+        logger.warning(
+            "Woody Monitor restored from backup %s; "
+            "emergency backup stored in %s",
+            filename,
+            emergency_dir
+        )
+
+        # ----------------------------------------------------
+        # Restart after response has had time to leave server
+        # ----------------------------------------------------
+
+        def shutdown_after_restore():
+            os._exit(0)
+
+        threading.Timer(
+            1.5,
+            shutdown_after_restore
+        ).start()
+
+        return {
+            "ok": True,
+            "message": (
+                "Backup restored successfully. "
+                "Woody Monitor is restarting."
+            ),
+            "application_version": manifest.get(
+                "application_version"
+            ),
+            "created": manifest.get(
+                "created"
+            ),
+            "emergency_backup": timestamp,
+            "credentials_restored": False
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+
+        logger.exception(
+            "Could not restore Woody Monitor backup"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not restore backup: {exc}"
+        )
+
+    finally:
+
+        try:
+            await backup.close()
+        except Exception:
+            pass
+
+        shutil.rmtree(
+            restore_dir,
+            ignore_errors=True
+        )
 
 
 # ============================================================
@@ -5448,12 +6837,302 @@ def pellet_consumption(
 
 
 # ============================================================
+# API: OUTDOOR TEMPERATURE - COMPLETE PERIOD
+# ============================================================
+
+@app.get("/api/v1/consumption/outdoor-temperature")
+def pellet_outdoor_temperature(
+    mode: str = Query("day"),
+    hours: int = Query(24, gt=0, le=8760),
+    days: int = Query(30, gt=0, le=4000),
+    start: str | None = Query(None),
+    end: str | None = Query(None)
+):
+
+    ensure_daily_outdoor_temperature_table()
+
+    if mode not in ("hour", "day"):
+        raise HTTPException(
+            400,
+            "mode must be hour or day"
+        )
+
+    zone = get_timezone()
+
+    if mode == "hour":
+
+        if start and end:
+
+            try:
+
+                start_dt = datetime.fromisoformat(
+                    start.replace(
+                        "Z",
+                        "+00:00"
+                    )
+                )
+
+                end_dt = datetime.fromisoformat(
+                    end.replace(
+                        "Z",
+                        "+00:00"
+                    )
+                )
+
+            except ValueError:
+
+                raise HTTPException(
+                    400,
+                    "Invalid start or end timestamp"
+                )
+
+        else:
+
+            end_dt = datetime.now(
+                timezone.utc
+            )
+
+            start_dt = (
+                end_dt -
+                timedelta(hours=hours)
+            )
+
+        if start_dt >= end_dt:
+
+            raise HTTPException(
+                400,
+                "start must be before end"
+            )
+
+        if (
+            end_dt -
+            start_dt
+        ) > timedelta(days=365):
+
+            raise HTTPException(
+                400,
+                "Hourly range cannot exceed 365 days"
+            )
+
+        with db.lock:
+
+            conn = db._connect()
+
+            try:
+
+                rows = conn.execute(
+                    """
+                    SELECT
+                        substr(timestamp, 1, 13)
+                            AS hour_key,
+                        AVG(value)
+                            AS outside_temp_avg,
+                        COUNT(*)
+                            AS sample_count
+
+                    FROM measurements
+
+                    WHERE parameter = 'outside_temp'
+                      AND timestamp >= ?
+                      AND timestamp < ?
+
+                    GROUP BY substr(
+                        timestamp,
+                        1,
+                        13
+                    )
+
+                    ORDER BY hour_key
+                    """,
+                    (
+                        start_dt.isoformat(),
+                        end_dt.isoformat()
+                    )
+                ).fetchall()
+
+            finally:
+
+                conn.close()
+
+        data = []
+
+        for row in rows:
+
+            try:
+
+                hour_start = (
+                    datetime.fromisoformat(
+                        row["hour_key"] +
+                        ":00:00+00:00"
+                    )
+                )
+
+            except Exception:
+
+                continue
+
+            data.append({
+                "timestamp":
+                    (
+                        hour_start +
+                        timedelta(hours=1)
+                    ).isoformat(),
+
+                "outside_temp_avg":
+                    (
+                        float(
+                            row[
+                                "outside_temp_avg"
+                            ]
+                        )
+                        if row[
+                            "outside_temp_avg"
+                        ] is not None
+                        else None
+                    ),
+
+                "sample_count":
+                    int(
+                        row[
+                            "sample_count"
+                        ] or 0
+                    )
+            })
+
+        return {
+            "mode": "hour",
+            "start": start_dt.isoformat(),
+            "end": end_dt.isoformat(),
+            "data": data
+        }
+
+    # --------------------------------------------------------
+    # DAILY DATA
+    # --------------------------------------------------------
+
+    today = datetime.now(
+        zone
+    ).date()
+
+    if start and end:
+
+        try:
+
+            start_dt = datetime.fromisoformat(
+                start.replace(
+                    "Z",
+                    "+00:00"
+                )
+            )
+
+            end_dt = datetime.fromisoformat(
+                end.replace(
+                    "Z",
+                    "+00:00"
+                )
+            )
+
+        except ValueError:
+
+            raise HTTPException(
+                400,
+                "Invalid start or end timestamp"
+            )
+
+        start_date = (
+            start_dt
+            .astimezone(zone)
+            .date()
+            .isoformat()
+        )
+
+        end_date = (
+            end_dt
+            .astimezone(zone)
+            .date()
+            .isoformat()
+        )
+
+    else:
+
+        start_date = (
+            today -
+            timedelta(days=days)
+        ).isoformat()
+
+        end_date = today.isoformat()
+
+    with db.lock:
+
+        conn = db._connect()
+
+        try:
+
+            rows = conn.execute(
+                """
+                SELECT
+                    local_date,
+                    outside_temp_avg,
+                    sample_count
+
+                FROM daily_outdoor_temperature
+
+                WHERE local_date >= ?
+                  AND local_date <= ?
+
+                ORDER BY local_date
+                """,
+                (
+                    start_date,
+                    end_date
+                )
+            ).fetchall()
+
+        finally:
+
+            conn.close()
+
+    return {
+        "mode": "day",
+        "start": start_date,
+        "end": end_date,
+        "data": [
+            {
+                "date":
+                    row["local_date"],
+
+                "outside_temp_avg":
+                    (
+                        float(
+                            row[
+                                "outside_temp_avg"
+                            ]
+                        )
+                        if row[
+                            "outside_temp_avg"
+                        ] is not None
+                        else None
+                    ),
+
+                "sample_count":
+                    int(
+                        row[
+                            "sample_count"
+                        ] or 0
+                    )
+            }
+            for row in rows
+        ]
+    }
+
+
+# ============================================================
 # API: PELLET CONSUMPTION OVERVIEW
 # ============================================================
 
 @app.get("/api/v1/consumption/overview")
 def pellet_consumption_overview(
-    days: int = Query(1827, gt=0, le=2000)
+    days: int = Query(1827, gt=0, le=4000)
 ):
 
     zone = get_timezone()
@@ -5607,7 +7286,9 @@ def pellet_consumption_overview_hourly(
             end_dt = datetime.fromisoformat(
                 end.replace("Z", "+00:00")
             )
+
         except ValueError:
+
             raise HTTPException(
                 400,
                 "Invalid start or end timestamp"
@@ -5615,30 +7296,31 @@ def pellet_consumption_overview_hourly(
 
     else:
 
-        end_dt = datetime.now(timezone.utc)
+        end_dt = datetime.now(
+            timezone.utc
+        )
+
         start_dt = (
             end_dt -
             timedelta(hours=hours)
         )
 
-
     if start_dt >= end_dt:
+
         raise HTTPException(
             400,
             "start must be before end"
         )
 
-
-    # Prevent accidentally requesting an excessive
-    # amount of raw hourly measurement history.
     if (
-        end_dt - start_dt
+        end_dt -
+        start_dt
     ) > timedelta(days=365):
+
         raise HTTPException(
             400,
             "Hourly range cannot exceed 365 days"
         )
-
 
     with db.lock:
 
@@ -5649,33 +7331,21 @@ def pellet_consumption_overview_hourly(
             rows = conn.execute(
                 """
                 SELECT
-                    substr(timestamp, 1, 13) AS hour_key,
+                    hour_start,
+                    outside_temp_avg,
+                    power_avg
 
-                    AVG(
-                        CASE
-                            WHEN parameter = 'outside_temp'
-                            THEN value
-                        END
-                    ) AS outside_temp_avg,
+                FROM pellet_consumption_hourly
 
-                    AVG(
-                        CASE
-                            WHEN parameter = 'power'
-                            THEN value
-                        END
-                    ) AS power_avg
-
-                FROM measurements
-
-                WHERE timestamp >= ?
-                  AND timestamp <= ?
-                  AND parameter IN (
-                      'outside_temp',
-                      'power'
+                WHERE hour_start >= ?
+                  AND hour_start < ?
+                  AND kg > 0
+                  AND (
+                      outside_temp_samples > 0
+                      OR power_samples > 0
                   )
 
-                GROUP BY substr(timestamp, 1, 13)
-                ORDER BY hour_key
+                ORDER BY hour_start ASC
                 """,
                 (
                     start_dt.isoformat(),
@@ -5687,7 +7357,6 @@ def pellet_consumption_overview_hourly(
 
             conn.close()
 
-
     data = []
 
     for row in rows:
@@ -5695,12 +7364,9 @@ def pellet_consumption_overview_hourly(
         try:
 
             hour_start = datetime.fromisoformat(
-                row["hour_key"] +
-                ":00:00+00:00"
+                row["hour_start"]
             )
 
-            # Pellet chart timestamps represent
-            # the END of an interval.
             timestamp = (
                 hour_start +
                 timedelta(hours=1)
@@ -5710,14 +7376,15 @@ def pellet_consumption_overview_hourly(
 
             continue
 
-
         data.append({
             "timestamp":
                 timestamp.isoformat(),
 
             "outside_temp_avg":
                 (
-                    float(row["outside_temp_avg"])
+                    float(
+                        row["outside_temp_avg"]
+                    )
                     if row["outside_temp_avg"]
                     is not None
                     else None
@@ -5725,13 +7392,14 @@ def pellet_consumption_overview_hourly(
 
             "power_avg":
                 (
-                    float(row["power_avg"])
+                    float(
+                        row["power_avg"]
+                    )
                     if row["power_avg"]
                     is not None
                     else None
                 )
         })
-
 
     return {
         "start":
@@ -5743,7 +7411,6 @@ def pellet_consumption_overview_hourly(
         "data":
             data
     }
-
 
 @app.get("/api/v1/statistics/daily")
 def daily_statistics(
@@ -6117,6 +7784,34 @@ def history_multi(
         bucket_sizes[-1]
     )
 
+    # Raw history is stored once per minute, so buckets smaller
+    # than 60 seconds cannot provide additional useful detail.
+    bucket_seconds = max(
+        bucket_seconds,
+        60
+    )
+
+    # Keep short and medium history ranges compact enough for
+    # fast browser rendering while retaining useful resolution.
+    if duration_seconds > 12 * 3600:
+        bucket_seconds = max(
+            bucket_seconds,
+            120
+        )
+
+    if duration_seconds > 24 * 3600:
+        bucket_seconds = max(
+            bucket_seconds,
+            300
+        )
+
+    # Seven days or longer uses the pre-aggregated hourly cache.
+    if duration_seconds >= 7 * 24 * 3600:
+        bucket_seconds = max(
+            bucket_seconds,
+            3600
+        )
+
     rows = db.get_history(
         parameter_list,
         start_dt.isoformat(),
@@ -6227,6 +7922,11 @@ def startup():
         daemon=True
     )
 
+    history_hourly = threading.Thread(
+        target=history_hourly_loop,
+        daemon=True
+    )
+
     feeder_retention = threading.Thread(
         target=feeder_retention_loop,
         daemon=True
@@ -6235,6 +7935,7 @@ def startup():
     collector.start()
     history.start()
     pellet_hourly.start()
+    history_hourly.start()
     feeder_retention.start()
 
     mqtt_setup()
