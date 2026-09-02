@@ -4506,34 +4506,32 @@ strong {
                              class="burner-control-label">--</div>
                     </div>
 
-                    <div id="burnerStatus"
-                         class="burner-status-under-title">
-                        --
-                    </div>
+                    <div class="burner-status-line">
 
-                    <span id="advancedTimerBurnerBadge"
-                          class="advanced-timer-burner-badge"
-                          style="display:none;">
-                        ⏱ TIMER
-                    </span>
+                        <div id="burnerStatus"
+                             class="burner-status-under-title">
+                            --
+                        </div>
 
-                    <span id="weatherCompensationBurnerBadge"
-                          class="advanced-timer-burner-badge"
-                          style="display:none;">
-                        🌡 AUTO
-                    </span>
+                        <span id="advancedTimerBurnerBadge"
+                              class="advanced-timer-burner-badge"
+                              style="display:none;">
+                            Advanced Timer
+                        </span>
 
-                </div>
+                        <span id="weatherCompensationBurnerBadge"
+                              class="advanced-timer-burner-badge"
+                              style="display:none;">
+                            Weather Compensation
+                        </span>
 
-                <div class="burner-header-right">
-
-                    <div class="burner-alarm-control-row">
                         <div class="burner-header-alarm">
                             <span id="burnerAlarmIcon"
                                   class="alarm-check">✓</span>
                             <span id="burnerAlarmLabel">Alarm</span>
                             <span id="burnerAlarm">None</span>
                         </div>
+
                     </div>
 
                 </div>
@@ -7384,61 +7382,45 @@ function updateWeatherCompensationBadge() {
     const timerActive =
         !!advancedTimerSettings?.enabled;
 
-    const weatherActive =
+    const weatherEnabled =
         timerActive &&
         !!weatherCompensationSettings?.enabled;
 
-    if (!weatherActive) {
+    if (weatherEnabled) {
 
-        weatherBadge.style.display = "none";
+        if (timerBadge)
+            timerBadge.style.display = "none";
 
-        if (timerBadge) {
-            timerBadge.style.display =
-                timerActive
-                    ? "inline-flex"
-                    : "none";
-        }
+        const curve =
+            Number(
+                weatherCompensationSettings
+                    ?.active_curve
+            ) || 0;
+
+        weatherBadge.textContent =
+            curve > 0
+                ? `Weather Compensation · Curve ${curve}`
+                : "Weather Compensation";
+
+        weatherBadge.style.display =
+            "inline-flex";
 
         return;
     }
 
-    if (timerBadge)
-        timerBadge.style.display = "none";
+    weatherBadge.style.display = "none";
 
-    const hours =
-        Number(
-            weatherCompensationSettings
-                .target_on_hours
-        );
+    if (timerBadge) {
 
-    const curve =
-        weatherCompensationSettings
-            .active_curve;
+        timerBadge.textContent =
+            "Advanced Timer";
 
-    let text;
-
-    if (hours <= 0) {
-
-        text = "🌡 AUTO OFF";
-
-    } else if (curve) {
-
-        text =
-            `🌡 AUTO C${curve} · ${hours}h/day`;
-
-    } else {
-
-        text =
-            `🌡 AUTO ${hours}h/day`;
+        timerBadge.style.display =
+            timerActive
+                ? "inline-flex"
+                : "none";
     }
-
-    weatherBadge.textContent = text;
-
-    weatherBadge.style.display =
-        "inline-flex";
 }
-
-
 
 const weatherHourPriority = [
     6, 7, 8,
@@ -7514,6 +7496,132 @@ function weatherCurveScheduleText(hours) {
 }
 
 
+
+function weatherEffectiveScheduleText(curveIndex, hours) {
+
+    const activeCurve =
+        Number(
+            weatherCompensationSettings
+                ?.active_curve
+        ) || 0;
+
+    const effective =
+        weatherCompensationSettings
+            ?.effective_schedule;
+
+    /*
+     * The backend effective_schedule belongs to the curve
+     * that is active right now.
+     *
+     * For that row we therefore show the real schedule after
+     * Advanced Timer restrictions have been applied.
+     */
+    if (
+        activeCurve === curveIndex &&
+        effective &&
+        typeof effective === "object"
+    ) {
+
+        const daySchedules =
+            Object.values(effective)
+                .filter(
+                    value =>
+                        Array.isArray(value) &&
+                        value.length >= 24
+                );
+
+        if (daySchedules.length) {
+
+            /*
+             * Show each unique daily schedule.
+             * This also exposes hours disabled in Advanced Timer.
+             */
+            const unique = [];
+
+            for (const schedule of daySchedules) {
+
+                const key =
+                    schedule
+                        .slice(0, 24)
+                        .map(Boolean)
+                        .map(value => value ? "1" : "0")
+                        .join("");
+
+                if (!unique.some(item => item.key === key)) {
+
+                    const selected =
+                        new Set();
+
+                    schedule
+                        .slice(0, 24)
+                        .forEach(
+                            (enabled, hour) => {
+                                if (enabled)
+                                    selected.add(hour);
+                            }
+                        );
+
+                    const periods = [];
+
+                    let start = null;
+
+                    for (
+                        let hour = 0;
+                        hour <= 24;
+                        hour++
+                    ) {
+
+                        const on =
+                            hour < 24 &&
+                            selected.has(hour);
+
+                        if (
+                            on &&
+                            start === null
+                        ) {
+
+                            start = hour;
+
+                        } else if (
+                            !on &&
+                            start !== null
+                        ) {
+
+                            periods.push(
+                                `${String(start).padStart(2, "0")}:00–` +
+                                `${String(hour).padStart(2, "0")}:00`
+                            );
+
+                            start = null;
+                        }
+                    }
+
+                    unique.push({
+                        key,
+                        text:
+                            periods.length
+                                ? periods.join(" · ")
+                                : "OFF"
+                    });
+                }
+            }
+
+            if (unique.length === 1)
+                return unique[0].text;
+
+            return unique
+                .map(
+                    (item, index) =>
+                        `Plan ${index + 1}: ${item.text}`
+                )
+                .join(" | ");
+        }
+    }
+
+    return weatherCurveScheduleText(hours);
+}
+
+
 function updateWeatherCurveSchedule(index) {
 
     const input =
@@ -7530,7 +7638,8 @@ function updateWeatherCurveSchedule(index) {
         return;
 
     schedule.textContent =
-        weatherCurveScheduleText(
+        weatherEffectiveScheduleText(
+            index,
             input.value
         );
 }
@@ -7657,7 +7766,7 @@ function renderWeatherCompensationSettings() {
                         <td
                             id="weatherCurveSchedule${index + 1}"
                             class="weather-curve-schedule">
-                            ${weatherCurveScheduleText(curve.hours)}
+                            ${weatherEffectiveScheduleText(index + 1, curve.hours)}
                         </td>
 
                     </tr>
@@ -21018,5 +21127,75 @@ document.addEventListener(
         white-space: nowrap;
     }
 }
-</style>
 
+/* ============================================================
+   BURNER HEADER STATUS
+   Status + control mode left, alarm right
+   ============================================================ */
+
+.burner-modern-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.burner-header-left {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.burner-status-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-width: 0;
+    margin-top: 4px;
+}
+
+.burner-status-line .burner-status-under-title,
+.burner-status-line .advanced-timer-burner-badge {
+    margin: 0;
+    flex: 0 0 auto;
+}
+
+/* Alarm is positioned independently at the far right
+   without making the status line full width. */
+.burner-status-line .burner-header-alarm {
+    position: absolute;
+    right: 18px;
+    top: 18px;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+}
+
+.burner-modern-header {
+    position: relative;
+    padding-right: 145px;
+}
+
+.burner-header-right {
+    display: none;
+}
+
+@media (max-width: 760px) {
+
+    .burner-modern-header {
+        padding-right: 0;
+    }
+
+    .burner-status-line {
+        gap: 6px 8px;
+    }
+
+    .burner-status-line .burner-header-alarm {
+        position: static;
+        margin-left: auto;
+    }
+}
+
+</style>
