@@ -21199,3 +21199,54 @@ document.addEventListener(
 }
 
 </style>
+
+<style id="woody-burner-header-vertical-center">
+
+/* Vertically align burner controls, status, timer/weather mode and alarm */
+.burner-modern-header {
+    align-items: center !important;
+}
+
+.burner-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.burner-header-left .burner-control-wrapper {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.burner-header-left .burner-status-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    flex: 1 1 auto;
+}
+
+.burner-header-left .burner-status-under-title,
+.burner-header-left .advanced-timer-burner-badge {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.burner-status-line .burner-header-alarm {
+    top: 50% !important;
+    transform: translateY(-50%);
+}
+
+/* Mobile keeps the same vertical alignment but may wrap if necessary */
+@media (max-width: 760px) {
+
+    .burner-header-left {
+        flex-wrap: wrap;
+    }
+
+    .burner-status-line .burner-header-alarm {
+        transform: none;
+    }
+}
+
+</style>
