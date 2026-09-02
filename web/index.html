@@ -2111,6 +2111,72 @@ body { padding-bottom:20px; }
 
 }
 
+
+
+/* ============================================================
+   BURNER CARD IMAGE TEST
+   Only replaces the original CSS illustration.
+   ============================================================ */
+
+.burner-visual.burner-visual-image {
+    min-height: 290px;
+    padding: 4px;
+    overflow: hidden;
+
+    background:
+        radial-gradient(
+            circle at 50% 55%,
+            rgba(255,255,255,.035),
+            transparent 65%
+        ),
+        rgba(5,15,25,.22);
+}
+
+.burner-system-image {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    max-height: 282px;
+
+    object-fit: contain;
+    object-position: center;
+
+    user-select: none;
+    pointer-events: none;
+}
+
+
+/* Tablet */
+
+@media (max-width: 1100px) {
+
+    .burner-visual.burner-visual-image {
+        min-height: 260px;
+    }
+
+    .burner-system-image {
+        max-height: 252px;
+    }
+}
+
+
+/* Phone */
+
+@media (max-width: 760px) {
+
+    .burner-visual.burner-visual-image {
+        min-height: 190px;
+        padding: 2px;
+    }
+
+    .burner-system-image {
+        max-height: 185px;
+    }
+}
+
+
 </style>
 
 <style id="nav-font-fix">
@@ -4491,23 +4557,12 @@ strong {
 
 <div class="burner-modern-body">
 
-                <div class="burner-visual">
-                    <div class="burner-machine">
-                        <div class="burner-chimney"></div>
-
-                        <div class="burner-hopper">
-                            <div class="burner-hopper-pellets"></div>
-                        </div>
-
-                        <div class="burner-boiler">
-                            <div class="burner-door">
-                                <div class="burner-flame">🔥</div>
-                            </div>
-                        </div>
-
-                        <div class="burner-auger"></div>
-
-                    </div>
+                <div class="burner-visual burner-visual-image">
+                    <img
+                        src="/burner-card-image.png"
+                        class="burner-system-image"
+                        alt="Pellet heating system"
+                    >
                 </div>
 
                 <div class="burner-metrics">

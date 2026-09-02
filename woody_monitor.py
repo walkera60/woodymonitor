@@ -3505,6 +3505,14 @@ def pellet_system_image():
     )
 
 
+@app.get("/burner-card-image.png")
+def burner_card_image():
+    return FileResponse(
+        str(BASE_DIR / "web" / "burner-card-image.png"),
+        media_type="image/png"
+    )
+
+
 @app.get("/woody-icon.svg")
 def woody_icon():
     return FileResponse(
