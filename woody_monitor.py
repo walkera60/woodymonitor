@@ -3497,6 +3497,14 @@ def root():
     return FileResponse(str(BASE_DIR / "web" / "index.html"))
 
 
+@app.get("/pellet-system.png")
+def pellet_system_image():
+    return FileResponse(
+        str(BASE_DIR / "web" / "pellet-system.png"),
+        media_type="image/png"
+    )
+
+
 @app.get("/woody-icon.svg")
 def woody_icon():
     return FileResponse(

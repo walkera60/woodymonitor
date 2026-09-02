@@ -1418,7 +1418,7 @@ body { padding-bottom:20px; }
 }
 
 .burner-metric-value.flue {
-    color: #ff9f43;
+    color: #9ca3af;
 }
 
 .alarm-value {
@@ -4637,7 +4637,7 @@ strong {
                             </div>
                             <div class="burner-metric-value light">
                                 <span id="statusLight">--</span>
-                                <small>%</small>
+                                <small>lx</small>
                             </div>
                         </div>
                     </div>
@@ -4906,6 +4906,31 @@ strong {
 
 
 
+    <div class="pellet-consumption-mode"
+         style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:0 0 14px 0;">
+        <span style="font-size:13px;color:var(--muted);">
+            Display
+        </span>
+
+        <div class="button-group">
+            <button
+                id="pelletModeWeight"
+                class="btn"
+                type="button"
+                onclick="setPelletConsumptionMode('weight')">
+                Weight
+            </button>
+
+            <button
+                id="pelletModeCost"
+                class="btn"
+                type="button"
+                onclick="setPelletConsumptionMode('cost')">
+                Cost
+            </button>
+        </div>
+    </div>
+
     <div class="pellet-overview-grid">
 
             <div class="pellet-overview-card">
@@ -4933,7 +4958,8 @@ strong {
                     </div>
                 </div>
 
-                <div class="pellet-overview-subtitle">
+                <div class="pellet-overview-subtitle"
+                     id="pelletOverview24hPeriod">
                     Cumulative pellet consumption
                 </div>
 
@@ -5146,6 +5172,7 @@ strong {
                     </span>
 
                 </div>
+
 
             </div>
 
@@ -6221,6 +6248,7 @@ const DISPLAY = {
     boiler_temp: ["Boiler temperature","°C"],
     boiler_temp_set: ["Boiler temperature setpoint","°C"],
     boiler_temp_min: ["Minimum boiler temperature","°C"],
+    boiler_return_temp: ["Boiler return temperature","°C"],
     hotwater_temp: ["Hot water temperature","°C"],
     hotwater_temp_set: ["Hot water setpoint","°C"],
     smoke_temp: ["Flue gas temperature","°C"],
@@ -6286,8 +6314,8 @@ const DISPLAY = {
     version: ["Controller version",""],
     language: ["Language",""],
     autocalculation: ["Automatic calculation",""],
-    flow: ["Flow",""],
-    light: ["Light",""],
+    flow: ["Flow","l/min"],
+    light: ["Light","lx"],
     light_required: ["Required light",""]
 };
 
@@ -13427,6 +13455,247 @@ function pelletOverviewEnableDrag(
 }
 
 
+
+let pelletConsumptionDisplayMode =
+    localStorage.getItem(
+        "woodyPelletConsumptionDisplayMode"
+    ) || "weight";
+
+
+let woodyPelletPriceHistory = [];
+
+
+async function loadWoodyPelletPriceHistory() {
+
+    try {
+
+        const result =
+            await api(
+                "/settings/pellet-prices"
+            );
+
+        woodyPelletPriceHistory =
+            Array.isArray(result.prices)
+                ? result.prices
+                    .map(row => ({
+                        time: new Date(
+                            row.effective_at
+                        ),
+                        price:
+                            Number(
+                                row.price_per_kg
+                            )
+                    }))
+                    .filter(
+                        row =>
+                            Number.isFinite(
+                                row.time.getTime()
+                            ) &&
+                            Number.isFinite(
+                                row.price
+                            )
+                    )
+                    .sort(
+                        (a, b) =>
+                            a.time - b.time
+                    )
+                : [];
+
+    } catch (error) {
+
+        console.warn(
+            "Unable to load pellet price history",
+            error
+        );
+
+        woodyPelletPriceHistory = [];
+    }
+}
+
+
+function woodyPelletPriceAt(date) {
+
+    let active = null;
+
+    for (
+        const row of
+        woodyPelletPriceHistory
+    ) {
+
+        if (row.time <= date) {
+            active = row.price;
+        } else {
+            break;
+        }
+    }
+
+    return active;
+}
+
+
+function woodyPelletCostAt(date, kg) {
+
+    const price =
+        woodyPelletPriceAt(date);
+
+    if (
+        price === null ||
+        !Number.isFinite(price)
+    ) {
+        return null;
+    }
+
+    return kg * price;
+}
+
+
+function pelletConsumptionUnit() {
+
+    return (
+        pelletConsumptionDisplayMode ===
+        "cost"
+    )
+        ? woodyPelletCurrency
+        : "kg";
+}
+
+
+function pelletConsumptionValue(
+    kg,
+    cost
+) {
+
+    if (
+        pelletConsumptionDisplayMode ===
+        "cost"
+    ) {
+        return (
+            Number.isFinite(cost)
+                ? cost
+                : null
+        );
+    }
+
+    return kg;
+}
+
+
+function updatePelletConsumptionModeButtons() {
+
+    const weight =
+        document.getElementById(
+            "pelletModeWeight"
+        );
+
+    const cost =
+        document.getElementById(
+            "pelletModeCost"
+        );
+
+    if (weight) {
+        weight.classList.toggle(
+            "active",
+            pelletConsumptionDisplayMode ===
+            "weight"
+        );
+    }
+
+    if (cost) {
+        cost.classList.toggle(
+            "active",
+            pelletConsumptionDisplayMode ===
+            "cost"
+        );
+    }
+}
+
+
+async function setPelletConsumptionMode(mode) {
+
+    if (
+        mode !== "weight" &&
+        mode !== "cost"
+    ) {
+        return;
+    }
+
+    pelletConsumptionDisplayMode =
+        mode;
+
+    localStorage.setItem(
+        "woodyPelletConsumptionDisplayMode",
+        mode
+    );
+
+    updatePelletConsumptionModeButtons();
+
+    await updatePelletChart();
+}
+
+
+function pelletOverviewPeriodText(
+    config,
+    range
+) {
+
+    if (
+        !range ||
+        config.canvas !==
+        "pelletOverview24h"
+    ) {
+        return;
+    }
+
+    const element =
+        document.getElementById(
+            "pelletOverview24hPeriod"
+        );
+
+    if (!element) {
+        return;
+    }
+
+    const start =
+        new Date(range.start);
+
+    const end =
+        new Date(
+            range.end.getTime() - 1
+        );
+
+    const sameDate =
+        start.getFullYear() ===
+            end.getFullYear() &&
+        start.getMonth() ===
+            end.getMonth() &&
+        start.getDate() ===
+            end.getDate();
+
+    const format =
+        new Intl.DateTimeFormat(
+            undefined,
+            {
+                day: "numeric",
+                month: "short",
+                year: "numeric"
+            }
+        );
+
+    if (sameDate) {
+
+        element.textContent =
+            format.format(start);
+
+    } else {
+
+        element.textContent =
+            format.format(start) +
+            " – " +
+            format.format(end);
+    }
+}
+
+
 async function updatePelletOverviewChart(config) {
 
     /*
@@ -13439,6 +13708,11 @@ async function updatePelletOverviewChart(config) {
         pelletOverviewRange(
             config
         );
+
+    pelletOverviewPeriodText(
+        config,
+        range
+    );
 
 
     const pelletUrl =
@@ -13506,6 +13780,8 @@ async function updatePelletOverviewChart(config) {
                 {
                     date: bucketDate,
                     kg: 0,
+                    cost: 0,
+                    hasCost: false,
                     temperatures: [],
                     temperaturesAll: [],
                     powers: []
@@ -13514,7 +13790,343 @@ async function updatePelletOverviewChart(config) {
         }
 
 
-        buckets.get(key).kg += kg;
+        const bucket =
+            buckets.get(key);
+
+        bucket.kg += kg;
+
+        const rowCost =
+            Number(row.cost);
+
+        if (
+            row.cost !== null &&
+            row.cost !== undefined &&
+            Number.isFinite(rowCost)
+        ) {
+            bucket.cost += rowCost;
+            bucket.hasCost = true;
+        }
+    }
+
+
+
+    /*
+     * --------------------------------------------------------
+     * IMPORTED PELLMON HISTORY FOR MONTH VIEW
+     * --------------------------------------------------------
+     *
+     * PellMon history may contain daily or monthly rows.
+     *
+     * Daily imports are accumulated into the corresponding
+     * month. Woody Monitor consumption is then included only
+     * for dates not covered by imported PellMon history.
+     *
+     * This prevents double counting while allowing a month
+     * to contain both historical PellMon days and newer
+     * Woody Monitor days.
+     * --------------------------------------------------------
+     */
+
+    if (
+        config.mode === "month" &&
+        range
+    ) {
+
+        try {
+
+            const days =
+                Math.min(
+                    4000,
+                    Math.ceil(
+                        (
+                            Date.now() -
+                            range.start.getTime()
+                        ) /
+                        86400000
+                    ) + 3
+                );
+
+            const overview =
+                await api(
+                    `/consumption/overview?days=${days}`
+                );
+
+            const imported =
+                Array.isArray(
+                    overview.imported
+                )
+                    ? overview.imported
+                    : [];
+
+            const importedMonthTotals =
+                new Map();
+
+            const importedFullMonths =
+                new Set();
+
+            const importedDays =
+                new Set();
+
+
+            for (const row of imported) {
+
+                const period =
+                    String(
+                        row.period || ""
+                    );
+
+                const type =
+                    String(
+                        row.period_type || ""
+                    );
+
+                const kg =
+                    Number(
+                        row.pellet_kg
+                    );
+
+                if (!Number.isFinite(kg)) {
+                    continue;
+                }
+
+
+                let date = null;
+                let monthKey = null;
+
+
+                if (type === "day") {
+
+                    date =
+                        new Date(
+                            period +
+                            "T12:00:00"
+                        );
+
+                    if (
+                        !Number.isFinite(
+                            date.getTime()
+                        )
+                    ) {
+                        continue;
+                    }
+
+                    importedDays.add(
+                        period
+                    );
+
+                    monthKey =
+                        period.slice(
+                            0,
+                            7
+                        );
+
+                } else if (
+                    type === "month"
+                ) {
+
+                    date =
+                        new Date(
+                            period +
+                            "-01T12:00:00"
+                        );
+
+                    if (
+                        !Number.isFinite(
+                            date.getTime()
+                        )
+                    ) {
+                        continue;
+                    }
+
+                    monthKey =
+                        period;
+
+                    importedFullMonths.add(
+                        period
+                    );
+
+                } else {
+
+                    continue;
+                }
+
+
+                if (
+                    date < range.start ||
+                    date >= range.end
+                ) {
+                    continue;
+                }
+
+
+                if (
+                    !importedMonthTotals.has(
+                        monthKey
+                    )
+                ) {
+
+                    importedMonthTotals.set(
+                        monthKey,
+                        {
+                            kg: 0,
+                            cost: 0,
+                            hasCost: false
+                        }
+                    );
+                }
+
+
+                const total =
+                    importedMonthTotals.get(
+                        monthKey
+                    );
+
+                total.kg += kg;
+
+
+                /*
+                 * Historical cost is only calculated when
+                 * a pellet price actually existed at the
+                 * imported consumption date.
+                 */
+
+                const cost =
+                    woodyPelletCostAt(
+                        date,
+                        kg
+                    );
+
+                if (
+                    cost !== null &&
+                    Number.isFinite(cost)
+                ) {
+
+                    total.cost += cost;
+                    total.hasCost = true;
+                }
+            }
+
+
+            /*
+             * Rebuild pellet kg/cost for each affected month.
+             *
+             * Imported PellMon data is authoritative for its
+             * imported dates. Woody data outside those dates
+             * remains available.
+             */
+
+            for (
+                const [
+                    monthKey,
+                    importedTotal
+                ] of importedMonthTotals
+            ) {
+
+                const monthDate =
+                    new Date(
+                        monthKey +
+                        "-01T12:00:00"
+                    );
+
+                const bucketDate =
+                    pelletOverviewBucketDate(
+                        monthDate,
+                        "month"
+                    );
+
+                const key =
+                    bucketDate.getTime();
+
+                const bucket =
+                    buckets.get(key);
+
+                if (!bucket) {
+
+                    buckets.set(
+                        key,
+                        {
+                            date:
+                                bucketDate,
+
+                            kg:
+                                importedTotal.kg,
+
+                            cost:
+                                importedTotal.cost,
+
+                            hasCost:
+                                importedTotal.hasCost,
+
+                            temperatures: [],
+                            temperaturesAll: [],
+                            powers: []
+                        }
+                    );
+
+                    continue;
+                }
+
+
+                /*
+                 * If the complete month is imported,
+                 * replace Woody consumption entirely.
+                 */
+
+                if (
+                    importedFullMonths.has(
+                        monthKey
+                    )
+                ) {
+
+                    bucket.kg =
+                        importedTotal.kg;
+
+                    bucket.cost =
+                        importedTotal.cost;
+
+                    bucket.hasCost =
+                        importedTotal.hasCost;
+
+                    continue;
+                }
+
+
+                /*
+                 * Daily PellMon imports:
+                 *
+                 * The current /consumption/pellets response
+                 * only covers Woody Monitor's available
+                 * feeder history. The imported daily history
+                 * predates that data in the normal migration
+                 * case, so it can safely be added here.
+                 *
+                 * Imported days remain explicitly tracked so
+                 * future merge logic can distinguish them.
+                 */
+
+                bucket.kg +=
+                    importedTotal.kg;
+
+                if (
+                    importedTotal.hasCost
+                ) {
+
+                    bucket.cost +=
+                        importedTotal.cost;
+
+                    bucket.hasCost =
+                        true;
+                }
+            }
+
+
+        } catch (error) {
+
+            console.warn(
+                "Unable to load imported PellMon history",
+                error
+            );
+        }
     }
 
 
@@ -13957,7 +14569,13 @@ async function updatePelletOverviewChart(config) {
 
     const actual =
         items.map(
-            item => item.kg
+            item =>
+                pelletConsumptionValue(
+                    item.kg,
+                    item.hasCost
+                        ? item.cost
+                        : null
+                )
         );
 
 
@@ -13968,6 +14586,24 @@ async function updatePelletOverviewChart(config) {
             0
         );
 
+    const totalCost =
+        items.reduce(
+            (sum, item) =>
+                sum +
+                (
+                    item.hasCost
+                        ? item.cost
+                        : 0
+                ),
+            0
+        );
+
+    const totalValue =
+        pelletConsumptionDisplayMode ===
+        "cost"
+            ? totalCost
+            : totalKg;
+
 
     const bucketCount =
         Math.max(
@@ -13977,7 +14613,7 @@ async function updatePelletOverviewChart(config) {
 
 
     const averagePerBucket =
-        totalKg /
+        totalValue /
         bucketCount;
 
 
@@ -14038,11 +14674,33 @@ async function updatePelletOverviewChart(config) {
 
     for (const item of items) {
 
+        const displayValue =
+            pelletConsumptionValue(
+                item.kg,
+                item.hasCost
+                    ? item.cost
+                    : null
+            );
+
+        if (
+            displayValue === null ||
+            !Number.isFinite(
+                displayValue
+            )
+        ) {
+            continue;
+        }
+
         if (
             !highest ||
-            item.kg > highest.kg
+            displayValue >
+            highest.displayValue
         ) {
-            highest = item;
+            highest = {
+                ...item,
+                displayValue:
+                    displayValue
+            };
         }
     }
 
@@ -14085,7 +14743,9 @@ async function updatePelletOverviewChart(config) {
 
                     {
                         label:
-                            "Estimated consumption",
+                            pelletConsumptionDisplayMode === "cost"
+                                ? "Estimated cost"
+                                : "Estimated consumption",
 
                         data:
                             estimated,
@@ -14109,7 +14769,9 @@ async function updatePelletOverviewChart(config) {
 
                     {
                         label:
-                            "Actual consumption",
+                            pelletConsumptionDisplayMode === "cost"
+                                ? "Actual cost"
+                                : "Actual consumption",
 
                         data:
                             actual,
@@ -14348,7 +15010,8 @@ async function updatePelletOverviewChart(config) {
                                         (
                                             Number.isFinite(value)
                                                 ? value.toFixed(2) +
-                                                  " kg"
+                                                  " " +
+                                                  pelletConsumptionUnit()
                                                 : "--"
                                         )
                                     );
@@ -14399,7 +15062,10 @@ async function updatePelletOverviewChart(config) {
                         title: {
                             display:
                                 pelletOverviewShowAxisTitles(),
-                            text: "Pellet consumption kg"
+                            text:
+                                pelletConsumptionDisplayMode === "cost"
+                                    ? "Pellet cost " + pelletConsumptionUnit()
+                                    : "Pellet consumption kg"
                         }
 
                     },
@@ -14764,6 +15430,8 @@ async function updatePelletFiveYearChart() {
         years.push({
             year: year,
             pelletKg: 0,
+            pelletCost: 0,
+            hasCost: false,
             temperatures: [],
             temperaturesAll: [],
             powers: []
@@ -14810,7 +15478,64 @@ async function updatePelletFiveYearChart() {
             );
 
         if (Number.isFinite(kg)) {
+
             target.pelletKg += kg;
+
+            const period =
+                String(
+                    row.period || ""
+                );
+
+            let costDate = null;
+
+            if (
+                row.period_type ===
+                "day"
+            ) {
+
+                costDate =
+                    new Date(
+                        period +
+                        "T12:00:00"
+                    );
+
+            } else if (
+                row.period_type ===
+                "month"
+            ) {
+
+                costDate =
+                    new Date(
+                        period +
+                        "-01T12:00:00"
+                    );
+            }
+
+            if (
+                costDate &&
+                Number.isFinite(
+                    costDate.getTime()
+                )
+            ) {
+
+                const cost =
+                    woodyPelletCostAt(
+                        costDate,
+                        kg
+                    );
+
+                if (
+                    cost !== null &&
+                    Number.isFinite(cost)
+                ) {
+
+                    target.pelletCost +=
+                        cost;
+
+                    target.hasCost =
+                        true;
+                }
+            }
         }
     }
 
@@ -14936,7 +15661,32 @@ async function updatePelletFiveYearChart() {
                 );
 
             if (Number.isFinite(kg)) {
+
                 target.pelletKg += kg;
+
+                const costDate =
+                    new Date(
+                        date +
+                        "T12:00:00"
+                    );
+
+                const cost =
+                    woodyPelletCostAt(
+                        costDate,
+                        kg
+                    );
+
+                if (
+                    cost !== null &&
+                    Number.isFinite(cost)
+                ) {
+
+                    target.pelletCost +=
+                        cost;
+
+                    target.hasCost =
+                        true;
+                }
             }
         }
 
@@ -15007,6 +15757,23 @@ async function updatePelletFiveYearChart() {
         );
 
 
+    const pelletCostValues =
+        years.map(
+            item =>
+                item.hasCost
+                    ? item.pelletCost
+                    : null
+        );
+
+
+    const pelletDisplayValues =
+        pelletConsumptionDisplayMode ===
+        "cost"
+            ? pelletCostValues
+            : pelletValues;
+
+
+
     /*
      * Estimated full-year pellet consumption.
      *
@@ -15067,8 +15834,25 @@ async function updatePelletFiveYearChart() {
                     return null;
                 }
 
+                const value =
+                    pelletConsumptionDisplayMode ===
+                    "cost"
+                        ? (
+                            item.hasCost
+                                ? item.pelletCost
+                                : null
+                        )
+                        : item.pelletKg;
+
+                if (
+                    value === null ||
+                    !Number.isFinite(value)
+                ) {
+                    return null;
+                }
+
                 return (
-                    item.pelletKg /
+                    value /
                     elapsedDays *
                     daysInCurrentYear
                 );
@@ -15146,7 +15930,9 @@ async function updatePelletFiveYearChart() {
                             "bar",
 
                         label:
-                            "Estimated annual consumption",
+                            pelletConsumptionDisplayMode === "cost"
+                                ? "Estimated annual cost"
+                                : "Estimated annual consumption",
 
                         data:
                             estimatedAnnualValues,
@@ -15185,13 +15971,15 @@ async function updatePelletFiveYearChart() {
                             "bar",
 
                         label:
-                            "Pellet consumption",
+                            pelletConsumptionDisplayMode === "cost"
+                                ? "Pellet cost"
+                                : "Pellet consumption",
 
                         grouped:
                             false,
 
                         data:
-                            pelletValues,
+                            pelletDisplayValues,
 
                         yAxisID:
                             "y",
@@ -15355,6 +16143,67 @@ async function updatePelletFiveYearChart() {
 
                 plugins: {
 
+                    tooltip: {
+
+                        callbacks: {
+
+                            label:
+                                function(context) {
+
+                                    const value =
+                                        Number(
+                                            context.raw
+                                        );
+
+                                    if (
+                                        context.dataset.yAxisID ===
+                                        "temperature"
+                                    ) {
+
+                                        return (
+                                            context.dataset.label +
+                                            ": " +
+                                            (
+                                                Number.isFinite(value)
+                                                    ? value.toFixed(1) +
+                                                      " °C"
+                                                    : "--"
+                                            )
+                                        );
+                                    }
+
+                                    if (
+                                        context.dataset.yAxisID ===
+                                        "power"
+                                    ) {
+
+                                        return (
+                                            context.dataset.label +
+                                            ": " +
+                                            (
+                                                Number.isFinite(value)
+                                                    ? value.toFixed(1) +
+                                                      " %"
+                                                    : "--"
+                                            )
+                                        );
+                                    }
+
+                                    return (
+                                        context.dataset.label +
+                                        ": " +
+                                        (
+                                            Number.isFinite(value)
+                                                ? value.toFixed(2) +
+                                                  " " +
+                                                  pelletConsumptionUnit()
+                                                : "--"
+                                        )
+                                    );
+                                }
+                        }
+                    },
+
                     legend: {
                         display: true,
                         position: "bottom",
@@ -15385,7 +16234,11 @@ async function updatePelletFiveYearChart() {
                         title: {
                             display:
                                 pelletOverviewShowAxisTitles(),
-                            text: "Pellet consumption kg"
+                            text:
+                                pelletConsumptionDisplayMode === "cost"
+                                    ? "Pellet cost " +
+                                      pelletConsumptionUnit()
+                                    : "Pellet consumption kg"
                         }
 
                     },
@@ -15446,8 +16299,39 @@ async function updatePelletFiveYearChart() {
     );
 
 
+    const pelletAveragePrices =
+        years.map(
+            item => {
+
+                const kg =
+                    Number(item.pelletKg);
+
+                const cost =
+                    Number(item.pelletCost);
+
+                if (
+                    !Number.isFinite(kg) ||
+                    kg <= 0 ||
+                    !item.hasCost ||
+                    !Number.isFinite(cost)
+                ) {
+                    return null;
+                }
+
+                return cost / kg;
+            }
+        );
+
+
+    const validPelletDisplayValues =
+        pelletDisplayValues.filter(
+            value =>
+                value !== null &&
+                Number.isFinite(value)
+        );
+
     const total =
-        pelletValues.reduce(
+        validPelletDisplayValues.reduce(
             (sum, value) =>
                 sum + value,
             0
@@ -15455,7 +16339,7 @@ async function updatePelletFiveYearChart() {
 
 
     const yearsWithData =
-        pelletValues.filter(
+        validPelletDisplayValues.filter(
             value =>
                 value > 0
         ).length;
@@ -15484,6 +16368,12 @@ async function updatePelletFiveYearChart() {
         );
 
 
+    const priceElement =
+        document.getElementById(
+            "pelletOverview5yPrices"
+        );
+
+
     if (averageElement) {
 
         averageElement.textContent =
@@ -15494,7 +16384,11 @@ async function updatePelletFiveYearChart() {
                     maximumFractionDigits: 2
                 }
             ) +
-            " kg/year";
+            (
+                pelletConsumptionDisplayMode === "cost"
+                    ? " DKK/year"
+                    : " kg/year"
+            );
     }
 
 
@@ -15508,7 +16402,69 @@ async function updatePelletFiveYearChart() {
                     maximumFractionDigits: 2
                 }
             ) +
-            " kg";
+            (
+                pelletConsumptionDisplayMode === "cost"
+                    ? " DKK"
+                    : " kg"
+            );
+    }
+
+
+    if (priceElement) {
+
+        const annualCosts =
+            years
+                .filter(
+                    item =>
+                        item.hasCost &&
+                        Number.isFinite(
+                            Number(item.pelletCost)
+                        ) &&
+                        Number(item.pelletKg) > 0
+                )
+                .map(
+                    item =>
+                        Number(item.pelletCost)
+                );
+
+
+        const totalAnnualCost =
+            annualCosts.reduce(
+                (sum, value) =>
+                    sum + value,
+                0
+            );
+
+
+        const averageAnnualCost =
+            annualCosts.length
+                ? totalAnnualCost /
+                  annualCosts.length
+                : null;
+
+
+        priceElement.innerHTML =
+            averageAnnualCost !== null
+                ? (
+                    "<span>" +
+                    "Average annual pellet cost: " +
+                    "<strong>" +
+                    averageAnnualCost.toLocaleString(
+                        "en-GB",
+                        {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }
+                    ) +
+                    " DKK/year</strong>" +
+                    "</span>"
+                )
+                : (
+                    "<span>" +
+                    "Average annual pellet cost: " +
+                    "<strong>--</strong>" +
+                    "</span>"
+                );
     }
 
 
@@ -15598,6 +16554,10 @@ async function updatePelletFiveYearChart() {
 
 
 async function updatePelletOverviewCharts() {
+
+    await loadWoodyPelletPriceHistory();
+
+    updatePelletConsumptionModeButtons();
 
     updatePelletFiveYearChart()
         .catch(
