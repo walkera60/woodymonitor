@@ -1081,6 +1081,7 @@ def default_advanced_timer_schedule():
 
 advanced_timer_settings = {
     "enabled": False,
+    "test_mode": True,
     "schedule": default_advanced_timer_schedule(),
     "last_slot": None,
     "last_action": None,
@@ -1132,6 +1133,10 @@ def load_advanced_timer_settings():
             data.get("enabled", False)
         )
 
+        advanced_timer_settings["test_mode"] = bool(
+            data.get("test_mode", True)
+        )
+
         advanced_timer_settings["last_slot"] = data.get(
             "last_slot"
         )
@@ -1181,6 +1186,9 @@ def get_advanced_timer_settings():
         return {
             "enabled":
                 advanced_timer_settings["enabled"],
+
+            "test_mode":
+                advanced_timer_settings["test_mode"],
 
             "schedule": {
                 day: list(
@@ -5980,11 +5988,13 @@ def execute_advanced_timer_action(action):
 
     global burner
 
-    if burner is None:
-        logger.warning(
-            "Advanced timer: controller not connected"
+    with advanced_timer_lock:
+        test_mode = bool(
+            advanced_timer_settings.get(
+                "test_mode",
+                True
+            )
         )
-        return False
 
     commands = {
         "start": "burner_on",
@@ -5996,6 +6006,27 @@ def execute_advanced_timer_action(action):
     )
 
     if command is None:
+        return False
+
+    if test_mode:
+
+        logger.info(
+            "TEST MODE: Advanced timer would send: %s",
+            command
+        )
+
+        db.add_activity(
+            "TEST",
+            "Advanced Timer Test Mode",
+            f"Would send: {command}"
+        )
+
+        return True
+
+    if burner is None:
+        logger.warning(
+            "Advanced timer: controller not connected"
+        )
         return False
 
     try:
@@ -6093,7 +6124,7 @@ def advanced_timer_loop():
                     now.weekday()
                 ]
 
-                desired_on = bool(
+                timer_desired_on = bool(
                     advanced_timer_settings[
                         "schedule"
                     ][day][now.hour]
@@ -6138,6 +6169,49 @@ def advanced_timer_loop():
 
                 time.sleep(2)
                 continue
+
+            # ------------------------------------------------
+            # Final automatic burner decision
+            #
+            # Advanced Timer defines the allowed hours.
+            # Weather Compensation may reduce those hours.
+            # Test Mode is enforced later by
+            # execute_advanced_timer_action().
+            # ------------------------------------------------
+
+            desired_on = timer_desired_on
+            decision_source = "timer"
+
+            with weather_compensation_lock:
+                weather_enabled = bool(
+                    weather_compensation_settings[
+                        "enabled"
+                    ]
+                )
+
+            if weather_enabled:
+
+                weather_result = (
+                    calculate_weather_compensation()
+                )
+
+                if weather_result.get("available"):
+
+                    desired_on = bool(
+                        weather_result[
+                            "effective_schedule"
+                        ][day][now.hour]
+                    )
+
+                    decision_source = "weather"
+
+                else:
+
+                    # Fail safe:
+                    # no valid weather data means automatic
+                    # heating is not started.
+                    desired_on = False
+                    decision_source = "weather-unavailable"
 
             running = (
                 advanced_timer_burner_is_running()
@@ -6187,10 +6261,12 @@ def advanced_timer_loop():
             last_checked_slot = slot_key
 
             logger.info(
-                "Advanced timer: %s %02d:00 desired=%s running=%s action=%s",
+                "Advanced timer: %s %02d:00 timer=%s desired=%s source=%s running=%s action=%s",
                 day,
                 now.hour,
+                timer_desired_on,
                 desired_on,
+                decision_source,
                 running,
                 action if should_command else "none"
             )
@@ -6217,6 +6293,7 @@ weather_compensation_lock = threading.Lock()
 
 weather_compensation_settings = {
     "enabled": False,
+    "preview_mode": True,
     "history_hours": 6.0,
     "history_weight": 0.70,
     "curves": [
@@ -6280,6 +6357,10 @@ def load_weather_compensation_settings():
 
         weather_compensation_settings["enabled"] = bool(
             data.get("enabled", False)
+        )
+
+        weather_compensation_settings["preview_mode"] = bool(
+            data.get("preview_mode", True)
         )
 
         weather_compensation_settings["history_hours"] = float(
@@ -6433,6 +6514,12 @@ def calculate_weather_compensation():
                     "enabled"
                 ]
             ),
+            "preview_mode": bool(
+                weather_compensation_settings.get(
+                    "preview_mode",
+                    True
+                )
+            ),
             "history_hours": float(
                 weather_compensation_settings[
                     "history_hours"
@@ -6467,6 +6554,7 @@ def calculate_weather_compensation():
         return {
             "available": False,
             "enabled": settings["enabled"],
+            "preview_mode": settings["preview_mode"],
             "reason": "No outdoor temperature data"
         }
 
@@ -6566,6 +6654,26 @@ def calculate_weather_compensation():
             for hour in range(24)
         ]
 
+    now = local_now()
+
+    current_day = ADVANCED_TIMER_DAYS[
+        now.weekday()
+    ]
+
+    timer_schedule = timer[
+        "schedule"
+    ][current_day]
+
+    timer_allowed_now = bool(
+        timer_schedule[now.hour]
+    )
+
+    weather_desired_on_now = bool(
+        effective_schedule[
+            current_day
+        ][now.hour]
+    )
+
     active_range = None
 
     if active_curve is not None:
@@ -6589,6 +6697,7 @@ def calculate_weather_compensation():
     return {
         "available": True,
         "enabled": settings["enabled"],
+        "preview_mode": settings["preview_mode"],
         "current_outside_temp": (
             round(current_temp, 2)
             if current_temp is not None
@@ -6610,6 +6719,16 @@ def calculate_weather_compensation():
         "active_curve": active_curve,
         "active_range": active_range,
         "target_on_hours": target_hours,
+        "current_day": current_day,
+        "current_hour": now.hour,
+        "timer_allowed_now": timer_allowed_now,
+        "weather_desired_on_now":
+            weather_desired_on_now,
+        "preview_decision": (
+            "ON"
+            if weather_desired_on_now
+            else "OFF"
+        ),
         "off_above": settings[
             "off_above"
         ],
@@ -6656,6 +6775,40 @@ def set_weather_compensation_enabled(
     )
 
     return calculate_weather_compensation()
+
+
+@app.post("/api/v1/settings/weather-compensation/preview")
+def set_weather_compensation_preview(
+    enabled: bool = Query(...)
+):
+
+    # Safety:
+    # Preview/Test Mode is currently simulation only.
+    # No Weather Compensation controller commands are
+    # executed anywhere in this implementation.
+
+    with weather_compensation_lock:
+
+        weather_compensation_settings[
+            "preview_mode"
+        ] = enabled
+
+        save_weather_compensation_settings()
+
+    db.add_activity(
+        "SETTING",
+        "Weather Compensation Preview",
+        "Enabled" if enabled else "Disabled"
+    )
+
+    result = calculate_weather_compensation()
+
+    with weather_compensation_lock:
+        result["settings"] = dict(
+            weather_compensation_settings
+        )
+
+    return result
 
 
 @app.post("/api/v1/settings/weather-compensation/config")
@@ -6781,6 +6934,65 @@ def get_advanced_timer_api():
     result["local_time"] = now.isoformat()
     result["timezone"] = get_timezone_name()
 
+    day = ADVANCED_TIMER_DAYS[
+        now.weekday()
+    ]
+
+    timer_desired_on = bool(
+        result["schedule"][day][now.hour]
+    )
+
+    desired_on = timer_desired_on
+    decision_source = "timer"
+    weather_enabled = False
+    weather_desired_on = None
+    weather_available = None
+
+    with weather_compensation_lock:
+        weather_enabled = bool(
+            weather_compensation_settings[
+                "enabled"
+            ]
+        )
+
+    if weather_enabled:
+
+        weather_result = (
+            calculate_weather_compensation()
+        )
+
+        weather_available = bool(
+            weather_result.get("available")
+        )
+
+        if weather_available:
+
+            weather_desired_on = bool(
+                weather_result[
+                    "effective_schedule"
+                ][day][now.hour]
+            )
+
+            desired_on = weather_desired_on
+            decision_source = "weather"
+
+        else:
+
+            weather_desired_on = False
+            desired_on = False
+            decision_source = "weather-unavailable"
+
+    result["decision"] = {
+        "day": day,
+        "hour": now.hour,
+        "timer_on": timer_desired_on,
+        "weather_enabled": weather_enabled,
+        "weather_available": weather_available,
+        "weather_on": weather_desired_on,
+        "final_on": desired_on,
+        "source": decision_source
+    }
+
     return result
 
 
@@ -6803,6 +7015,30 @@ def set_advanced_timer_enabled(
     db.add_activity(
         "SETTING",
         "Advanced timer",
+        "Enabled" if enabled else "Disabled"
+    )
+
+    return get_advanced_timer_settings()
+
+
+@app.post("/api/v1/settings/advanced-timer/test-mode")
+def set_advanced_timer_test_mode(
+    enabled: bool = Query(...)
+):
+
+    with advanced_timer_lock:
+
+        advanced_timer_settings["test_mode"] = enabled
+
+        # Force a fresh evaluation of the current slot.
+        advanced_timer_settings["last_slot"] = None
+        advanced_timer_settings["last_action"] = None
+
+        save_advanced_timer_settings()
+
+    db.add_activity(
+        "SETTING",
+        "Advanced Timer Test Mode",
         "Enabled" if enabled else "Disabled"
     )
 

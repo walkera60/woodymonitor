@@ -7961,6 +7961,7 @@ async function toggleWeatherCompensation(event) {
             );
 
         await loadWeatherCompensationStatus();
+        await loadAdvancedTimerSettings();
 
     } catch (error) {
 
@@ -8153,6 +8154,46 @@ function ensureAdvancedTimerCard() {
             </div>
         </div>
 
+        <div
+            style="
+                margin: 0 0 16px 0;
+                padding: 12px;
+                border: 1px solid rgba(255,255,255,0.12);
+                border-radius: 8px;
+            ">
+
+            <label class="advanced-timer-master">
+                <input
+                    id="advancedTimerTestMode"
+                    type="checkbox"
+                >
+                <span class="advanced-timer-master-label">
+                    Test Mode
+                </span>
+            </label>
+
+            <div
+                id="advancedTimerTestModeStatus"
+                style="
+                    margin-top: 6px;
+                    font-size: 0.82rem;
+                    opacity: 0.75;
+                ">
+                No automatic burner commands will be sent
+            </div>
+
+            <div
+                id="advancedTimerDecisionStatus"
+                style="
+                    margin-top: 8px;
+                    font-size: 0.88rem;
+                    font-weight: 600;
+                ">
+                Timer: -- · Weather: -- · Final: --
+            </div>
+
+        </div>
+
         <div class="advanced-timer-top">
 
             <label class="advanced-timer-master">
@@ -8224,17 +8265,19 @@ function ensureAdvancedTimerCard() {
                     <div class="card-subtitle">
                         Outdoor temperature based burner schedule
                     </div>
-                </div>
 
-                <label class="advanced-timer-master">
-                    <input
-                        id="weatherCompensationMaster"
-                        type="checkbox"
-                    >
-                    <span>
-                        Weather Compensation
-                    </span>
-                </label>
+                    <label
+                        class="advanced-timer-master"
+                        style="margin-top: 12px;">
+                        <input
+                            id="weatherCompensationMaster"
+                            type="checkbox"
+                        >
+                        <span>
+                            Weather Compensation
+                        </span>
+                    </label>
+                </div>
 
             </div>
 
@@ -8292,6 +8335,13 @@ function ensureAdvancedTimerCard() {
         card,
         "woodyAdvancedTimerCollapsed"
     );
+
+    document
+        .getElementById("advancedTimerTestMode")
+        .addEventListener(
+            "change",
+            toggleAdvancedTimerTestMode
+        );
 
     document
         .getElementById("advancedTimerMaster")
@@ -8403,6 +8453,21 @@ function renderAdvancedTimer() {
     if (!advancedTimerSettings)
         return;
 
+    const testMode =
+        document.getElementById(
+            "advancedTimerTestMode"
+        );
+
+    const testModeStatus =
+        document.getElementById(
+            "advancedTimerTestModeStatus"
+        );
+
+    const decisionStatus =
+        document.getElementById(
+            "advancedTimerDecisionStatus"
+        );
+
     const master =
         document.getElementById(
             "advancedTimerMaster"
@@ -8417,6 +8482,87 @@ function renderAdvancedTimer() {
         document.getElementById(
             "advancedTimerCurrent"
         );
+
+    if (testMode)
+        testMode.checked =
+            advancedTimerSettings.test_mode !== false;
+
+    if (testModeStatus) {
+
+        const decision =
+            advancedTimerSettings.decision;
+
+        if (decision) {
+
+            const burnerState =
+                decision.final_on
+                    ? "ON"
+                    : "OFF";
+
+            if (
+                advancedTimerSettings.test_mode !== false
+            ) {
+
+                testModeStatus.textContent =
+                    `TEST MODE — Burner would be ${burnerState}`;
+
+            } else {
+
+                testModeStatus.textContent =
+                    `LIVE CONTROL — Burner should be ${burnerState}`;
+            }
+
+        } else {
+
+            testModeStatus.textContent =
+                advancedTimerSettings.test_mode !== false
+                    ? "TEST MODE — No automatic burner commands will be sent"
+                    : "LIVE CONTROL — Automatic burner commands are allowed";
+        }
+    }
+
+    if (decisionStatus) {
+
+        const decision =
+            advancedTimerSettings.decision;
+
+        if (decision) {
+
+            const timerText =
+                decision.timer_on
+                    ? "ON"
+                    : "OFF";
+
+            let weatherText = "Disabled";
+
+            if (decision.weather_enabled) {
+
+                weatherText =
+                    decision.weather_available === false
+                        ? "Unavailable"
+                        : (
+                            decision.weather_on
+                                ? "Active → ON"
+                                : "Active → OFF"
+                        );
+            }
+
+            const finalText =
+                decision.final_on
+                    ? "ON"
+                    : "OFF";
+
+            decisionStatus.textContent =
+                `Timer: ${timerText} · ` +
+                `Weather: ${weatherText} · ` +
+                `Final: ${finalText}`;
+
+        } else {
+
+            decisionStatus.textContent =
+                "Timer: -- · Weather: -- · Final: --";
+        }
+    }
 
     if (master)
         master.checked =
@@ -8613,6 +8759,66 @@ async function loadAdvancedTimerSettings() {
             "Advanced Timer load failed:",
             error
         );
+    }
+}
+
+
+async function toggleAdvancedTimerTestMode(event) {
+
+    if (!advancedTimerSettings)
+        return;
+
+    const requested =
+        event.target.checked;
+
+    if (
+        !requested &&
+        !confirm(
+            "Disable Test Mode? Advanced Timer will be allowed to send real burner commands."
+        )
+    ) {
+        event.target.checked = true;
+        return;
+    }
+
+    event.target.disabled = true;
+
+    try {
+
+        const response =
+            await fetch(
+                API +
+                "/settings/advanced-timer/test-mode?enabled=" +
+                encodeURIComponent(requested),
+                {
+                    method: "POST"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                await response.text()
+            );
+
+        advancedTimerSettings =
+            await response.json();
+
+        await loadAdvancedTimerSettings();
+
+    } catch (error) {
+
+        alert(
+            "Test Mode could not be changed."
+        );
+
+        event.target.checked =
+            !requested;
+
+        console.error(error);
+
+    } finally {
+
+        event.target.disabled = false;
     }
 }
 
