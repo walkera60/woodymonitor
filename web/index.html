@@ -5380,8 +5380,120 @@ strong {
             </div>
 
             <div style="padding:12px 0;border-top:1px solid var(--border);">
-                MQTT
-                <span style="float:right;color:var(--green);">Active</span>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                    <span>MQTT</span>
+
+                    <span
+                        id="mqttConnectionStatus"
+                        style="color:var(--muted);">
+                        Checking...
+                    </span>
+                </div>
+
+                <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <span class="card-subtitle">Enable MQTT</span>
+
+                    <input
+                        id="mqttEnabled"
+                        type="checkbox"
+                    >
+                </div>
+
+                <div style="margin-top:10px;">
+                    <div class="card-subtitle">
+                        Broker
+                    </div>
+
+                    <input
+                        id="mqttBroker"
+                        type="text"
+                        placeholder="192.168.1.10"
+                        autocomplete="off"
+                        style="width:100%;box-sizing:border-box;margin-top:5px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+                </div>
+
+                <div style="margin-top:10px;">
+                    <div class="card-subtitle">
+                        Port
+                    </div>
+
+                    <input
+                        id="mqttPort"
+                        type="number"
+                        min="1"
+                        max="65535"
+                        value="1883"
+                        style="width:100%;box-sizing:border-box;margin-top:5px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+                </div>
+
+                <div style="margin-top:10px;">
+                    <div class="card-subtitle">
+                        Username
+                    </div>
+
+                    <input
+                        id="mqttUsername"
+                        type="text"
+                        autocomplete="off"
+                        style="width:100%;box-sizing:border-box;margin-top:5px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+                </div>
+
+                <div style="margin-top:10px;">
+                    <div class="card-subtitle">
+                        Password
+                    </div>
+
+                    <input
+                        id="mqttPassword"
+                        type="password"
+                        placeholder="Leave blank to keep existing password"
+                        autocomplete="new-password"
+                        style="width:100%;box-sizing:border-box;margin-top:5px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+                </div>
+
+                <div style="margin-top:10px;">
+                    <div class="card-subtitle">
+                        Base topic
+                    </div>
+
+                    <input
+                        id="mqttTopic"
+                        type="text"
+                        placeholder="woodymonitor"
+                        autocomplete="off"
+                        style="width:100%;box-sizing:border-box;margin-top:5px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+                </div>
+
+                <div
+                    id="mqttConnectionInfo"
+                    style="font-size:12px;color:var(--muted);margin-top:8px;">
+                    Loading MQTT settings...
+                </div>
+
+                <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+
+                    <button
+                        class="btn"
+                        type="button"
+                        onclick="saveMqttSettings()">
+                        Save
+                    </button>
+
+                    <button
+                        class="btn"
+                        type="button"
+                        onclick="testMqttConnection()">
+                        Test connection
+                    </button>
+
+                </div>
+
             </div>
 
             <div style="padding:12px 0;border-top:1px solid var(--border);">
@@ -11076,6 +11188,356 @@ function updateHomeAssistantUI(data) {
                     ? `Indoor temperature: -- · ${ha.error}`
                     : "Indoor temperature: --";
         }
+    }
+}
+
+
+
+function updateMqttUI(data) {
+
+    const enabled =
+        document.getElementById(
+            "mqttEnabled"
+        );
+
+    const broker =
+        document.getElementById(
+            "mqttBroker"
+        );
+
+    const port =
+        document.getElementById(
+            "mqttPort"
+        );
+
+    const username =
+        document.getElementById(
+            "mqttUsername"
+        );
+
+    const topic =
+        document.getElementById(
+            "mqttTopic"
+        );
+
+    const password =
+        document.getElementById(
+            "mqttPassword"
+        );
+
+    const status =
+        document.getElementById(
+            "mqttConnectionStatus"
+        );
+
+    const info =
+        document.getElementById(
+            "mqttConnectionInfo"
+        );
+
+    if (enabled)
+        enabled.checked =
+            !!data.enabled;
+
+    if (broker)
+        broker.value =
+            data.broker || "";
+
+    if (port)
+        port.value =
+            data.port || 1883;
+
+    if (username)
+        username.value =
+            data.username || "";
+
+    if (topic)
+        topic.value =
+            data.topic || "woodymonitor";
+
+    if (password)
+        password.value = "";
+
+    if (status) {
+
+        if (!data.enabled) {
+
+            status.textContent =
+                "Disabled";
+
+            status.style.color =
+                "var(--muted)";
+
+        } else if (data.connected) {
+
+            status.textContent =
+                "Connected";
+
+            status.style.color =
+                "var(--green)";
+
+        } else {
+
+            status.textContent =
+                "Disconnected";
+
+            status.style.color =
+                "var(--red)";
+        }
+    }
+
+    if (info) {
+
+        const endpoint =
+            data.broker
+                ? `${data.broker}:${data.port}`
+                : "No broker configured";
+
+        const passwordState =
+            data.password_set
+                ? "Password configured"
+                : "No password configured";
+
+        info.textContent =
+            `${endpoint} · ${passwordState}`;
+    }
+}
+
+
+async function loadMqttSettings() {
+
+    try {
+
+        const response =
+            await fetch(
+                API + "/settings/mqtt",
+                {
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                "Could not load MQTT settings"
+            );
+
+        const data =
+            await response.json();
+
+        updateMqttUI(data);
+
+    } catch (error) {
+
+        console.error(
+            "MQTT settings:",
+            error
+        );
+
+        const status =
+            document.getElementById(
+                "mqttConnectionStatus"
+            );
+
+        if (status) {
+
+            status.textContent =
+                "Unavailable";
+
+            status.style.color =
+                "var(--red)";
+        }
+    }
+}
+
+
+function getMqttFormValues() {
+
+    return {
+        enabled:
+            document.getElementById(
+                "mqttEnabled"
+            )?.checked ?? true,
+
+        broker:
+            document.getElementById(
+                "mqttBroker"
+            )?.value.trim() || "",
+
+        port:
+            document.getElementById(
+                "mqttPort"
+            )?.value || "1883",
+
+        username:
+            document.getElementById(
+                "mqttUsername"
+            )?.value || "",
+
+        password:
+            document.getElementById(
+                "mqttPassword"
+            )?.value || "",
+
+        topic:
+            document.getElementById(
+                "mqttTopic"
+            )?.value.trim() ||
+            "woodymonitor"
+    };
+}
+
+
+async function saveMqttSettings() {
+
+    const values =
+        getMqttFormValues();
+
+    try {
+
+        const response =
+            await fetch(
+                API + "/settings/mqtt",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify(
+                        values
+                    )
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                await response.text()
+            );
+
+        const data =
+            await response.json();
+
+        updateMqttUI(data);
+
+        /*
+         * Connection is asynchronous. Refresh after
+         * the MQTT callback has had time to run.
+         */
+        setTimeout(
+            loadMqttSettings,
+            1200
+        );
+
+    } catch (error) {
+
+        alert(
+            "MQTT settings could not be saved."
+        );
+
+        console.error(error);
+    }
+}
+
+
+async function testMqttConnection() {
+
+    const values =
+        getMqttFormValues();
+
+    const status =
+        document.getElementById(
+            "mqttConnectionStatus"
+        );
+
+    if (status) {
+
+        status.textContent =
+            "Testing...";
+
+        status.style.color =
+            "var(--muted)";
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                API + "/settings/mqtt/test",
+                {
+                    method: "POST",
+                    cache: "no-store",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        broker:
+                            values.broker,
+                        port:
+                            values.port,
+                        username:
+                            values.username,
+                        password:
+                            values.password
+                    })
+                }
+            );
+
+        if (!response.ok)
+            throw new Error(
+                await response.text()
+            );
+
+        const data =
+            await response.json();
+
+        if (status) {
+
+            if (data.connected) {
+
+                status.textContent =
+                    "Connection successful";
+
+                status.style.color =
+                    "var(--green)";
+
+            } else {
+
+                status.textContent =
+                    "Connection failed";
+
+                status.style.color =
+                    "var(--red)";
+            }
+        }
+
+        if (!data.connected) {
+
+            alert(
+                "MQTT connection failed: " +
+                (
+                    data.error ||
+                    "Unknown error"
+                )
+            );
+        }
+
+    } catch (error) {
+
+        if (status) {
+
+            status.textContent =
+                "Connection failed";
+
+            status.style.color =
+                "var(--red)";
+        }
+
+        alert(
+            "MQTT connection test failed."
+        );
+
+        console.error(error);
     }
 }
 
@@ -20073,7 +20535,8 @@ async function initialize() {
         loadCleaningSettings(),
         loadAdvancedTimerSettings(),
         loadWeatherCompensationStatus(),
-        loadHomeAssistantSettings()
+        loadHomeAssistantSettings(),
+        loadMqttSettings()
     ];
 
     updateAutoUpdateButtons();

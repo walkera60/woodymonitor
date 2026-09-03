@@ -532,12 +532,145 @@ HISTORY_PARAMETERS = {
 }
 
 # MQTT
-MQTT_BROKER = os.environ.get("WOODY_MQTT_BROKER", "localhost")
-MQTT_PORT = int(os.environ.get("WOODY_MQTT_PORT", "1883"))
-MQTT_USERNAME = os.environ.get("WOODY_MQTT_USERNAME", "")
-MQTT_PASSWORD = os.environ.get("WOODY_MQTT_PASSWORD", "")
-MQTT_TOPIC = os.environ.get("WOODY_MQTT_TOPIC", "woodymonitor")
+MQTT_SETTINGS_FILE = BASE_DIR / "data" / "mqtt.json"
+mqtt_settings_lock = threading.RLock()
+
+MQTT_DEFAULTS = {
+    "enabled": True,
+    "broker": os.environ.get(
+        "WOODY_MQTT_BROKER",
+        "localhost"
+    ),
+    "port": int(
+        os.environ.get(
+            "WOODY_MQTT_PORT",
+            "1883"
+        )
+    ),
+    "username": os.environ.get(
+        "WOODY_MQTT_USERNAME",
+        ""
+    ),
+    "password": os.environ.get(
+        "WOODY_MQTT_PASSWORD",
+        ""
+    ),
+    "topic": os.environ.get(
+        "WOODY_MQTT_TOPIC",
+        "woodymonitor"
+    )
+}
+
+
+def load_mqtt_settings():
+
+    settings = dict(MQTT_DEFAULTS)
+
+    try:
+
+        if MQTT_SETTINGS_FILE.exists():
+
+            data = json.loads(
+                MQTT_SETTINGS_FILE.read_text()
+            )
+
+            if isinstance(data, dict):
+
+                for key in settings:
+                    if key in data:
+                        settings[key] = data[key]
+
+    except Exception:
+        logger.exception(
+            "Could not load MQTT settings"
+        )
+
+    try:
+        settings["port"] = int(
+            settings["port"]
+        )
+    except Exception:
+        settings["port"] = 1883
+
+    settings["enabled"] = bool(
+        settings.get("enabled", True)
+    )
+
+    settings["broker"] = str(
+        settings.get("broker", "")
+    ).strip()
+
+    settings["username"] = str(
+        settings.get("username", "")
+    )
+
+    settings["password"] = str(
+        settings.get("password", "")
+    )
+
+    settings["topic"] = (
+        str(
+            settings.get(
+                "topic",
+                "woodymonitor"
+            )
+        )
+        .strip()
+        .strip("/")
+    ) or "woodymonitor"
+
+    return settings
+
+
+mqtt_settings = load_mqtt_settings()
+
+MQTT_ENABLED = mqtt_settings["enabled"]
+MQTT_BROKER = mqtt_settings["broker"]
+MQTT_PORT = mqtt_settings["port"]
+MQTT_USERNAME = mqtt_settings["username"]
+MQTT_PASSWORD = mqtt_settings["password"]
+MQTT_TOPIC = mqtt_settings["topic"]
+
 MQTT_INTERVAL = 5
+
+
+def save_mqtt_settings():
+
+    MQTT_SETTINGS_FILE.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    temp_file = MQTT_SETTINGS_FILE.with_suffix(
+        ".json.tmp"
+    )
+
+    with mqtt_settings_lock:
+
+        data = {
+            "enabled": bool(MQTT_ENABLED),
+            "broker": MQTT_BROKER,
+            "port": int(MQTT_PORT),
+            "username": MQTT_USERNAME,
+            "password": MQTT_PASSWORD,
+            "topic": MQTT_TOPIC
+        }
+
+        temp_file.write_text(
+            json.dumps(
+                data,
+                indent=2
+            )
+        )
+
+        temp_file.replace(
+            MQTT_SETTINGS_FILE
+        )
+
+    try:
+        MQTT_SETTINGS_FILE.chmod(0o600)
+    except Exception:
+        pass
 
 
 # ============================================================
@@ -2321,9 +2454,122 @@ def mqtt_on_message(client, userdata, message):
     )
 
 
+
+def mqtt_stop():
+
+    global mqtt_client
+    global mqtt_connected
+
+    client = mqtt_client
+
+    mqtt_client = None
+    mqtt_connected = False
+
+    if client is None:
+        return
+
+    try:
+        client.disconnect()
+    except Exception:
+        pass
+
+    try:
+        client.loop_stop()
+    except Exception:
+        pass
+
+
+def mqtt_apply_settings(
+    enabled,
+    broker,
+    port,
+    username,
+    password,
+    topic
+):
+
+    global MQTT_ENABLED
+    global MQTT_BROKER
+    global MQTT_PORT
+    global MQTT_USERNAME
+    global MQTT_PASSWORD
+    global MQTT_TOPIC
+    global mqtt_log_state
+
+    clean_broker = str(
+        broker
+    ).strip()
+
+    clean_username = str(
+        username
+    )
+
+    clean_password = str(
+        password
+    )
+
+    clean_topic = (
+        str(topic)
+        .strip()
+        .strip("/")
+    )
+
+    try:
+        clean_port = int(port)
+    except Exception:
+        raise ValueError(
+            "MQTT port must be a number"
+        )
+
+    if not 1 <= clean_port <= 65535:
+        raise ValueError(
+            "MQTT port must be between 1 and 65535"
+        )
+
+    if enabled and not clean_broker:
+        raise ValueError(
+            "MQTT broker is required"
+        )
+
+    if not clean_topic:
+        raise ValueError(
+            "MQTT base topic is required"
+        )
+
+    mqtt_stop()
+
+    with mqtt_settings_lock:
+
+        MQTT_ENABLED = bool(enabled)
+        MQTT_BROKER = clean_broker
+        MQTT_PORT = clean_port
+        MQTT_USERNAME = clean_username
+        MQTT_PASSWORD = clean_password
+        MQTT_TOPIC = clean_topic
+
+        save_mqtt_settings()
+
+    mqtt_log_state = {
+        "initialized": False,
+        "connected": False
+    }
+
+    if MQTT_ENABLED:
+        mqtt_setup()
+
+
 def mqtt_setup():
 
     global mqtt_client
+    global mqtt_connected
+
+    if not MQTT_ENABLED:
+        mqtt_client = None
+        mqtt_connected = False
+        logger.info(
+            "MQTT disabled"
+        )
+        return
 
     try:
 
@@ -4720,6 +4966,271 @@ def status():
 # ============================================================
 # API: TIMEZONE SETTINGS
 # ============================================================
+
+
+
+@app.get("/api/v1/settings/mqtt")
+def get_mqtt_settings_api():
+
+    with mqtt_settings_lock:
+
+        return {
+            "enabled": bool(MQTT_ENABLED),
+            "broker": MQTT_BROKER,
+            "port": MQTT_PORT,
+            "username": MQTT_USERNAME,
+            "password_set": bool(
+                MQTT_PASSWORD
+            ),
+            "topic": MQTT_TOPIC,
+            "connected": bool(
+                mqtt_connected
+            )
+        }
+
+
+@app.post("/api/v1/settings/mqtt")
+async def set_mqtt_settings_api(
+    request: Request
+):
+
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid JSON request"
+        )
+
+    enabled = bool(
+        data.get("enabled", True)
+    )
+
+    broker = str(
+        data.get("broker", "")
+    )
+
+    username = str(
+        data.get("username", "")
+    )
+
+    password = str(
+        data.get("password", "")
+    )
+
+    topic = str(
+        data.get("topic", "woodymonitor")
+    )
+
+    try:
+        port = int(
+            data.get("port", 1883)
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="MQTT port must be a number"
+        )
+
+    current_password = MQTT_PASSWORD
+
+    # Blank password means keep the existing password.
+    new_password = (
+        password
+        if password
+        else current_password
+    )
+
+    try:
+
+        mqtt_apply_settings(
+            enabled,
+            broker,
+            port,
+            username,
+            new_password,
+            topic
+        )
+
+    except ValueError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Could not apply MQTT settings"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Could not apply MQTT settings"
+        )
+
+    try:
+        db.add_activity(
+            "SETTING",
+            "MQTT",
+            "MQTT connection settings updated",
+            response="OK"
+        )
+    except Exception:
+        pass
+
+    return {
+        "enabled": bool(MQTT_ENABLED),
+        "broker": MQTT_BROKER,
+        "port": MQTT_PORT,
+        "username": MQTT_USERNAME,
+        "password_set": bool(
+            MQTT_PASSWORD
+        ),
+        "topic": MQTT_TOPIC,
+        "connected": bool(
+            mqtt_connected
+        )
+    }
+
+
+@app.post("/api/v1/settings/mqtt/test")
+async def test_mqtt_settings_api(
+    request: Request
+):
+
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid JSON request"
+        )
+
+    clean_broker = str(
+        data.get("broker", "")
+    ).strip()
+
+    username = str(
+        data.get("username", "")
+    )
+
+    password = str(
+        data.get("password", "")
+    )
+
+    try:
+        port = int(
+            data.get("port", 1883)
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="MQTT port must be a number"
+        )
+
+    if not clean_broker:
+        raise HTTPException(
+            status_code=400,
+            detail="MQTT broker is required"
+        )
+
+    if not 1 <= port <= 65535:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid MQTT port"
+        )
+
+    # Blank password means test using the saved password.
+    test_password = (
+        password
+        if password
+        else MQTT_PASSWORD
+    )
+
+    connected_event = threading.Event()
+
+    result = {
+        "connected": False,
+        "error": None
+    }
+
+    test_client = None
+
+    def on_test_connect(
+        client,
+        userdata,
+        flags,
+        reason_code,
+        properties
+    ):
+
+        if reason_code.is_failure:
+            result["error"] = str(
+                reason_code
+            )
+        else:
+            result["connected"] = True
+
+        connected_event.set()
+
+    try:
+
+        test_client = mqtt.Client(
+            mqtt.CallbackAPIVersion.VERSION2,
+            protocol=mqtt.MQTTv5
+        )
+
+        if username or test_password:
+
+            test_client.username_pw_set(
+                username,
+                test_password
+            )
+
+        test_client.on_connect = (
+            on_test_connect
+        )
+
+        test_client.connect(
+            clean_broker,
+            port,
+            10
+        )
+
+        test_client.loop_start()
+
+        if not connected_event.wait(5):
+
+            result["error"] = (
+                "Connection timed out"
+            )
+
+    except Exception as error:
+
+        result["error"] = str(error)
+
+    finally:
+
+        if test_client is not None:
+
+            try:
+                test_client.disconnect()
+            except Exception:
+                pass
+
+            try:
+                test_client.loop_stop()
+            except Exception:
+                pass
+
+    return {
+        "connected": bool(
+            result["connected"]
+        ),
+        "error": result["error"]
+    }
 
 
 @app.get("/api/v1/settings/home-assistant")
