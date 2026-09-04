@@ -3966,6 +3966,21 @@ strong {
     vertical-align: middle;
 }
 
+.summer-stop-burner-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    background: rgba(248,113,113,.14);
+    border: 1px solid rgba(248,113,113,.45);
+    color: #f87171;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .6px;
+    vertical-align: middle;
+}
+
 .advanced-timer-card {
     grid-column: 1 / -1;
 }
@@ -4568,6 +4583,12 @@ strong {
                               class="advanced-timer-burner-badge"
                               style="display:none;">
                             Weather Compensation
+                        </span>
+
+                        <span id="summerStopBurnerBadge"
+                              class="summer-stop-burner-badge"
+                              style="display:none;">
+                            SUMMER STOP
                         </span>
 
                         <span
@@ -7539,7 +7560,16 @@ function updateWeatherCompensationBadge() {
             "weatherCompensationBurnerBadge"
         );
 
-    if (!timerBadge || !weatherBadge)
+    const summerStopBadge =
+        document.getElementById(
+            "summerStopBurnerBadge"
+        );
+
+    if (
+        !timerBadge ||
+        !weatherBadge ||
+        !summerStopBadge
+    )
         return;
 
     const timerEnabled =
@@ -7549,6 +7579,7 @@ function updateWeatherCompensationBadge() {
 
         timerBadge.style.display = "none";
         weatherBadge.style.display = "none";
+        summerStopBadge.style.display = "none";
 
         return;
     }
@@ -7572,6 +7603,9 @@ function updateWeatherCompensationBadge() {
 
     const weatherFullDay =
         !!decision.weather_full_day;
+
+    const summerStopActive =
+        !!decision.summer_stop_active;
 
     const timerOn =
         !!decision.timer_on;
@@ -7597,6 +7631,31 @@ function updateWeatherCompensationBadge() {
 
     weatherBadge.style.display =
         "none";
+
+    summerStopBadge.style.display =
+        summerStopActive
+            ? "inline-flex"
+            : "none";
+
+    if (summerStopActive) {
+
+        /*
+         * Summer Stop has priority over Timer/Weather.
+         * Show it as the only control badge while active.
+         */
+        timerBadge.style.display =
+            "none";
+
+        weatherBadge.style.display =
+            "none";
+
+        summerStopBadge.style.display =
+            "inline-flex";
+
+        updateBurnerNextSchedule();
+
+        return;
+    }
 
     if (weatherControlling) {
 
@@ -7771,10 +7830,17 @@ function renderWeatherCompensationSettings() {
 
         } else {
 
+            const summerStop =
+                !!data.summer_stop_active;
+
             const curve =
-                data.active_curve
-                    ? `Curve ${data.active_curve}`
-                    : "No extension";
+                summerStop
+                    ? "SUMMER STOP"
+                    : (
+                        data.active_curve
+                            ? `Curve ${data.active_curve}`
+                            : "No extension"
+                    );
 
             const before =
                 Number(
@@ -7787,9 +7853,14 @@ function renderWeatherCompensationSettings() {
                 ) || 0;
 
             let extension =
-                "Timer only";
+                summerStop
+                    ? "Burner stopped · Timer start blocked"
+                    : "Timer only";
 
-            if (data.full_day) {
+            if (
+                !summerStop &&
+                data.full_day
+            ) {
 
                 extension =
                     "24h operation";
@@ -7834,7 +7905,55 @@ function renderWeatherCompensationSettings() {
     )
         return;
 
+    const summerStopTemp =
+        Number(
+            data.settings?.summer_stop_temp ??
+            data.summer_stop_temp ??
+            18
+        );
+
+    const summerStopActive =
+        !!data.summer_stop_active;
+
+    const summerStopRow = `
+        <tr class="${
+            summerStopActive
+                ? "weather-curve-active"
+                : ""
+        }">
+            <td>
+                <strong>Summer stop</strong>
+            </td>
+
+            <td>
+                &gt;
+
+                <input
+                    id="weatherSummerStopTemp"
+                    type="number"
+                    step="0.5"
+                    value="${summerStopTemp}"
+                >
+
+                °C
+            </td>
+
+            <td>—</td>
+
+            <td>—</td>
+
+            <td>
+                ${
+                    summerStopActive
+                        ? "<strong>ACTIVE · Burner stopped</strong>"
+                        : "Stop burner and block Timer start"
+                }
+            </td>
+        </tr>
+    `;
+
     rows.innerHTML =
+        summerStopRow +
         curves.map(
             (curve, index) => {
 
@@ -8034,6 +8153,19 @@ async function saveWeatherCurves() {
 
     const params =
         new URLSearchParams();
+
+    const summerStop =
+        document.getElementById(
+            "weatherSummerStopTemp"
+        );
+
+    if (!summerStop)
+        return;
+
+    params.set(
+        "summer_stop_temp",
+        summerStop.value
+    );
 
     for (let i = 1; i <= 5; i++) {
 
@@ -8345,7 +8477,7 @@ function ensureAdvancedTimerCard() {
                     </div>
 
                     <div class="card-subtitle">
-                        Extends enabled timer periods based on outdoor temperature
+                        Controls Summer Stop and extends enabled timer periods based on outdoor temperature
                     </div>
 
                     <div

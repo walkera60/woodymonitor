@@ -6391,6 +6391,10 @@ weather_compensation_settings = {
     # have equal weight.
     "history_weight": 0.50,
 
+    # Summer Stop has priority over all weather curves.
+    # It uses the same calculated Weather temperature.
+    "summer_stop_temp": 18.0,
+
     "curves": default_weather_curves()
 }
 
@@ -6498,6 +6502,23 @@ def load_weather_compensation_settings():
         ] = bool(
             data.get("enabled", False)
         )
+
+        try:
+            weather_compensation_settings[
+                "summer_stop_temp"
+            ] = float(
+                data.get(
+                    "summer_stop_temp",
+                    18.0
+                )
+            )
+        except (
+            TypeError,
+            ValueError
+        ):
+            weather_compensation_settings[
+                "summer_stop_temp"
+            ] = 18.0
 
         curves = data.get("curves")
 
@@ -6885,6 +6906,12 @@ def calculate_weather_compensation():
             ),
             "history_hours": 6.0,
             "history_weight": 0.50,
+            "summer_stop_temp": float(
+                weather_compensation_settings.get(
+                    "summer_stop_temp",
+                    18.0
+                )
+            ),
             "curves": [
                 dict(curve)
                 for curve in
@@ -6927,8 +6954,22 @@ def calculate_weather_compensation():
             "full_day": False
         }
 
+    summer_stop_temp = float(
+        settings.get(
+            "summer_stop_temp",
+            18.0
+        )
+    )
+
+    summer_stop_active = (
+        effective_temp >
+        summer_stop_temp
+    )
+
     active_curve = (
-        weather_active_curve(
+        None
+        if summer_stop_active
+        else weather_active_curve(
             effective_temp,
             settings["curves"]
         )
@@ -7016,6 +7057,12 @@ def calculate_weather_compensation():
         )
     )
 
+    # Summer Stop has highest Weather Compensation priority.
+    # When active it blocks every automatic Timer start and
+    # requests STOP if the burner is currently running.
+    if summer_stop_active:
+        weather_desired_on_now = False
+
     # Hour-level representation is retained for
     # compatibility with older frontend/API clients.
     # Exact control uses the minute-level decision above.
@@ -7062,7 +7109,9 @@ def calculate_weather_compensation():
             effective_schedule[
                 day_name
             ].append(
-                timer_schedule_extended_on_at(
+                False
+                if summer_stop_active
+                else timer_schedule_extended_on_at(
                     sample,
                     timer,
                     before_minutes,
@@ -7111,6 +7160,12 @@ def calculate_weather_compensation():
         "history_hours": 6.0,
         "history_samples":
             sample_count,
+
+        "summer_stop_temp":
+            summer_stop_temp,
+
+        "summer_stop_active":
+            summer_stop_active,
 
         "active_curve":
             active_curve,
@@ -7189,6 +7244,12 @@ def get_weather_compensation_api():
 
             "history_weight": 0.50,
 
+            "summer_stop_temp":
+                weather_compensation_settings.get(
+                    "summer_stop_temp",
+                    18.0
+                ),
+
             "curves": [
                 dict(curve)
                 for curve in
@@ -7257,6 +7318,7 @@ def set_weather_compensation_preview(
     "/api/v1/settings/weather-compensation/config"
 )
 def set_weather_compensation_config(
+    summer_stop_temp: float = Query(...),
     curve1_to: float = Query(...),
     curve1_before: int = Query(..., ge=0, le=720),
     curve1_after: int = Query(..., ge=0, le=720),
@@ -7298,6 +7360,16 @@ def set_weather_compensation_config(
             )
         )
 
+    if float(summer_stop_temp) <= limits[0]:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Summer Stop temperature must be "
+                "higher than Curve 1"
+            )
+        )
+
     curves = [
         {
             "to_temp": limits[0],
@@ -7332,6 +7404,12 @@ def set_weather_compensation_config(
     ]
 
     with weather_compensation_lock:
+
+        weather_compensation_settings[
+            "summer_stop_temp"
+        ] = float(
+            summer_stop_temp
+        )
 
         weather_compensation_settings[
             "curves"
@@ -7395,6 +7473,9 @@ def get_advanced_timer_api():
     weather_before = 0
     weather_after = 0
     weather_full_day = False
+    weather_temperature = None
+    summer_stop_temp = None
+    summer_stop_active = False
 
     with weather_compensation_lock:
 
@@ -7457,6 +7538,25 @@ def get_advanced_timer_api():
             )
         )
 
+        weather_temperature = (
+            weather_result.get(
+                "weather_temperature"
+            )
+        )
+
+        summer_stop_temp = (
+            weather_result.get(
+                "summer_stop_temp"
+            )
+        )
+
+        summer_stop_active = bool(
+            weather_result.get(
+                "summer_stop_active",
+                False
+            )
+        )
+
         if weather_available:
 
             weather_desired_on = bool(
@@ -7482,7 +7582,9 @@ def get_advanced_timer_api():
                 )
 
                 decision_source = (
-                    "weather"
+                    "summer-stop"
+                    if summer_stop_active
+                    else "weather"
                 )
 
         else:
@@ -7530,6 +7632,15 @@ def get_advanced_timer_api():
 
         "weather_full_day":
             weather_full_day,
+
+        "weather_temperature":
+            weather_temperature,
+
+        "summer_stop_temp":
+            summer_stop_temp,
+
+        "summer_stop_active":
+            summer_stop_active,
 
         "final_on":
             desired_on,
