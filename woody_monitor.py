@@ -6101,7 +6101,8 @@ def advanced_timer_loop():
         "Advanced timer engine started"
     )
 
-    last_checked_slot = None
+    last_checked_minute = None
+    last_test_decision = None
 
     while True:
 
@@ -6109,20 +6110,37 @@ def advanced_timer_loop():
 
             now = local_now()
 
-            slot = (
-                now.strftime("%Y-%m-%d"),
-                now.hour
+            minute_key = (
+                now.strftime(
+                    "%Y-%m-%d-%H-%M"
+                )
             )
+
+            if minute_key == last_checked_minute:
+
+                time.sleep(2)
+                continue
 
             with advanced_timer_lock:
 
                 enabled = bool(
-                    advanced_timer_settings["enabled"]
+                    advanced_timer_settings[
+                        "enabled"
+                    ]
                 )
 
-                day = ADVANCED_TIMER_DAYS[
-                    now.weekday()
-                ]
+                test_mode = bool(
+                    advanced_timer_settings.get(
+                        "test_mode",
+                        True
+                    )
+                )
+
+                day = (
+                    ADVANCED_TIMER_DAYS[
+                        now.weekday()
+                    ]
+                )
 
                 timer_desired_on = bool(
                     advanced_timer_settings[
@@ -6130,64 +6148,31 @@ def advanced_timer_loop():
                     ][day][now.hour]
                 )
 
-                stored_slot = (
-                    advanced_timer_settings[
-                        "last_slot"
-                    ]
-                )
-
             if not enabled:
 
-                last_checked_slot = None
-
-                if stored_slot is not None:
-
-                    with advanced_timer_lock:
-
-                        advanced_timer_settings[
-                            "last_slot"
-                        ] = None
-
-                        advanced_timer_settings[
-                            "last_action"
-                        ] = None
-
-                        save_advanced_timer_settings()
+                last_checked_minute = None
+                last_test_decision = None
 
                 time.sleep(2)
-
                 continue
 
-            slot_key = (
-                f"{slot[0]}-{slot[1]:02d}"
+            desired_on = (
+                timer_desired_on
             )
 
-            if (
-                last_checked_slot == slot_key
-                and stored_slot == slot_key
-            ):
-
-                time.sleep(2)
-                continue
-
-            # ------------------------------------------------
-            # Final automatic burner decision
-            #
-            # Advanced Timer defines the allowed hours.
-            # Weather Compensation may reduce those hours.
-            # Test Mode is enforced later by
-            # execute_advanced_timer_action().
-            # ------------------------------------------------
-
-            desired_on = timer_desired_on
-            decision_source = "timer"
+            decision_source = (
+                "timer"
+            )
 
             with weather_compensation_lock:
+
                 weather_enabled = bool(
                     weather_compensation_settings[
                         "enabled"
                     ]
                 )
+
+            weather_result = None
 
             if weather_enabled:
 
@@ -6195,29 +6180,64 @@ def advanced_timer_loop():
                     calculate_weather_compensation()
                 )
 
-                if weather_result.get("available"):
+                if weather_result.get(
+                    "available"
+                ):
 
-                    desired_on = bool(
+                    weather_desired = bool(
                         weather_result[
-                            "effective_schedule"
-                        ][day][now.hour]
+                            "weather_desired_on_now"
+                        ]
                     )
 
-                    decision_source = "weather"
+                    if weather_result.get(
+                        "preview_mode",
+                        True
+                    ):
+
+                        # Preview:
+                        # calculate and display Weather
+                        # Compensation, but keep actual
+                        # burner decision on Advanced Timer.
+                        desired_on = (
+                            timer_desired_on
+                        )
+
+                        decision_source = (
+                            "weather-preview"
+                        )
+
+                    else:
+
+                        desired_on = (
+                            weather_desired
+                        )
+
+                        decision_source = (
+                            "weather"
+                        )
 
                 else:
 
-                    # Fail safe:
-                    # no valid weather data means automatic
-                    # heating is not started.
-                    desired_on = False
-                    decision_source = "weather-unavailable"
+                    # Missing weather data must never
+                    # disable the normal timer.
+                    desired_on = (
+                        timer_desired_on
+                    )
+
+                    decision_source = (
+                        "weather-unavailable-timer"
+                    )
 
             running = (
                 advanced_timer_burner_is_running()
             )
 
             if running is None:
+
+                last_checked_minute = (
+                    minute_key
+                )
 
                 time.sleep(2)
                 continue
@@ -6231,44 +6251,74 @@ def advanced_timer_loop():
             should_command = (
                 (desired_on and not running)
                 or
-                (not desired_on and running)
+                (
+                    not desired_on
+                    and running
+                )
             )
+
+            # Test Mode should only log a simulated
+            # command when the desired state changes.
+            if (
+                test_mode
+                and
+                last_test_decision
+                is not None
+                and
+                last_test_decision
+                == desired_on
+            ):
+                should_command = False
 
             success = True
 
             if should_command:
 
-                success = execute_advanced_timer_action(
-                    action
+                success = (
+                    execute_advanced_timer_action(
+                        action
+                    )
                 )
 
-            with advanced_timer_lock:
+                if success:
 
-                advanced_timer_settings[
-                    "last_slot"
-                ] = slot_key
+                    with advanced_timer_lock:
 
-                advanced_timer_settings[
-                    "last_action"
-                ] = (
-                    action
-                    if should_command and success
-                    else "none"
+                        advanced_timer_settings[
+                            "last_slot"
+                        ] = minute_key
+
+                        advanced_timer_settings[
+                            "last_action"
+                        ] = action
+
+                        save_advanced_timer_settings()
+
+            if test_mode:
+                last_test_decision = (
+                    desired_on
                 )
 
-                save_advanced_timer_settings()
-
-            last_checked_slot = slot_key
+            last_checked_minute = (
+                minute_key
+            )
 
             logger.info(
-                "Advanced timer: %s %02d:00 timer=%s desired=%s source=%s running=%s action=%s",
+                "Advanced timer: %s %02d:%02d "
+                "timer=%s desired=%s "
+                "source=%s running=%s action=%s",
                 day,
                 now.hour,
+                now.minute,
                 timer_desired_on,
                 desired_on,
                 decision_source,
                 running,
-                action if should_command else "none"
+                (
+                    action
+                    if should_command
+                    else "none"
+                )
             )
 
         except Exception:
@@ -6278,7 +6328,6 @@ def advanced_timer_loop():
             )
 
         time.sleep(2)
-
 
 
 # ============================================================
@@ -6291,54 +6340,143 @@ WEATHER_COMPENSATION_FILE = str(
 
 weather_compensation_lock = threading.Lock()
 
+
+def default_weather_curves():
+
+    return [
+        {
+            "to_temp": 12.0,
+            "before_minutes": 15,
+            "after_minutes": 15,
+            "full_day": False
+        },
+        {
+            "to_temp": 8.0,
+            "before_minutes": 30,
+            "after_minutes": 30,
+            "full_day": False
+        },
+        {
+            "to_temp": 4.0,
+            "before_minutes": 60,
+            "after_minutes": 60,
+            "full_day": False
+        },
+        {
+            "to_temp": 0.0,
+            "before_minutes": 120,
+            "after_minutes": 120,
+            "full_day": False
+        },
+        {
+            "to_temp": -5.0,
+            "before_minutes": 0,
+            "after_minutes": 0,
+            "full_day": True
+        }
+    ]
+
+
 weather_compensation_settings = {
     "enabled": False,
+
+    # Weather control starts safely in preview.
+    # Advanced Timer still controls the burner until
+    # preview_mode is explicitly disabled.
     "preview_mode": True,
+
     "history_hours": 6.0,
-    "history_weight": 0.70,
-    "curves": [
-        {
-            "from_temp": None,
-            "to_temp": 5.0,
-            "hours": 24
-        },
-        {
-            "from_temp": 5.0,
-            "to_temp": 8.0,
-            "hours": 20
-        },
-        {
-            "from_temp": 8.0,
-            "to_temp": 11.0,
-            "hours": 16
-        },
-        {
-            "from_temp": 11.0,
-            "to_temp": 14.0,
-            "hours": 10
-        },
-        {
-            "from_temp": 14.0,
-            "to_temp": 17.0,
-            "hours": 4
-        }
-    ],
-    "off_above": 17.0
+
+    # Current outdoor temperature and 6-hour average
+    # have equal weight.
+    "history_weight": 0.50,
+
+    "curves": default_weather_curves()
 }
 
-WEATHER_HOUR_PRIORITY = [
-    6, 7, 8,
-    17, 18, 19,
-    5, 9,
-    16, 20,
-    4, 10,
-    15, 21,
-    3, 11,
-    14, 22,
-    2, 12,
-    13, 23,
-    1, 0
-]
+
+def validate_weather_curves(curves):
+
+    if (
+        not isinstance(curves, list)
+        or len(curves) != 5
+    ):
+        return False
+
+    parsed = []
+
+    try:
+
+        for index, curve in enumerate(curves):
+
+            threshold = float(
+                curve["to_temp"]
+            )
+
+            legacy = int(
+                curve.get(
+                    "extension_minutes",
+                    0
+                )
+            )
+
+            before_minutes = int(
+                curve.get(
+                    "before_minutes",
+                    legacy
+                )
+            )
+
+            after_minutes = int(
+                curve.get(
+                    "after_minutes",
+                    legacy
+                )
+            )
+
+            full_day = bool(
+                curve.get(
+                    "full_day",
+                    index == 4
+                )
+            )
+
+            if not 0 <= before_minutes <= 720:
+                return False
+
+            if not 0 <= after_minutes <= 720:
+                return False
+
+            if index == 4:
+
+                full_day = True
+                before_minutes = 0
+                after_minutes = 0
+
+            parsed.append({
+                "to_temp": threshold,
+                "before_minutes": before_minutes,
+                "after_minutes": after_minutes,
+                "full_day": full_day
+            })
+
+    except Exception:
+        return False
+
+    thresholds = [
+        curve["to_temp"]
+        for curve in parsed
+    ]
+
+    if not all(
+        thresholds[index] >
+        thresholds[index + 1]
+        for index in range(4)
+    ):
+        return False
+
+    return parsed
+
 
 
 def load_weather_compensation_settings():
@@ -6355,71 +6493,81 @@ def load_weather_compensation_settings():
         with path.open("r") as f:
             data = json.load(f)
 
-        weather_compensation_settings["enabled"] = bool(
+        weather_compensation_settings[
+            "enabled"
+        ] = bool(
             data.get("enabled", False)
-        )
-
-        weather_compensation_settings["preview_mode"] = bool(
-            data.get("preview_mode", True)
-        )
-
-        weather_compensation_settings["history_hours"] = float(
-            data.get("history_hours", 6.0)
-        )
-
-        weather_compensation_settings["history_weight"] = float(
-            data.get("history_weight", 0.70)
         )
 
         curves = data.get("curves")
 
-        if (
-            isinstance(curves, list)
-            and len(curves) == 5
-        ):
+        parsed = validate_weather_curves(
+            curves
+        )
 
-            valid = True
-            parsed = []
+        if parsed:
 
-            for curve in curves:
-
-                try:
-                    parsed.append({
-                        "from_temp": (
-                            None
-                            if curve.get("from_temp") is None
-                            else float(curve["from_temp"])
-                        ),
-                        "to_temp": float(
-                            curve["to_temp"]
-                        ),
-                        "hours": int(
-                            curve["hours"]
-                        )
-                    })
-                except Exception:
-                    valid = False
-                    break
-
-            if valid:
-                weather_compensation_settings[
-                    "curves"
-                ] = parsed
-
-        if "off_above" in data:
+            # New time-extension format.
             weather_compensation_settings[
-                "off_above"
-            ] = float(data["off_above"])
+                "curves"
+            ] = parsed
+
+            weather_compensation_settings[
+                "preview_mode"
+            ] = bool(
+                data.get(
+                    "preview_mode",
+                    True
+                )
+            )
+
+        else:
+
+            # Existing installation used the previous
+            # "hours per day" weather model.
+            #
+            # Do not allow that old configuration to
+            # activate the new logic automatically.
+            weather_compensation_settings[
+                "curves"
+            ] = default_weather_curves()
+
+            weather_compensation_settings[
+                "preview_mode"
+            ] = True
+
+            logger.info(
+                "Old Weather Compensation configuration "
+                "converted to time-extension model in Preview Mode"
+            )
+
+        # This model intentionally always uses:
+        # current temp + 6-hour average, 50/50.
+        weather_compensation_settings[
+            "history_hours"
+        ] = 6.0
+
+        weather_compensation_settings[
+            "history_weight"
+        ] = 0.50
 
         logger.info(
-            "Loaded weather compensation: enabled=%s",
-            weather_compensation_settings["enabled"]
+            "Loaded Weather Compensation: "
+            "enabled=%s preview=%s",
+            weather_compensation_settings[
+                "enabled"
+            ],
+            weather_compensation_settings[
+                "preview_mode"
+            ]
         )
 
     except Exception:
+
         logger.exception(
-            "Could not load weather compensation settings"
+            "Could not load Weather Compensation settings"
         )
+
 
 def save_weather_compensation_settings():
 
@@ -6432,9 +6580,12 @@ def save_weather_compensation_settings():
         exist_ok=True
     )
 
-    temporary = path.with_suffix(".tmp")
+    temporary = path.with_suffix(
+        ".tmp"
+    )
 
     with temporary.open("w") as f:
+
         json.dump(
             weather_compensation_settings,
             f,
@@ -6450,15 +6601,9 @@ def get_weather_temperature_data():
         timezone.utc
     )
 
-    with weather_compensation_lock:
-        history_hours = float(
-            weather_compensation_settings[
-                "history_hours"
-            ]
-        )
-
-    start_dt = end_dt - timedelta(
-        hours=history_hours
+    start_dt = (
+        end_dt -
+        timedelta(hours=6)
     )
 
     rows = db.get_history(
@@ -6471,11 +6616,19 @@ def get_weather_temperature_data():
     values = []
 
     for row in rows:
+
         try:
             values.append(
-                float(row["value"])
+                float(
+                    row["value"]
+                )
             )
-        except (TypeError, ValueError, KeyError):
+
+        except (
+            TypeError,
+            ValueError,
+            KeyError
+        ):
             pass
 
     average_temp = (
@@ -6487,15 +6640,31 @@ def get_weather_temperature_data():
     current_temp = None
 
     try:
-        current_temp = float(
-            live_data
-            .get("values", {})
-            .get("outside_temp")
-        )
-    except (TypeError, ValueError, AttributeError):
-        pass
 
-    if current_temp is None and values:
+        with state_lock:
+
+            current_value = (
+                live_data
+                .get("values", {})
+                .get("outside_temp")
+            )
+
+        if current_value is not None:
+            current_temp = float(
+                current_value
+            )
+
+    except (
+        TypeError,
+        ValueError,
+        AttributeError
+    ):
+        current_temp = None
+
+    if (
+        current_temp is None
+        and values
+    ):
         current_temp = values[-1]
 
     return (
@@ -6505,9 +6674,204 @@ def get_weather_temperature_data():
     )
 
 
+def weather_control_temperature(
+    current_temp,
+    average_temp
+):
+
+    if (
+        current_temp is None
+        and average_temp is None
+    ):
+        return None
+
+    if current_temp is None:
+        return average_temp
+
+    if average_temp is None:
+        return current_temp
+
+    # Equal combination requested:
+    #
+    # Weather temperature =
+    # (current + 6-hour average) / 2
+
+    return (
+        current_temp +
+        average_temp
+    ) / 2.0
+
+
+def weather_active_curve(
+    effective_temp,
+    curves
+):
+
+    if effective_temp is None:
+        return None
+
+    active = None
+
+    # Curves become progressively colder.
+    # At -7 C, for example, all thresholds match,
+    # therefore Curve 5 becomes the final selection.
+
+    for index, curve in enumerate(
+        curves,
+        start=1
+    ):
+
+        if effective_temp <= float(
+            curve["to_temp"]
+        ):
+            active = index
+
+    return active
+
+
+def timer_schedule_on_at(
+    moment,
+    timer
+):
+
+    day = ADVANCED_TIMER_DAYS[
+        moment.weekday()
+    ]
+
+    return bool(
+        timer["schedule"][
+            day
+        ][moment.hour]
+    )
+
+
+def timer_schedule_extended_on_at(
+    moment,
+    timer,
+    before_minutes=0,
+    after_minutes=0,
+    full_day=False
+):
+
+    if full_day:
+        return True
+
+    before_minutes = max(
+        0,
+        min(
+            720,
+            int(before_minutes or 0)
+        )
+    )
+
+    after_minutes = max(
+        0,
+        min(
+            720,
+            int(after_minutes or 0)
+        )
+    )
+
+    if (
+        before_minutes == 0
+        and after_minutes == 0
+    ):
+        return timer_schedule_on_at(
+            moment,
+            timer
+        )
+
+    midnight = moment.replace(
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0
+    )
+
+    # Check neighbouring days because an extension
+    # may cross midnight.
+    for day_offset in (-1, 0, 1):
+
+        day_start = (
+            midnight +
+            timedelta(days=day_offset)
+        )
+
+        day_name = (
+            ADVANCED_TIMER_DAYS[
+                day_start.weekday()
+            ]
+        )
+
+        schedule = timer[
+            "schedule"
+        ][day_name]
+
+        period_start = None
+
+        # Build contiguous timer periods.
+        # Example 08 + 09 becomes one period 08:00-10:00.
+        for hour in range(25):
+
+            enabled = (
+                bool(schedule[hour])
+                if hour < 24
+                else False
+            )
+
+            if (
+                enabled
+                and period_start is None
+            ):
+                period_start = hour
+
+            if (
+                not enabled
+                and period_start is not None
+            ):
+
+                normal_start = (
+                    day_start +
+                    timedelta(
+                        hours=period_start
+                    )
+                )
+
+                normal_end = (
+                    day_start +
+                    timedelta(hours=hour)
+                )
+
+                extended_start = (
+                    normal_start -
+                    timedelta(
+                        minutes=before_minutes
+                    )
+                )
+
+                extended_end = (
+                    normal_end +
+                    timedelta(
+                        minutes=after_minutes
+                    )
+                )
+
+                if (
+                    extended_start <= moment <
+                    extended_end
+                ):
+                    return True
+
+                period_start = None
+
+    return False
+
+
+
 def calculate_weather_compensation():
 
     with weather_compensation_lock:
+
         settings = {
             "enabled": bool(
                 weather_compensation_settings[
@@ -6515,165 +6879,64 @@ def calculate_weather_compensation():
                 ]
             ),
             "preview_mode": bool(
-                weather_compensation_settings.get(
-                    "preview_mode",
-                    True
-                )
-            ),
-            "history_hours": float(
                 weather_compensation_settings[
-                    "history_hours"
+                    "preview_mode"
                 ]
             ),
-            "history_weight": float(
-                weather_compensation_settings[
-                    "history_weight"
-                ]
-            ),
+            "history_hours": 6.0,
+            "history_weight": 0.50,
             "curves": [
                 dict(curve)
-                for curve in weather_compensation_settings[
+                for curve in
+                weather_compensation_settings[
                     "curves"
                 ]
-            ],
-            "off_above": float(
-                weather_compensation_settings[
-                    "off_above"
-                ]
-            )
+            ]
         }
 
-    current_temp, average_temp, sample_count = (
-        get_weather_temperature_data()
+    (
+        current_temp,
+        average_temp,
+        sample_count
+    ) = get_weather_temperature_data()
+
+    effective_temp = (
+        weather_control_temperature(
+            current_temp,
+            average_temp
+        )
     )
 
-    if (
-        current_temp is None
-        and average_temp is None
-    ):
+    if effective_temp is None:
+
         return {
             "available": False,
-            "enabled": settings["enabled"],
-            "preview_mode": settings["preview_mode"],
-            "reason": "No outdoor temperature data"
+            "enabled":
+                settings["enabled"],
+            "preview_mode":
+                settings["preview_mode"],
+            "reason":
+                "No outdoor temperature data",
+            "history_hours": 6.0,
+            "history_samples":
+                sample_count,
+            "active_curve": None,
+            "active_before_minutes": 0,
+            "active_after_minutes": 0,
+            "active_extension_minutes": 0,
+            "full_day": False
         }
 
-    if average_temp is None:
-        effective_temp = current_temp
-
-    elif current_temp is None:
-        effective_temp = average_temp
-
-    else:
-
-        weight = settings[
-            "history_weight"
-        ]
-
-        effective_temp = (
-            average_temp * weight
-            +
-            current_temp * (1.0 - weight)
+    active_curve = (
+        weather_active_curve(
+            effective_temp,
+            settings["curves"]
         )
-
-    target_hours = 0
-    active_curve = None
-
-    for index, curve in enumerate(
-        settings["curves"],
-        start=1
-    ):
-
-        lower = curve[
-            "from_temp"
-        ]
-
-        upper = curve[
-            "to_temp"
-        ]
-
-        if lower is None:
-
-            matches = (
-                effective_temp <= upper
-            )
-
-        else:
-
-            matches = (
-                effective_temp > lower
-                and
-                effective_temp <= upper
-            )
-
-        if matches:
-
-            target_hours = int(
-                curve["hours"]
-            )
-
-            active_curve = index
-            break
-
-    if effective_temp > settings[
-        "off_above"
-    ]:
-        target_hours = 0
-        active_curve = None
-
-    target_hours = max(
-        0,
-        min(24, target_hours)
     )
 
-    timer = get_advanced_timer_settings()
-
-    effective_schedule = {}
-
-    for day in ADVANCED_TIMER_DAYS:
-
-        manual = timer[
-            "schedule"
-        ][day]
-
-        allowed_hours = [
-            hour
-            for hour in WEATHER_HOUR_PRIORITY
-            if manual[hour]
-        ]
-
-        selected = set(
-            allowed_hours[:target_hours]
-        )
-
-        effective_schedule[day] = [
-            bool(
-                manual[hour]
-                and hour in selected
-            )
-            for hour in range(24)
-        ]
-
-    now = local_now()
-
-    current_day = ADVANCED_TIMER_DAYS[
-        now.weekday()
-    ]
-
-    timer_schedule = timer[
-        "schedule"
-    ][current_day]
-
-    timer_allowed_now = bool(
-        timer_schedule[now.hour]
-    )
-
-    weather_desired_on_now = bool(
-        effective_schedule[
-            current_day
-        ][now.hour]
-    )
-
+    before_minutes = 0
+    after_minutes = 0
+    full_day = False
     active_range = None
 
     if active_curve is not None:
@@ -6682,80 +6945,265 @@ def calculate_weather_compensation():
             "curves"
         ][active_curve - 1]
 
-        active_range = {
-            "from_temp": curve[
-                "from_temp"
-            ],
-            "to_temp": curve[
-                "to_temp"
-            ],
-            "hours": curve[
-                "hours"
+        before_minutes = int(
+            curve.get(
+                "before_minutes",
+                curve.get(
+                    "extension_minutes",
+                    0
+                )
+            )
+        )
+
+        after_minutes = int(
+            curve.get(
+                "after_minutes",
+                curve.get(
+                    "extension_minutes",
+                    0
+                )
+            )
+        )
+
+        full_day = bool(
+            curve[
+                "full_day"
             ]
+        )
+
+        active_range = {
+            "to_temp":
+                curve["to_temp"],
+            "before_minutes":
+                before_minutes,
+            "after_minutes":
+                after_minutes,
+            "extension_minutes":
+                max(
+                    before_minutes,
+                    after_minutes
+                ),
+            "full_day":
+                full_day
         }
+
+    timer = (
+        get_advanced_timer_settings()
+    )
+
+    now = local_now()
+
+    current_day = (
+        ADVANCED_TIMER_DAYS[
+            now.weekday()
+        ]
+    )
+
+    timer_allowed_now = (
+        timer_schedule_on_at(
+            now,
+            timer
+        )
+    )
+
+    weather_desired_on_now = (
+        timer_schedule_extended_on_at(
+            now,
+            timer,
+            before_minutes,
+            after_minutes,
+            full_day=full_day
+        )
+    )
+
+    # Hour-level representation is retained for
+    # compatibility with older frontend/API clients.
+    # Exact control uses the minute-level decision above.
+
+    effective_schedule = {}
+
+    for day_offset in range(7):
+
+        reference = (
+            now.replace(
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0
+            )
+            +
+            timedelta(
+                days=(
+                    day_offset -
+                    now.weekday()
+                )
+            )
+        )
+
+        day_name = (
+            ADVANCED_TIMER_DAYS[
+                reference.weekday()
+            ]
+        )
+
+        effective_schedule[
+            day_name
+        ] = []
+
+        for hour in range(24):
+
+            sample = (
+                reference.replace(
+                    hour=hour,
+                    minute=30
+                )
+            )
+
+            effective_schedule[
+                day_name
+            ].append(
+                timer_schedule_extended_on_at(
+                    sample,
+                    timer,
+                    before_minutes,
+                    after_minutes,
+                    full_day=full_day
+                )
+            )
 
     return {
         "available": True,
-        "enabled": settings["enabled"],
-        "preview_mode": settings["preview_mode"],
+        "enabled":
+            settings["enabled"],
+        "preview_mode":
+            settings["preview_mode"],
+
         "current_outside_temp": (
-            round(current_temp, 2)
+            round(
+                current_temp,
+                2
+            )
             if current_temp is not None
             else None
         ),
+
         "average_outside_temp": (
-            round(average_temp, 2)
+            round(
+                average_temp,
+                2
+            )
             if average_temp is not None
             else None
         ),
-        "effective_outside_temp": round(
-            effective_temp,
-            2
-        ),
-        "history_hours": settings[
-            "history_hours"
-        ],
-        "history_samples": sample_count,
-        "active_curve": active_curve,
-        "active_range": active_range,
-        "target_on_hours": target_hours,
-        "current_day": current_day,
-        "current_hour": now.hour,
-        "timer_allowed_now": timer_allowed_now,
+
+        "effective_outside_temp":
+            round(
+                effective_temp,
+                2
+            ),
+
+        "weather_temperature":
+            round(
+                effective_temp,
+                2
+            ),
+
+        "history_hours": 6.0,
+        "history_samples":
+            sample_count,
+
+        "active_curve":
+            active_curve,
+
+        "active_range":
+            active_range,
+
+        "active_before_minutes":
+            before_minutes,
+        "active_after_minutes":
+            after_minutes,
+        "active_extension_minutes":
+            max(
+                before_minutes,
+                after_minutes
+            ),
+
+        "full_day":
+            full_day,
+
+        "current_day":
+            current_day,
+
+        "current_hour":
+            now.hour,
+
+        "current_minute":
+            now.minute,
+
+        "timer_allowed_now":
+            timer_allowed_now,
+
         "weather_desired_on_now":
             weather_desired_on_now,
+
         "preview_decision": (
             "ON"
             if weather_desired_on_now
             else "OFF"
         ),
-        "off_above": settings[
-            "off_above"
-        ],
+
         "effective_schedule":
             effective_schedule,
+
         "timezone":
             get_timezone_name(),
+
         "generated_at":
-            local_now().isoformat()
+            now.isoformat()
     }
 
 
-
-@app.get("/api/v1/settings/weather-compensation")
+@app.get(
+    "/api/v1/settings/weather-compensation"
+)
 def get_weather_compensation_api():
 
-    result = calculate_weather_compensation()
+    result = (
+        calculate_weather_compensation()
+    )
 
     with weather_compensation_lock:
-        result["settings"] = dict(
-            weather_compensation_settings
-        )
+
+        result["settings"] = {
+            "enabled":
+                weather_compensation_settings[
+                    "enabled"
+                ],
+
+            "preview_mode":
+                weather_compensation_settings[
+                    "preview_mode"
+                ],
+
+            "history_hours": 6.0,
+
+            "history_weight": 0.50,
+
+            "curves": [
+                dict(curve)
+                for curve in
+                weather_compensation_settings[
+                    "curves"
+                ]
+            ]
+        }
 
     return result
 
 
-@app.post("/api/v1/settings/weather-compensation/enabled")
+@app.post(
+    "/api/v1/settings/weather-compensation/enabled"
+)
 def set_weather_compensation_enabled(
     enabled: bool = Query(...)
 ):
@@ -6771,21 +7219,20 @@ def set_weather_compensation_enabled(
     db.add_activity(
         "SETTING",
         "Weather compensation",
-        "Enabled" if enabled else "Disabled"
+        "Enabled"
+        if enabled
+        else "Disabled"
     )
 
-    return calculate_weather_compensation()
+    return get_weather_compensation_api()
 
 
-@app.post("/api/v1/settings/weather-compensation/preview")
+@app.post(
+    "/api/v1/settings/weather-compensation/preview"
+)
 def set_weather_compensation_preview(
     enabled: bool = Query(...)
 ):
-
-    # Safety:
-    # Preview/Test Mode is currently simulation only.
-    # No Weather Compensation controller commands are
-    # executed anywhere in this implementation.
 
     with weather_compensation_lock:
 
@@ -6798,31 +7245,35 @@ def set_weather_compensation_preview(
     db.add_activity(
         "SETTING",
         "Weather Compensation Preview",
-        "Enabled" if enabled else "Disabled"
+        "Enabled"
+        if enabled
+        else "Disabled"
     )
 
-    result = calculate_weather_compensation()
-
-    with weather_compensation_lock:
-        result["settings"] = dict(
-            weather_compensation_settings
-        )
-
-    return result
+    return get_weather_compensation_api()
 
 
-@app.post("/api/v1/settings/weather-compensation/config")
+@app.post(
+    "/api/v1/settings/weather-compensation/config"
+)
 def set_weather_compensation_config(
     curve1_to: float = Query(...),
-    curve1_hours: int = Query(..., ge=0, le=24),
+    curve1_before: int = Query(..., ge=0, le=720),
+    curve1_after: int = Query(..., ge=0, le=720),
+
     curve2_to: float = Query(...),
-    curve2_hours: int = Query(..., ge=0, le=24),
+    curve2_before: int = Query(..., ge=0, le=720),
+    curve2_after: int = Query(..., ge=0, le=720),
+
     curve3_to: float = Query(...),
-    curve3_hours: int = Query(..., ge=0, le=24),
+    curve3_before: int = Query(..., ge=0, le=720),
+    curve3_after: int = Query(..., ge=0, le=720),
+
     curve4_to: float = Query(...),
-    curve4_hours: int = Query(..., ge=0, le=24),
-    curve5_to: float = Query(...),
-    curve5_hours: int = Query(..., ge=0, le=24)
+    curve4_before: int = Query(..., ge=0, le=720),
+    curve4_after: int = Query(..., ge=0, le=720),
+
+    curve5_to: float = Query(...)
 ):
 
     limits = [
@@ -6833,42 +7284,52 @@ def set_weather_compensation_config(
         float(curve5_to)
     ]
 
-    if limits != sorted(limits):
-        raise HTTPException(
-            status_code=400,
-            detail="Temperature limits must increase from Curve 1 to Curve 5"
-        )
-
-    if len(set(limits)) != len(limits):
-        raise HTTPException(
-            status_code=400,
-            detail="Temperature limits must be unique"
-        )
-
-    hours = [
-        int(curve1_hours),
-        int(curve2_hours),
-        int(curve3_hours),
-        int(curve4_hours),
-        int(curve5_hours)
-    ]
-
-    curves = []
-
-    previous = None
-
-    for limit, run_hours in zip(
-        limits,
-        hours
+    if not all(
+        limits[index] >
+        limits[index + 1]
+        for index in range(4)
     ):
 
-        curves.append({
-            "from_temp": previous,
-            "to_temp": limit,
-            "hours": run_hours
-        })
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Temperature thresholds must decrease "
+                "from Curve 1 to Curve 5"
+            )
+        )
 
-        previous = limit
+    curves = [
+        {
+            "to_temp": limits[0],
+            "before_minutes": int(curve1_before),
+            "after_minutes": int(curve1_after),
+            "full_day": False
+        },
+        {
+            "to_temp": limits[1],
+            "before_minutes": int(curve2_before),
+            "after_minutes": int(curve2_after),
+            "full_day": False
+        },
+        {
+            "to_temp": limits[2],
+            "before_minutes": int(curve3_before),
+            "after_minutes": int(curve3_after),
+            "full_day": False
+        },
+        {
+            "to_temp": limits[3],
+            "before_minutes": int(curve4_before),
+            "after_minutes": int(curve4_after),
+            "full_day": False
+        },
+        {
+            "to_temp": limits[4],
+            "before_minutes": 0,
+            "after_minutes": 0,
+            "full_day": True
+        }
+    ]
 
     with weather_compensation_lock:
 
@@ -6876,79 +7337,67 @@ def set_weather_compensation_config(
             "curves"
         ] = curves
 
-        weather_compensation_settings[
-            "off_above"
-        ] = limits[-1]
-
         save_weather_compensation_settings()
 
     db.add_activity(
         "SETTING",
         "Weather compensation curves",
-        "Temperature curves updated"
+        "Timer-extension curves updated"
     )
 
-    result = calculate_weather_compensation()
-
-    with weather_compensation_lock:
-        result["settings"] = {
-            "enabled":
-                weather_compensation_settings[
-                    "enabled"
-                ],
-            "history_hours":
-                weather_compensation_settings[
-                    "history_hours"
-                ],
-            "history_weight":
-                weather_compensation_settings[
-                    "history_weight"
-                ],
-            "curves": [
-                dict(curve)
-                for curve in
-                weather_compensation_settings[
-                    "curves"
-                ]
-            ],
-            "off_above":
-                weather_compensation_settings[
-                    "off_above"
-                ]
-        }
-
-    return result
+    return get_weather_compensation_api()
 
 
-# ============================================================
 # API: ADVANCED TIMER
 # ============================================================
 
 @app.get("/api/v1/settings/advanced-timer")
 def get_advanced_timer_api():
 
-    result = get_advanced_timer_settings()
+    result = (
+        get_advanced_timer_settings()
+    )
 
     now = local_now()
 
-    result["local_time"] = now.isoformat()
-    result["timezone"] = get_timezone_name()
-
-    day = ADVANCED_TIMER_DAYS[
-        now.weekday()
-    ]
-
-    timer_desired_on = bool(
-        result["schedule"][day][now.hour]
+    result["local_time"] = (
+        now.isoformat()
     )
 
-    desired_on = timer_desired_on
+    result["timezone"] = (
+        get_timezone_name()
+    )
+
+    day = (
+        ADVANCED_TIMER_DAYS[
+            now.weekday()
+        ]
+    )
+
+    timer_desired_on = bool(
+        result["schedule"][
+            day
+        ][now.hour]
+    )
+
+    desired_on = (
+        timer_desired_on
+    )
+
     decision_source = "timer"
+
     weather_enabled = False
     weather_desired_on = None
     weather_available = None
+    weather_preview = None
+    weather_curve = None
+    weather_extension = 0
+    weather_before = 0
+    weather_after = 0
+    weather_full_day = False
 
     with weather_compensation_lock:
+
         weather_enabled = bool(
             weather_compensation_settings[
                 "enabled"
@@ -6962,35 +7411,131 @@ def get_advanced_timer_api():
         )
 
         weather_available = bool(
-            weather_result.get("available")
+            weather_result.get(
+                "available"
+            )
+        )
+
+        weather_preview = bool(
+            weather_result.get(
+                "preview_mode",
+                True
+            )
+        )
+
+        weather_curve = (
+            weather_result.get(
+                "active_curve"
+            )
+        )
+
+        weather_extension = int(
+            weather_result.get(
+                "active_extension_minutes",
+                0
+            ) or 0
+        )
+
+        weather_before = int(
+            weather_result.get(
+                "active_before_minutes",
+                0
+            ) or 0
+        )
+
+        weather_after = int(
+            weather_result.get(
+                "active_after_minutes",
+                0
+            ) or 0
+        )
+
+        weather_full_day = bool(
+            weather_result.get(
+                "full_day",
+                False
+            )
         )
 
         if weather_available:
 
             weather_desired_on = bool(
                 weather_result[
-                    "effective_schedule"
-                ][day][now.hour]
+                    "weather_desired_on_now"
+                ]
             )
 
-            desired_on = weather_desired_on
-            decision_source = "weather"
+            if weather_preview:
+
+                desired_on = (
+                    timer_desired_on
+                )
+
+                decision_source = (
+                    "weather-preview"
+                )
+
+            else:
+
+                desired_on = (
+                    weather_desired_on
+                )
+
+                decision_source = (
+                    "weather"
+                )
 
         else:
 
-            weather_desired_on = False
-            desired_on = False
-            decision_source = "weather-unavailable"
+            # Fail safely back to timer.
+            desired_on = (
+                timer_desired_on
+            )
+
+            decision_source = (
+                "weather-unavailable-timer"
+            )
 
     result["decision"] = {
         "day": day,
         "hour": now.hour,
-        "timer_on": timer_desired_on,
-        "weather_enabled": weather_enabled,
-        "weather_available": weather_available,
-        "weather_on": weather_desired_on,
-        "final_on": desired_on,
-        "source": decision_source
+        "minute": now.minute,
+
+        "timer_on":
+            timer_desired_on,
+
+        "weather_enabled":
+            weather_enabled,
+
+        "weather_available":
+            weather_available,
+
+        "weather_preview":
+            weather_preview,
+
+        "weather_on":
+            weather_desired_on,
+
+        "weather_curve":
+            weather_curve,
+
+        "weather_extension_minutes":
+            weather_extension,
+
+        "weather_before_minutes":
+            weather_before,
+
+        "weather_after_minutes":
+            weather_after,
+
+        "weather_full_day":
+            weather_full_day,
+
+        "final_on":
+            desired_on,
+
+        "source":
+            decision_source
     }
 
     return result

@@ -4418,6 +4418,51 @@ strong {
 
 </style>
 
+
+<style id="woody-weather-extension-style">
+
+.advanced-timer-cell {
+    position: relative;
+    overflow: hidden;
+}
+
+.advanced-timer-cell-label {
+    position: relative;
+    z-index: 2;
+}
+
+.weather-minute-overlay {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: rgba(250,204,21,.38);
+}
+
+.advanced-timer-cell.weather-extension-active {
+    border-color: #facc15 !important;
+    box-shadow:
+        inset 0 0 0 1px rgba(250,204,21,.30),
+        0 0 8px rgba(250,204,21,.10);
+}
+
+.advanced-timer-cell.weather-extension-active.off {
+    color: #fde68a;
+}
+
+.weather-curve-active td {
+    background:
+        rgba(250,204,21,.08) !important;
+}
+
+.weather-curve-active td:first-child {
+    color: #facc15;
+    font-weight: 700;
+}
+
+</style>
+
 </head>
 
 <body>
@@ -7488,272 +7533,181 @@ function updateWeatherCompensationBadge() {
             "weatherCompensationBurnerBadge"
         );
 
-    if (!weatherBadge)
+    if (!timerBadge || !weatherBadge)
         return;
 
-    const timerActive =
+    const timerEnabled =
         !!advancedTimerSettings?.enabled;
 
-    const weatherEnabled =
-        timerActive &&
-        !!weatherCompensationSettings?.enabled;
+    if (!timerEnabled) {
 
-    if (weatherEnabled) {
-
-        if (timerBadge)
-            timerBadge.style.display = "none";
-
-        const curve =
-            Number(
-                weatherCompensationSettings
-                    ?.active_curve
-            ) || 0;
-
-        weatherBadge.textContent =
-            curve > 0
-                ? `Weather Compensation · Curve ${curve}`
-                : "Weather Compensation";
-
-        weatherBadge.style.display =
-            "inline-flex";
+        timerBadge.style.display = "none";
+        weatherBadge.style.display = "none";
 
         return;
     }
 
-    weatherBadge.style.display = "none";
+    const decision =
+        advancedTimerSettings?.decision || {};
 
-    if (timerBadge) {
+    const weatherEnabled =
+        !!decision.weather_enabled;
 
-        timerBadge.textContent =
-            "Advanced Timer";
+    const weatherAvailable =
+        decision.weather_available !== false;
 
-        timerBadge.style.display =
-            timerActive
-                ? "inline-flex"
-                : "none";
-    }
-}
+    const weatherPreview =
+        !!decision.weather_preview;
 
-const weatherHourPriority = [
-    6, 7, 8,
-    17, 18, 19,
-    5, 9,
-    16, 20,
-    4, 10,
-    15, 21,
-    3, 11,
-    14, 22,
-    2, 12,
-    13, 23,
-    1, 0
-];
-
-
-function weatherCurveRunHours(hours) {
-
-    hours = Math.max(
-        0,
-        Math.min(
-            24,
-            Number(hours) || 0
-        )
-    );
-
-    return new Set(
-        weatherHourPriority.slice(
-            0,
-            hours
-        )
-    );
-}
-
-
-function weatherCurveScheduleText(hours) {
-
-    const selected =
-        weatherCurveRunHours(hours);
-
-    if (!selected.size)
-        return "OFF";
-
-    if (selected.size >= 24)
-        return "00:00–24:00";
-
-    const periods = [];
-
-    let start = null;
-
-    for (let hour = 0; hour <= 24; hour++) {
-
-        const on =
-            hour < 24 &&
-            selected.has(hour);
-
-        if (on && start === null) {
-
-            start = hour;
-
-        } else if (!on && start !== null) {
-
-            periods.push(
-                `${String(start).padStart(2, "0")}:00–` +
-                `${String(hour).padStart(2, "0")}:00`
-            );
-
-            start = null;
-        }
-    }
-
-    return periods.join(" · ");
-}
-
-
-
-function weatherEffectiveScheduleText(curveIndex, hours) {
-
-    const activeCurve =
+    const weatherCurve =
         Number(
-            weatherCompensationSettings
-                ?.active_curve
+            decision.weather_curve
         ) || 0;
 
-    const effective =
-        weatherCompensationSettings
-            ?.effective_schedule;
+    const weatherFullDay =
+        !!decision.weather_full_day;
+
+    const timerOn =
+        !!decision.timer_on;
+
+    const weatherOn =
+        !!decision.weather_on;
 
     /*
-     * The backend effective_schedule belongs to the curve
-     * that is active right now.
-     *
-     * For that row we therefore show the real schedule after
-     * Advanced Timer restrictions have been applied.
+     * Weather is considered the current control source only
+     * when it is live (not Preview), available, has an active
+     * curve, and its effective schedule differs from the
+     * normal Timer decision at this moment.
      */
-    if (
-        activeCurve === curveIndex &&
-        effective &&
-        typeof effective === "object"
-    ) {
+    const weatherControlling =
+        weatherEnabled &&
+        weatherAvailable &&
+        !weatherPreview &&
+        weatherCurve > 0 &&
+        weatherOn !== timerOn;
 
-        const daySchedules =
-            Object.values(effective)
-                .filter(
-                    value =>
-                        Array.isArray(value) &&
-                        value.length >= 24
-                );
+    timerBadge.style.display =
+        "inline-flex";
 
-        if (daySchedules.length) {
+    weatherBadge.style.display =
+        "none";
 
-            /*
-             * Show each unique daily schedule.
-             * This also exposes hours disabled in Advanced Timer.
-             */
-            const unique = [];
+    if (weatherControlling) {
 
-            for (const schedule of daySchedules) {
+        timerBadge.textContent =
+            weatherFullDay
+                ? "Timer + Weather · 24h"
+                : "Timer + Weather";
 
-                const key =
-                    schedule
-                        .slice(0, 24)
-                        .map(Boolean)
-                        .map(value => value ? "1" : "0")
-                        .join("");
-
-                if (!unique.some(item => item.key === key)) {
-
-                    const selected =
-                        new Set();
-
-                    schedule
-                        .slice(0, 24)
-                        .forEach(
-                            (enabled, hour) => {
-                                if (enabled)
-                                    selected.add(hour);
-                            }
-                        );
-
-                    const periods = [];
-
-                    let start = null;
-
-                    for (
-                        let hour = 0;
-                        hour <= 24;
-                        hour++
-                    ) {
-
-                        const on =
-                            hour < 24 &&
-                            selected.has(hour);
-
-                        if (
-                            on &&
-                            start === null
-                        ) {
-
-                            start = hour;
-
-                        } else if (
-                            !on &&
-                            start !== null
-                        ) {
-
-                            periods.push(
-                                `${String(start).padStart(2, "0")}:00–` +
-                                `${String(hour).padStart(2, "0")}:00`
-                            );
-
-                            start = null;
-                        }
-                    }
-
-                    unique.push({
-                        key,
-                        text:
-                            periods.length
-                                ? periods.join(" · ")
-                                : "OFF"
-                    });
-                }
-            }
-
-            if (unique.length === 1)
-                return unique[0].text;
-
-            return unique
-                .map(
-                    (item, index) =>
-                        `Plan ${index + 1}: ${item.text}`
-                )
-                .join(" | ");
-        }
+        return;
     }
 
-    return weatherCurveScheduleText(hours);
+    timerBadge.textContent =
+        "Timer";
+}
+
+
+
+function weatherFormatTemperature(value) {
+
+    const number =
+        Number(value);
+
+    if (!Number.isFinite(number))
+        return "--";
+
+    return number.toFixed(1);
+}
+
+
+function weatherCurveEffectText(curve) {
+
+    if (curve.full_day)
+        return "24h continuous operation";
+
+    const before =
+        Number(
+            curve.before_minutes ??
+            curve.extension_minutes
+        ) || 0;
+
+    const after =
+        Number(
+            curve.after_minutes ??
+            curve.extension_minutes
+        ) || 0;
+
+    if (!before && !after)
+        return "Timer only";
+
+    if (before && after) {
+
+        return (
+            `Timer + ${before} min before` +
+            ` / ${after} min after`
+        );
+    }
+
+    if (before)
+        return `Timer + ${before} min before`;
+
+    return `Timer + ${after} min after`;
 }
 
 
 function updateWeatherCurveSchedule(index) {
 
-    const input =
-        document.getElementById(
-            `weatherCurveHours${index}`
-        );
-
-    const schedule =
+    const output =
         document.getElementById(
             `weatherCurveSchedule${index}`
         );
 
-    if (!input || !schedule)
+    if (!output)
         return;
 
-    schedule.textContent =
-        weatherEffectiveScheduleText(
-            index,
-            input.value
-        );
+    if (index === 5) {
+
+        output.textContent =
+            "24h continuous operation";
+
+        return;
+    }
+
+    const before =
+        Number(
+            document.getElementById(
+                `weatherCurveBefore${index}`
+            )?.value
+        ) || 0;
+
+    const after =
+        Number(
+            document.getElementById(
+                `weatherCurveAfter${index}`
+            )?.value
+        ) || 0;
+
+    if (!before && !after) {
+
+        output.textContent =
+            "Timer only";
+
+        return;
+    }
+
+    if (before && after) {
+
+        output.textContent =
+            `Timer + ${before} min before` +
+            ` / ${after} min after`;
+
+        return;
+    }
+
+    output.textContent =
+        before
+            ? `Timer + ${before} min before`
+            : `Timer + ${after} min after`;
 }
 
 
@@ -7774,6 +7728,27 @@ function renderWeatherCompensationSettings() {
         master.checked =
             !!data.enabled;
 
+    const weatherState =
+        document.getElementById(
+            "weatherCompensationState"
+        );
+
+    if (weatherState) {
+
+        weatherState.textContent =
+            data.enabled
+                ? "ON"
+                : "OFF";
+
+        weatherState.className =
+            "advanced-timer-state " +
+            (
+                data.enabled
+                    ? "on"
+                    : "off"
+            );
+    }
+
     const summary =
         document.getElementById(
             "weatherCompensationSummary"
@@ -7784,27 +7759,56 @@ function renderWeatherCompensationSettings() {
         if (!data.available) {
 
             summary.textContent =
-                "Outdoor temperature unavailable";
+                "Outdoor temperature unavailable · Timer only";
 
         } else {
 
             const curve =
                 data.active_curve
                     ? `Curve ${data.active_curve}`
-                    : "OFF";
+                    : "No extension";
+
+            const before =
+                Number(
+                    data.active_before_minutes
+                ) || 0;
+
+            const after =
+                Number(
+                    data.active_after_minutes
+                ) || 0;
+
+            let extension =
+                "Timer only";
+
+            if (data.full_day) {
+
+                extension =
+                    "24h operation";
+
+            } else if (before || after) {
+
+                extension =
+                    `+${before} min before / ` +
+                    `+${after} min after`;
+            }
+
+            const mode =
+                data.preview_mode
+                    ? "PREVIEW"
+                    : "LIVE";
 
             summary.textContent =
-                `Outdoor ${Number(
+                `Current ${weatherFormatTemperature(
                     data.current_outside_temp
-                ).toFixed(1)} °C · ` +
-                `6h average ${Number(
+                )} °C · ` +
+                `6h average ${weatherFormatTemperature(
                     data.average_outside_temp
-                ).toFixed(1)} °C · ` +
-                `Control ${Number(
-                    data.effective_outside_temp
-                ).toFixed(1)} °C · ` +
-                `${curve} · ` +
-                `${data.target_on_hours} h/day`;
+                )} °C · ` +
+                `Weather temperature ${weatherFormatTemperature(
+                    data.weather_temperature
+                )} °C · ` +
+                `${curve} · ${extension} · ${mode}`;
         }
     }
 
@@ -7816,42 +7820,84 @@ function renderWeatherCompensationSettings() {
     const curves =
         data.settings?.curves;
 
-    if (!rows || !Array.isArray(curves))
+    if (
+        !rows ||
+        !Array.isArray(curves)
+    )
         return;
 
     rows.innerHTML =
         curves.map(
             (curve, index) => {
 
-                const previous =
-                    index === 0
-                        ? null
-                        : curves[index - 1].to_temp;
-
-                const range =
-                    index === 0
-                        ? "≤"
-                        : `>${Number(
-                            previous
-                        ).toFixed(1)} to`;
+                const number =
+                    index + 1;
 
                 const active =
-                    data.active_curve === index + 1
+                    data.active_curve === number
                         ? " weather-curve-active"
                         : "";
+
+                const beforeValue =
+                    Number(
+                        curve.before_minutes ??
+                        curve.extension_minutes
+                    ) || 0;
+
+                const afterValue =
+                    Number(
+                        curve.after_minutes ??
+                        curve.extension_minutes
+                    ) || 0;
+
+                const beforeInput =
+                    curve.full_day
+                        ? `
+                            <strong>24 h</strong>
+                        `
+                        : `
+                            <input
+                                id="weatherCurveBefore${number}"
+                                type="number"
+                                min="0"
+                                max="720"
+                                step="5"
+                                value="${beforeValue}"
+                                oninput="updateWeatherCurveSchedule(${number})"
+                            >
+                            min
+                        `;
+
+                const afterInput =
+                    curve.full_day
+                        ? `
+                            <strong>24 h</strong>
+                        `
+                        : `
+                            <input
+                                id="weatherCurveAfter${number}"
+                                type="number"
+                                min="0"
+                                max="720"
+                                step="5"
+                                value="${afterValue}"
+                                oninput="updateWeatherCurveSchedule(${number})"
+                            >
+                            min
+                        `;
 
                 return `
                     <tr class="${active}">
 
                         <td>
-                            Curve ${index + 1}
+                            Curve ${number}
                         </td>
 
                         <td>
-                            ${range}
+                            ≤
 
                             <input
-                                id="weatherCurveTemp${index + 1}"
+                                id="weatherCurveTemp${number}"
                                 type="number"
                                 step="0.5"
                                 value="${curve.to_temp}"
@@ -7861,24 +7907,19 @@ function renderWeatherCompensationSettings() {
                         </td>
 
                         <td>
+                            ${beforeInput}
+                        </td>
 
-                            <input
-                                id="weatherCurveHours${index + 1}"
-                                type="number"
-                                min="0"
-                                max="24"
-                                step="1"
-                                value="${curve.hours}"
-                                oninput="updateWeatherCurveSchedule(${index + 1})"
-                            >
-
-                            h
+                        <td>
+                            ${afterInput}
                         </td>
 
                         <td
-                            id="weatherCurveSchedule${index + 1}"
+                            id="weatherCurveSchedule${number}"
                             class="weather-curve-schedule">
-                            ${weatherEffectiveScheduleText(index + 1, curve.hours)}
+
+                            ${weatherCurveEffectText(curve)}
+
                         </td>
 
                     </tr>
@@ -7915,6 +7956,9 @@ async function loadWeatherCompensationStatus() {
 
         updateWeatherCompensationBadge();
 
+        if (advancedTimerSettings)
+            renderAdvancedTimer();
+
     } catch (error) {
 
         console.error(
@@ -7932,7 +7976,10 @@ async function toggleWeatherCompensation(event) {
 
     const message =
         enabled
-            ? "Enable Weather Compensation?"
+            ? (
+                "Enable Weather Compensation? " +
+                "It will remain in Preview Mode until live control is enabled."
+            )
             : "Disable Weather Compensation?";
 
     if (!confirm(message)) {
@@ -7987,12 +8034,7 @@ async function saveWeatherCurves() {
                 `weatherCurveTemp${i}`
             );
 
-        const hours =
-            document.getElementById(
-                `weatherCurveHours${i}`
-            );
-
-        if (!temp || !hours)
+        if (!temp)
             return;
 
         params.set(
@@ -8000,10 +8042,31 @@ async function saveWeatherCurves() {
             temp.value
         );
 
-        params.set(
-            `curve${i}_hours`,
-            hours.value
-        );
+        if (i < 5) {
+
+            const before =
+                document.getElementById(
+                    `weatherCurveBefore${i}`
+                );
+
+            const after =
+                document.getElementById(
+                    `weatherCurveAfter${i}`
+                );
+
+            if (!before || !after)
+                return;
+
+            params.set(
+                `curve${i}_before`,
+                before.value
+            );
+
+            params.set(
+                `curve${i}_after`,
+                after.value
+            );
+        }
     }
 
     try {
@@ -8029,6 +8092,9 @@ async function saveWeatherCurves() {
         renderWeatherCompensationSettings();
 
         updateWeatherCompensationBadge();
+
+        if (advancedTimerSettings)
+            renderAdvancedTimer();
 
     } catch (error) {
 
@@ -8079,6 +8145,7 @@ function bindWeatherCompensationControls() {
         );
     }
 }
+
 
 
 
@@ -8263,20 +8330,33 @@ function ensureAdvancedTimerCard() {
                     </div>
 
                     <div class="card-subtitle">
-                        Outdoor temperature based burner schedule
+                        Extends enabled timer periods based on outdoor temperature
                     </div>
 
-                    <label
-                        class="advanced-timer-master"
-                        style="margin-top: 12px;">
-                        <input
-                            id="weatherCompensationMaster"
-                            type="checkbox"
-                        >
-                        <span>
-                            Weather Compensation
+                    <div
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                            margin-top: 12px;
+                        ">
+                        <label
+                            class="advanced-timer-master">
+                            <input
+                                id="weatherCompensationMaster"
+                                type="checkbox"
+                            >
+                            <span>
+                                Weather Compensation
+                            </span>
+                        </label>
+
+                        <span
+                            id="weatherCompensationState"
+                            class="advanced-timer-state off">
+                            OFF
                         </span>
-                    </label>
+                    </div>
                 </div>
 
             </div>
@@ -8294,9 +8374,10 @@ function ensureAdvancedTimerCard() {
                     <thead>
                         <tr>
                             <th>Curve</th>
-                            <th>Temperature range</th>
-                            <th>ON hours/day</th>
-                            <th>Run schedule</th>
+                            <th>Active at</th>
+                            <th>Before</th>
+                            <th>After</th>
+                            <th>Effect</th>
                         </tr>
                     </thead>
 
@@ -8317,7 +8398,7 @@ function ensureAdvancedTimerCard() {
                 </button>
 
                 <span class="weather-curve-note">
-                    Above Curve 5: burner OFF
+                    Curve 5: continuous 24h operation
                 </span>
 
             </div>
@@ -8446,6 +8527,268 @@ function advancedTimerCurrentParts() {
 }
 
 
+function weatherTimerMinuteCoverage() {
+
+    const coverage = {};
+
+    for (const day of ADVANCED_TIMER_DAYS) {
+
+        coverage[day] =
+            Array.from(
+                {length: 24},
+                () => Array(60).fill(false)
+            );
+    }
+
+    const weatherActive =
+        !!advancedTimerSettings?.enabled &&
+        !!weatherCompensationSettings?.enabled &&
+        !!weatherCompensationSettings?.available &&
+        !!weatherCompensationSettings?.active_curve;
+
+    if (!weatherActive)
+        return coverage;
+
+    const fullDay =
+        !!weatherCompensationSettings?.full_day;
+
+    if (fullDay) {
+
+        for (const day of ADVANCED_TIMER_DAYS) {
+
+            for (let hour = 0; hour < 24; hour++) {
+
+                if (
+                    !advancedTimerSettings
+                        .schedule[day][hour]
+                ) {
+                    coverage[day][hour].fill(true);
+                }
+            }
+        }
+
+        return coverage;
+    }
+
+    const before =
+        Math.max(
+            0,
+            Number(
+                weatherCompensationSettings
+                    ?.active_before_minutes
+            ) || 0
+        );
+
+    const after =
+        Math.max(
+            0,
+            Number(
+                weatherCompensationSettings
+                    ?.active_after_minutes
+            ) || 0
+        );
+
+    if (!before && !after)
+        return coverage;
+
+    const totalWeekMinutes =
+        7 * 24 * 60;
+
+    const timerMinute = index => {
+
+        index =
+            (
+                index % totalWeekMinutes +
+                totalWeekMinutes
+            ) % totalWeekMinutes;
+
+        const dayIndex =
+            Math.floor(
+                index / (24 * 60)
+            );
+
+        const minuteOfDay =
+            index % (24 * 60);
+
+        const hour =
+            Math.floor(
+                minuteOfDay / 60
+            );
+
+        return !!advancedTimerSettings
+            .schedule[
+                ADVANCED_TIMER_DAYS[dayIndex]
+            ][hour];
+    };
+
+    const markWeatherMinute = index => {
+
+        index =
+            (
+                index % totalWeekMinutes +
+                totalWeekMinutes
+            ) % totalWeekMinutes;
+
+        if (timerMinute(index))
+            return;
+
+        const dayIndex =
+            Math.floor(
+                index / (24 * 60)
+            );
+
+        const minuteOfDay =
+            index % (24 * 60);
+
+        const hour =
+            Math.floor(
+                minuteOfDay / 60
+            );
+
+        const minute =
+            minuteOfDay % 60;
+
+        coverage[
+            ADVANCED_TIMER_DAYS[dayIndex]
+        ][hour][minute] = true;
+    };
+
+    for (
+        let dayIndex = 0;
+        dayIndex < ADVANCED_TIMER_DAYS.length;
+        dayIndex++
+    ) {
+
+        const day =
+            ADVANCED_TIMER_DAYS[dayIndex];
+
+        for (let hour = 0; hour < 24; hour++) {
+
+            const enabled =
+                !!advancedTimerSettings
+                    .schedule[day][hour];
+
+            if (!enabled)
+                continue;
+
+            const previousHour =
+                (
+                    dayIndex * 24 +
+                    hour -
+                    1 +
+                    7 * 24
+                ) % (7 * 24);
+
+            const nextHour =
+                (
+                    dayIndex * 24 +
+                    hour +
+                    1
+                ) % (7 * 24);
+
+            const previousDayIndex =
+                Math.floor(
+                    previousHour / 24
+                );
+
+            const previousHourOfDay =
+                previousHour % 24;
+
+            const nextDayIndex =
+                Math.floor(
+                    nextHour / 24
+                );
+
+            const nextHourOfDay =
+                nextHour % 24;
+
+            const previousEnabled =
+                !!advancedTimerSettings
+                    .schedule[
+                        ADVANCED_TIMER_DAYS[
+                            previousDayIndex
+                        ]
+                    ][previousHourOfDay];
+
+            const nextEnabled =
+                !!advancedTimerSettings
+                    .schedule[
+                        ADVANCED_TIMER_DAYS[
+                            nextDayIndex
+                        ]
+                    ][nextHourOfDay];
+
+            const hourStart =
+                (
+                    dayIndex * 24 +
+                    hour
+                ) * 60;
+
+            if (!previousEnabled) {
+
+                for (
+                    let offset = 1;
+                    offset <= before;
+                    offset++
+                ) {
+                    markWeatherMinute(
+                        hourStart - offset
+                    );
+                }
+            }
+
+            if (!nextEnabled) {
+
+                const periodEnd =
+                    hourStart + 60;
+
+                for (
+                    let offset = 0;
+                    offset < after;
+                    offset++
+                ) {
+                    markWeatherMinute(
+                        periodEnd + offset
+                    );
+                }
+            }
+        }
+    }
+
+    return coverage;
+}
+
+
+function weatherMinuteSegments(minutes) {
+
+    const segments = [];
+
+    let start = null;
+
+    for (let minute = 0; minute <= 60; minute++) {
+
+        const active =
+            minute < 60 &&
+            !!minutes[minute];
+
+        if (active && start === null) {
+
+            start = minute;
+
+        } else if (!active && start !== null) {
+
+            segments.push(
+                [start, minute]
+            );
+
+            start = null;
+        }
+    }
+
+    return segments;
+}
+
+
 function renderAdvancedTimer() {
 
     ensureAdvancedTimerCard();
@@ -8537,14 +8880,53 @@ function renderAdvancedTimer() {
 
             if (decision.weather_enabled) {
 
-                weatherText =
+                if (
                     decision.weather_available === false
-                        ? "Unavailable"
-                        : (
-                            decision.weather_on
-                                ? "Active → ON"
-                                : "Active → OFF"
-                        );
+                ) {
+
+                    weatherText =
+                        "Unavailable · Timer only";
+
+                } else {
+
+                    const curve =
+                        decision.weather_curve
+                            ? `Curve ${decision.weather_curve}`
+                            : "No extension";
+
+                    const before =
+                        Number(
+                            decision.weather_before_minutes
+                        ) || 0;
+
+                    const after =
+                        Number(
+                            decision.weather_after_minutes
+                        ) || 0;
+
+                    let extension =
+                        "Timer only";
+
+                    if (decision.weather_full_day) {
+
+                        extension =
+                            "24h";
+
+                    } else if (before || after) {
+
+                        extension =
+                            `${before}m before / ` +
+                            `${after}m after`;
+                    }
+
+                    const preview =
+                        decision.weather_preview
+                            ? "Preview"
+                            : "Live";
+
+                    weatherText =
+                        `${curve} · ${extension} · ${preview}`;
+                }
             }
 
             const finalText =
@@ -8609,6 +8991,9 @@ function renderAdvancedTimer() {
     if (!grid)
         return;
 
+    const weatherCoverage =
+        weatherTimerMinuteCoverage();
+
     let html = `
         <table class="advanced-timer-table">
             <thead>
@@ -8665,6 +9050,77 @@ function renderAdvancedTimer() {
                 now.day === day &&
                 now.hour === hour;
 
+            const weatherMinutes =
+                weatherCoverage[day][hour];
+
+            const weatherMinuteCount =
+                weatherMinutes.filter(Boolean).length;
+
+            const weatherSegments =
+                weatherMinuteSegments(
+                    weatherMinutes
+                );
+
+            const weatherClass =
+                weatherMinuteCount > 0
+                    ? " weather-extension-active"
+                    : "";
+
+            const fullDay =
+                !!weatherCompensationSettings
+                    ?.full_day &&
+                !!weatherCompensationSettings
+                    ?.active_curve;
+
+            const weatherLabel =
+                weatherMinuteCount > 0
+                    ? (
+                        fullDay
+                            ? ` · ${weatherMinuteCount}m weather`
+                            : ` · +${weatherMinuteCount}m`
+                    )
+                    : "";
+
+            const weatherOverlay =
+                weatherSegments.map(
+                    ([segmentStart, segmentEnd]) => {
+
+                        const left =
+                            (
+                                segmentStart /
+                                60
+                            ) * 100;
+
+                        const width =
+                            (
+                                (
+                                    segmentEnd -
+                                    segmentStart
+                                ) /
+                                60
+                            ) * 100;
+
+                        return `
+                            <span
+                                class="weather-minute-overlay"
+                                style="
+                                    left:${left}%;
+                                    width:${width}%;
+                                ">
+                            </span>
+                        `;
+                    }
+                ).join("");
+
+            const weatherTitle =
+                weatherMinuteCount > 0
+                    ? (
+                        fullDay
+                            ? `Weather Compensation: ${weatherMinuteCount} min of this hour`
+                            : `Weather Compensation adds ${weatherMinuteCount} min in this hour`
+                    )
+                    : "";
+
             html += `
                 <td class="day-column${selected}">
                     <button
@@ -8673,10 +9129,14 @@ function renderAdvancedTimer() {
                             enabled ? "on" : "off"
                         } ${
                             isCurrent ? "current" : ""
-                        }"
+                        }${weatherClass}"
                         data-day="${day}"
-                        data-hour="${hour}">
-                        ${enabled ? "ON" : "OFF"}
+                        data-hour="${hour}"
+                        title="${weatherTitle}">
+                        ${weatherOverlay}
+                        <span class="advanced-timer-cell-label">
+                            ${enabled ? "ON" : "OFF"}${weatherLabel}
+                        </span>
                     </button>
                 </td>
             `;
