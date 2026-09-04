@@ -7963,6 +7963,203 @@ def set_pellet_price(
 
 
 
+def get_live_pellet_hour_metrics(
+    hour_start,
+    hour_end=None
+):
+    """
+    Calculate the current incomplete pellet hour directly from
+    raw measurements.
+
+    Nothing is written to SQLite. This is used by the API so
+    live charts do not have to wait until the hour is complete.
+    """
+
+    if hour_end is None:
+        hour_end = datetime.now(timezone.utc)
+
+    calibration = get_feeder_calibration()
+
+    kg_per_second = (
+        float(calibration["grams"]) /
+        float(calibration["seconds"]) /
+        1000.0
+    )
+
+    with db.lock:
+
+        conn = db._connect()
+
+        try:
+
+            previous = conn.execute(
+                """
+                SELECT timestamp,value
+                FROM measurements
+                WHERE parameter='feeder_time'
+                  AND timestamp <= ?
+                ORDER BY timestamp DESC
+                LIMIT 1
+                """,
+                (hour_start.isoformat(),)
+            ).fetchone()
+
+            feeder_rows = conn.execute(
+                """
+                SELECT timestamp,value
+                FROM measurements
+                WHERE parameter='feeder_time'
+                  AND timestamp > ?
+                  AND timestamp <= ?
+                ORDER BY timestamp
+                """,
+                (
+                    hour_start.isoformat(),
+                    hour_end.isoformat()
+                )
+            ).fetchall()
+
+            metric_rows = conn.execute(
+                """
+                SELECT timestamp,parameter,value
+                FROM measurements
+                WHERE parameter IN (
+                    'outside_temp',
+                    'power',
+                    'power_kW'
+                )
+                  AND timestamp >= ?
+                  AND timestamp <= ?
+                ORDER BY timestamp
+                """,
+                (
+                    hour_start.isoformat(),
+                    hour_end.isoformat()
+                )
+            ).fetchall()
+
+        finally:
+
+            conn.close()
+
+    if previous is None or not feeder_rows:
+
+        return {
+            "feeder_seconds": 0.0,
+            "kg": 0.0,
+            "outside_temp_avg": None,
+            "outside_temp_samples": 0,
+            "power_avg": None,
+            "power_samples": 0,
+            "power_kw_avg": None,
+            "power_kw_samples": 0
+        }
+
+    previous_value = float(previous["value"])
+    previous_time = datetime.fromisoformat(
+        previous["timestamp"].replace(
+            "Z",
+            "+00:00"
+        )
+    )
+
+    feeder_seconds = 0.0
+    active_ranges = []
+
+    for row in feeder_rows:
+
+        current_value = float(row["value"])
+
+        current_time = datetime.fromisoformat(
+            row["timestamp"].replace(
+                "Z",
+                "+00:00"
+            )
+        )
+
+        delta = current_value - previous_value
+
+        if delta > 0:
+
+            feeder_seconds += delta
+
+            # Measurements collected between these two feeder
+            # samples belong to an interval in which pellets
+            # were fed.
+            active_ranges.append(
+                (
+                    previous_time,
+                    current_time
+                )
+            )
+
+        previous_value = current_value
+        previous_time = current_time
+
+    metrics = {
+        "outside_temp": [],
+        "power": [],
+        "power_kW": []
+    }
+
+    for row in metric_rows:
+
+        parameter = row["parameter"]
+
+        if parameter not in metrics:
+            continue
+
+        try:
+            ts = datetime.fromisoformat(
+                row["timestamp"].replace(
+                    "Z",
+                    "+00:00"
+                )
+            )
+            value = float(row["value"])
+        except Exception:
+            continue
+
+        if any(
+            start <= ts <= end
+            for start, end in active_ranges
+        ):
+            metrics[parameter].append(value)
+
+    def avg(values):
+        if not values:
+            return None
+        return sum(values) / len(values)
+
+    return {
+        "feeder_seconds":
+            feeder_seconds,
+
+        "kg":
+            feeder_seconds *
+            kg_per_second,
+
+        "outside_temp_avg":
+            avg(metrics["outside_temp"]),
+
+        "outside_temp_samples":
+            len(metrics["outside_temp"]),
+
+        "power_avg":
+            avg(metrics["power"]),
+
+        "power_samples":
+            len(metrics["power"]),
+
+        "power_kw_avg":
+            avg(metrics["power_kW"]),
+
+        "power_kw_samples":
+            len(metrics["power_kW"])
+    }
+
+
+
 # ============================================================
 # API: PELLET CONSUMPTION
 # ============================================================
@@ -8565,6 +8762,248 @@ def pellet_consumption_overview(
         })
 
 
+    # --------------------------------------------------------
+    # Current local day
+    #
+    # daily_stats contains completed hourly calculations.
+    # Add the current incomplete hour in memory so the UI
+    # reflects pellet use immediately. No DB write is made.
+    # --------------------------------------------------------
+
+    try:
+
+        now_utc = datetime.now(timezone.utc)
+
+        current_hour = now_utc.replace(
+            minute=0,
+            second=0,
+            microsecond=0
+        )
+
+        live_hour = get_live_pellet_hour_metrics(
+            current_hour,
+            now_utc
+        )
+
+        live_kg = float(
+            live_hour.get("kg") or 0.0
+        )
+
+        # Sample counts are required to combine the completed
+        # hourly statistics with the current incomplete hour
+        # without letting an idle current hour overwrite today's
+        # real heating average.
+        today_start_local = datetime(
+            today.year,
+            today.month,
+            today.day,
+            tzinfo=zone
+        )
+
+        today_start_utc = (
+            today_start_local
+            .astimezone(timezone.utc)
+            .isoformat()
+        )
+
+        with db.lock:
+
+            conn = db._connect()
+
+            try:
+
+                completed_samples = conn.execute(
+                    """
+                    SELECT
+                        COALESCE(
+                            SUM(power_samples),
+                            0
+                        ) AS power_samples,
+
+                        COALESCE(
+                            SUM(outside_temp_samples),
+                            0
+                        ) AS outside_temp_samples
+
+                    FROM pellet_consumption_hourly
+
+                    WHERE hour_start >= ?
+                      AND hour_start < ?
+                      AND kg > 0
+                    """,
+                    (
+                        today_start_utc,
+                        current_hour.isoformat()
+                    )
+                ).fetchone()
+
+            finally:
+
+                conn.close()
+
+        completed_power_samples = int(
+            completed_samples["power_samples"] or 0
+        )
+
+        completed_temp_samples = int(
+            completed_samples[
+                "outside_temp_samples"
+            ] or 0
+        )
+
+        today_row = next(
+            (
+                row
+                for row in daily
+                if row.get("date") ==
+                today.isoformat()
+            ),
+            None
+        )
+
+        if today_row is None:
+
+            today_row = {
+                "date":
+                    today.isoformat(),
+
+                "pellet_kg":
+                    live_kg,
+
+                "outside_temp_avg":
+                    live_hour.get(
+                        "outside_temp_avg"
+                    ),
+
+                "power_avg":
+                    live_hour.get(
+                        "power_avg"
+                    ),
+
+                "source":
+                    "Woody Monitor"
+            }
+
+            daily.append(today_row)
+
+        else:
+
+            today_row["pellet_kg"] = (
+                float(
+                    today_row.get(
+                        "pellet_kg"
+                    ) or 0.0
+                ) +
+                live_kg
+            )
+
+            # Combine completed hours and the current
+            # incomplete hour using the number of active-heating
+            # samples as weights.
+
+            live_temp_avg = live_hour.get(
+                "outside_temp_avg"
+            )
+
+            live_temp_samples = int(
+                live_hour.get(
+                    "outside_temp_samples"
+                ) or 0
+            )
+
+            stored_temp_avg = today_row.get(
+                "outside_temp_avg"
+            )
+
+            total_temp_samples = (
+                completed_temp_samples +
+                live_temp_samples
+            )
+
+            if total_temp_samples > 0:
+
+                temp_sum = 0.0
+
+                if (
+                    completed_temp_samples > 0
+                    and stored_temp_avg is not None
+                ):
+                    temp_sum += (
+                        float(stored_temp_avg) *
+                        completed_temp_samples
+                    )
+
+                if (
+                    live_temp_samples > 0
+                    and live_temp_avg is not None
+                ):
+                    temp_sum += (
+                        float(live_temp_avg) *
+                        live_temp_samples
+                    )
+
+                today_row[
+                    "outside_temp_avg"
+                ] = (
+                    temp_sum /
+                    total_temp_samples
+                )
+
+
+            live_power_avg = live_hour.get(
+                "power_avg"
+            )
+
+            live_power_samples = int(
+                live_hour.get(
+                    "power_samples"
+                ) or 0
+            )
+
+            stored_power_avg = today_row.get(
+                "power_avg"
+            )
+
+            total_power_samples = (
+                completed_power_samples +
+                live_power_samples
+            )
+
+            if total_power_samples > 0:
+
+                power_sum = 0.0
+
+                if (
+                    completed_power_samples > 0
+                    and stored_power_avg is not None
+                ):
+                    power_sum += (
+                        float(stored_power_avg) *
+                        completed_power_samples
+                    )
+
+                if (
+                    live_power_samples > 0
+                    and live_power_avg is not None
+                ):
+                    power_sum += (
+                        float(live_power_avg) *
+                        live_power_samples
+                    )
+
+                today_row[
+                    "power_avg"
+                ] = (
+                    power_sum /
+                    total_power_samples
+                )
+
+    except Exception:
+
+        logger.exception(
+            "Could not calculate live daily pellet metrics"
+        )
+
     return {
         "start_date": start_date,
         "end_date": end_date,
@@ -8708,6 +9147,63 @@ def pellet_consumption_overview_hourly(
                     else None
                 )
         })
+
+    # Current incomplete hour is not yet present in
+    # pellet_consumption_hourly. Calculate it from raw data
+    # for live chart display only.
+
+    try:
+
+        now_utc = datetime.now(timezone.utc)
+
+        current_hour = now_utc.replace(
+            minute=0,
+            second=0,
+            microsecond=0
+        )
+
+        if (
+            start_dt <= now_utc
+            and end_dt > current_hour
+        ):
+
+            live_hour = (
+                get_live_pellet_hour_metrics(
+                    current_hour,
+                    min(
+                        end_dt,
+                        now_utc
+                    )
+                )
+            )
+
+            if float(
+                live_hour.get("kg") or 0.0
+            ) > 0:
+
+                data.append({
+                    "timestamp":
+                        min(
+                            end_dt,
+                            now_utc
+                        ).isoformat(),
+
+                    "outside_temp_avg":
+                        live_hour.get(
+                            "outside_temp_avg"
+                        ),
+
+                    "power_avg":
+                        live_hour.get(
+                            "power_avg"
+                        )
+                })
+
+    except Exception:
+
+        logger.exception(
+            "Could not calculate live hourly pellet metrics"
+        )
 
     return {
         "start":

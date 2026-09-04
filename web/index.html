@@ -4570,6 +4570,12 @@ strong {
                             Weather Compensation
                         </span>
 
+                        <span
+                            id="burnerNextSchedule"
+                            class="advanced-timer-burner-badge"
+                            style="display:none;">
+                        </span>
+
                         <div class="burner-header-alarm">
                             <span id="burnerAlarmIcon"
                                   class="alarm-check">✓</span>
@@ -7604,6 +7610,8 @@ function updateWeatherCompensationBadge() {
 
     timerBadge.textContent =
         "Timer";
+
+    updateBurnerNextSchedule();
 }
 
 
@@ -8093,8 +8101,15 @@ async function saveWeatherCurves() {
 
         updateWeatherCompensationBadge();
 
-        if (advancedTimerSettings)
-            renderAdvancedTimer();
+        /*
+         * Reload the combined Timer + Weather decision immediately.
+         * The burner-card badge and next schedule therefore reflect
+         * the newly saved weather curves without requiring F5.
+         */
+        await loadAdvancedTimerSettings();
+
+        updateAdvancedTimerBadge();
+        updateBurnerNextSchedule();
 
     } catch (error) {
 
@@ -8462,6 +8477,475 @@ function ensureAdvancedTimerCard() {
 }
 
 
+
+function updateBurnerNextSchedule() {
+
+    const output =
+        document.getElementById(
+            "burnerNextSchedule"
+        );
+
+    if (!output)
+        return;
+
+    if (!advancedTimerSettings?.enabled) {
+
+        output.style.display = "none";
+        output.textContent = "";
+
+        return;
+    }
+
+    const schedule =
+        advancedTimerSettings.schedule;
+
+    if (!schedule) {
+
+        output.style.display = "none";
+
+        return;
+    }
+
+    const days =
+        ADVANCED_TIMER_DAYS;
+
+    const totalMinutes =
+        7 * 24 * 60;
+
+    const base =
+        new Array(totalMinutes).fill(false);
+
+    const effective =
+        new Array(totalMinutes).fill(false);
+
+
+    // --------------------------------------------------------
+    // Build normal Advanced Timer minute schedule.
+    // --------------------------------------------------------
+
+    for (
+        let dayIndex = 0;
+        dayIndex < days.length;
+        dayIndex++
+    ) {
+
+        const day =
+            days[dayIndex];
+
+        for (
+            let hour = 0;
+            hour < 24;
+            hour++
+        ) {
+
+            if (!schedule[day]?.[hour])
+                continue;
+
+            for (
+                let minute = 0;
+                minute < 60;
+                minute++
+            ) {
+
+                const index =
+                    dayIndex * 1440 +
+                    hour * 60 +
+                    minute;
+
+                base[index] = true;
+                effective[index] = true;
+            }
+        }
+    }
+
+
+    const decision =
+        advancedTimerSettings.decision || {};
+
+    const weatherLive =
+        !!decision.weather_enabled &&
+        decision.weather_available !== false &&
+        !decision.weather_preview &&
+        Number(decision.weather_curve) > 0;
+
+    const fullDay =
+        weatherLive &&
+        !!decision.weather_full_day;
+
+    const before =
+        weatherLive
+            ? (
+                Number(
+                    decision.weather_before_minutes
+                ) || 0
+            )
+            : 0;
+
+    const after =
+        weatherLive
+            ? (
+                Number(
+                    decision.weather_after_minutes
+                ) || 0
+            )
+            : 0;
+
+
+    // --------------------------------------------------------
+    // Curve 5 = 24h.
+    // --------------------------------------------------------
+
+    if (fullDay) {
+
+        effective.fill(true);
+
+    } else if (
+        weatherLive &&
+        (before > 0 || after > 0)
+    ) {
+
+        const wrap = index =>
+            (
+                index % totalMinutes +
+                totalMinutes
+            ) % totalMinutes;
+
+
+        // Extend only the beginning and end of each
+        // contiguous Timer period.
+
+        for (
+            let i = 0;
+            i < totalMinutes;
+            i++
+        ) {
+
+            if (!base[i])
+                continue;
+
+            const previous =
+                base[
+                    wrap(i - 1)
+                ];
+
+            const next =
+                base[
+                    wrap(i + 1)
+                ];
+
+
+            // Start of Timer period.
+            if (!previous) {
+
+                for (
+                    let offset = 1;
+                    offset <= before;
+                    offset++
+                ) {
+
+                    effective[
+                        wrap(i - offset)
+                    ] = true;
+                }
+            }
+
+
+            // End of Timer period.
+            if (!next) {
+
+                for (
+                    let offset = 1;
+                    offset <= after;
+                    offset++
+                ) {
+
+                    effective[
+                        wrap(i + offset)
+                    ] = true;
+                }
+            }
+        }
+    }
+
+
+    // --------------------------------------------------------
+    // If every minute is ON, simply show 24h.
+    // --------------------------------------------------------
+
+    if (
+        effective.every(
+            value => value
+        )
+    ) {
+
+        output.textContent =
+            "24h";
+
+        output.style.display =
+            "inline-flex";
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Current Woody Monitor local time.
+    // --------------------------------------------------------
+
+    if (!advancedTimerSettings.local_time) {
+
+        output.style.display =
+            "none";
+
+        return;
+    }
+
+    const now =
+        new Date(
+            advancedTimerSettings.local_time
+        );
+
+    if (Number.isNaN(now.getTime())) {
+
+        output.style.display =
+            "none";
+
+        return;
+    }
+
+    const timezone =
+        advancedTimerSettings.timezone ||
+        "Europe/Copenhagen";
+
+    const formatter =
+        new Intl.DateTimeFormat(
+            "en-GB",
+            {
+                weekday: "long",
+                hour: "2-digit",
+                minute: "2-digit",
+                hourCycle: "h23",
+                timeZone: timezone
+            }
+        );
+
+    const parts = {};
+
+    for (
+        const part of formatter.formatToParts(now)
+    ) {
+
+        parts[part.type] =
+            part.value;
+    }
+
+    const currentDayName =
+        String(
+            parts.weekday || ""
+        ).toLowerCase();
+
+    const currentDay =
+        days.indexOf(
+            currentDayName
+        );
+
+    const currentHour =
+        Number(parts.hour);
+
+    const currentMinute =
+        Number(parts.minute);
+
+    if (
+        currentDay < 0 ||
+        !Number.isFinite(currentHour) ||
+        !Number.isFinite(currentMinute)
+    ) {
+
+        output.style.display =
+            "none";
+
+        return;
+    }
+
+    const currentIndex =
+        currentDay * 1440 +
+        currentHour * 60 +
+        currentMinute;
+
+    const currentState =
+        effective[currentIndex];
+
+
+    // --------------------------------------------------------
+    // Find next state transition.
+    // Search one complete week.
+    // --------------------------------------------------------
+
+    let transitionIndex = null;
+    let transitionDelta = null;
+    let transitionState = null;
+
+    for (
+        let delta = 1;
+        delta <= totalMinutes;
+        delta++
+    ) {
+
+        const index =
+            (
+                currentIndex + delta
+            ) % totalMinutes;
+
+        if (
+            effective[index] !==
+            currentState
+        ) {
+
+            transitionIndex =
+                index;
+
+            transitionDelta =
+                delta;
+
+            transitionState =
+                effective[index];
+
+            break;
+        }
+    }
+
+
+    // No ON periods at all.
+    if (transitionIndex === null) {
+
+        output.textContent =
+            currentState
+                ? "24h"
+                : "Next start · --";
+
+        output.style.display =
+            "inline-flex";
+
+        return;
+    }
+
+
+    const targetDay =
+        Math.floor(
+            transitionIndex / 1440
+        );
+
+    const targetMinuteOfDay =
+        transitionIndex % 1440;
+
+    const targetHour =
+        Math.floor(
+            targetMinuteOfDay / 60
+        );
+
+    const targetMinute =
+        targetMinuteOfDay % 60;
+
+
+    // Number of calendar-day boundaries crossed.
+    const dayOffset =
+        Math.floor(
+            (
+                currentHour * 60 +
+                currentMinute +
+                transitionDelta
+            ) / 1440
+        );
+
+
+    let dayText;
+
+    if (dayOffset === 0) {
+
+        dayText =
+            "Today";
+
+    } else if (dayOffset === 1) {
+
+        dayText =
+            "Tomorrow";
+
+    } else {
+
+        dayText =
+            ADVANCED_TIMER_DAY_NAMES[
+                days[targetDay]
+            ] || days[targetDay];
+    }
+
+
+    const timeText =
+        String(
+            targetHour
+        ).padStart(2, "0") +
+        ":" +
+        String(
+            targetMinute
+        ).padStart(2, "0");
+
+
+    // --------------------------------------------------------
+    // Determine whether Weather caused this transition.
+    // --------------------------------------------------------
+
+    let weatherTransition =
+        false;
+
+    if (weatherLive) {
+
+        if (transitionState) {
+
+            // START occurs before normal Timer start.
+            weatherTransition =
+                !base[
+                    transitionIndex
+                ];
+
+        } else {
+
+            // STOP occurs after normal Timer stop.
+            const previousIndex =
+                (
+                    transitionIndex -
+                    1 +
+                    totalMinutes
+                ) % totalMinutes;
+
+            weatherTransition =
+                effective[
+                    previousIndex
+                ] &&
+                !base[
+                    previousIndex
+                ];
+        }
+    }
+
+
+    const actionText =
+        transitionState
+            ? "Next start"
+            : "Next stop";
+
+
+    output.textContent =
+        `${actionText} · ${dayText} ${timeText}` +
+        (
+            weatherTransition
+                ? " · Weather"
+                : ""
+        );
+
+    output.style.display =
+        "inline-flex";
+}
+
+
 function updateAdvancedTimerBadge() {
 
     const badge =
@@ -8478,6 +8962,7 @@ function updateAdvancedTimerBadge() {
             : "none";
 
     updateWeatherCompensationBadge();
+    updateBurnerNextSchedule();
 }
 
 
@@ -14556,7 +15041,7 @@ function pelletOverviewScheduleReset(
                 );
 
             },
-            10000
+            30000
         );
 }
 
@@ -14902,6 +15387,52 @@ function updatePelletConsumptionModeButtons() {
 }
 
 
+/*
+ * Pellet chart API cache.
+ *
+ * Normal chart updates always fetch fresh data and refresh
+ * this cache. Weight/Cost display changes may reuse the most
+ * recently loaded data so changing units does not trigger
+ * expensive history queries again.
+ */
+
+const woodyPelletApiCache =
+    new Map();
+
+let woodyPelletPreferCachedApi =
+    false;
+
+let woodyPelletCacheResetTimer =
+    null;
+
+
+async function woodyPelletCachedApi(url) {
+
+    if (
+        woodyPelletPreferCachedApi &&
+        woodyPelletApiCache.has(url)
+    ) {
+
+        return woodyPelletApiCache.get(
+            url
+        );
+    }
+
+
+    const result =
+        await api(url);
+
+
+    woodyPelletApiCache.set(
+        url,
+        result
+    );
+
+
+    return result;
+}
+
+
 async function setPelletConsumptionMode(mode) {
 
     if (
@@ -14921,7 +15452,43 @@ async function setPelletConsumptionMode(mode) {
 
     updatePelletConsumptionModeButtons();
 
-    await updatePelletChart();
+
+    /*
+     * Weight/Cost is a display-only change.
+     * Reuse the data already loaded by the charts.
+     */
+
+    woodyPelletPreferCachedApi =
+        true;
+
+
+    if (woodyPelletCacheResetTimer) {
+
+        clearTimeout(
+            woodyPelletCacheResetTimer
+        );
+    }
+
+
+    try {
+
+        await updatePelletChart();
+
+    } finally {
+
+        woodyPelletCacheResetTimer =
+            setTimeout(
+                () => {
+
+                    woodyPelletPreferCachedApi =
+                        false;
+
+                    woodyPelletCacheResetTimer =
+                        null;
+                },
+                15000
+            );
+    }
 }
 
 
@@ -15026,7 +15593,7 @@ async function updatePelletOverviewChart(config) {
 
 
     const result =
-        await api(
+        await woodyPelletCachedApi(
             pelletUrl
         );
 
@@ -15139,7 +15706,7 @@ async function updatePelletOverviewChart(config) {
                 );
 
             const overview =
-                await api(
+                await woodyPelletCachedApi(
                     `/consumption/overview?days=${days}`
                 );
 
@@ -15451,7 +16018,7 @@ async function updatePelletOverviewChart(config) {
 
 
             const metrics =
-                await api(
+                await woodyPelletCachedApi(
                     hourlyMetricsUrl
                 );
 
@@ -15555,7 +16122,7 @@ async function updatePelletOverviewChart(config) {
                     );
 
             const metrics =
-                await api(
+                await woodyPelletCachedApi(
                     `/consumption/overview?days=${days}`
                 );
 
@@ -15718,7 +16285,7 @@ async function updatePelletOverviewChart(config) {
 
 
         const allTemperatureResult =
-            await api(
+            await woodyPelletCachedApi(
                 allTemperatureUrl
             );
 
@@ -15959,6 +16526,411 @@ async function updatePelletOverviewChart(config) {
 
 
     /*
+     * --------------------------------------------------------
+     * SAME MONTH PREVIOUS YEAR
+     * --------------------------------------------------------
+     *
+     * Only used by Last 12 months.
+     */
+
+    let previousYearValues = null;
+    let previousYearLabels = null;
+
+
+    if (
+        config.canvas === "pelletOverview12m" &&
+        config.mode === "month" &&
+        range
+    ) {
+
+        try {
+
+            const previousStart =
+                new Date(
+                    range.start.getFullYear() - 1,
+                    range.start.getMonth(),
+                    1,
+                    0, 0, 0, 0
+                );
+
+            const previousEnd =
+                new Date(
+                    range.end.getFullYear() - 1,
+                    range.end.getMonth(),
+                    1,
+                    0, 0, 0, 0
+                );
+
+
+            const previousMonths =
+                new Map();
+
+
+            function ensurePreviousMonth(key) {
+
+                if (!previousMonths.has(key)) {
+
+                    previousMonths.set(
+                        key,
+                        {
+                            kg: 0,
+                            cost: 0,
+                            hasCost: false,
+                            hasData: false
+                        }
+                    );
+                }
+
+                return previousMonths.get(key);
+            }
+
+
+            /*
+             * Woody Monitor history.
+             */
+
+            const previousResult =
+                await woodyPelletCachedApi(
+                    "/consumption/pellets" +
+                    "?start=" +
+                    encodeURIComponent(
+                        previousStart.toISOString()
+                    ) +
+                    "&end=" +
+                    encodeURIComponent(
+                        previousEnd.toISOString()
+                    )
+                );
+
+            const previousRows =
+                Array.isArray(previousResult.data)
+                    ? previousResult.data
+                    : [];
+
+
+            for (const row of previousRows) {
+
+                const timestamp =
+                    new Date(row.timestamp);
+
+                const kg =
+                    Number(row.kg);
+
+                if (
+                    !Number.isFinite(
+                        timestamp.getTime()
+                    ) ||
+                    !Number.isFinite(kg)
+                ) {
+                    continue;
+                }
+
+                const key =
+                    timestamp.getFullYear() +
+                    "-" +
+                    String(
+                        timestamp.getMonth() + 1
+                    ).padStart(2, "0");
+
+                const target =
+                    ensurePreviousMonth(key);
+
+                target.kg += kg;
+                target.hasData = true;
+
+                const rowCost =
+                    Number(row.cost);
+
+                if (
+                    row.cost !== null &&
+                    row.cost !== undefined &&
+                    Number.isFinite(rowCost)
+                ) {
+
+                    target.cost += rowCost;
+                    target.hasCost = true;
+                }
+            }
+
+
+            /*
+             * PellMon imported history.
+             */
+
+            const days =
+                Math.min(
+                    4000,
+                    Math.ceil(
+                        (
+                            Date.now() -
+                            previousStart.getTime()
+                        ) /
+                        86400000
+                    ) + 3
+                );
+
+            const overview =
+                await woodyPelletCachedApi(
+                    `/consumption/overview?days=${days}`
+                );
+
+            const imported =
+                Array.isArray(
+                    overview.imported
+                )
+                    ? overview.imported
+                    : [];
+
+
+            const importedTotals =
+                new Map();
+
+            const importedFullMonths =
+                new Set();
+
+
+            for (const row of imported) {
+
+                const period =
+                    String(
+                        row.period || ""
+                    );
+
+                const type =
+                    String(
+                        row.period_type || ""
+                    );
+
+                const kg =
+                    Number(
+                        row.pellet_kg
+                    );
+
+                if (!Number.isFinite(kg)) {
+                    continue;
+                }
+
+
+                let date;
+                let monthKey;
+
+
+                if (type === "day") {
+
+                    date =
+                        new Date(
+                            period +
+                            "T12:00:00"
+                        );
+
+                    monthKey =
+                        period.slice(0, 7);
+
+                } else if (
+                    type === "month"
+                ) {
+
+                    date =
+                        new Date(
+                            period +
+                            "-01T12:00:00"
+                        );
+
+                    monthKey =
+                        period;
+
+                    importedFullMonths.add(
+                        monthKey
+                    );
+
+                } else {
+
+                    continue;
+                }
+
+
+                if (
+                    !Number.isFinite(
+                        date.getTime()
+                    ) ||
+                    date < previousStart ||
+                    date >= previousEnd
+                ) {
+                    continue;
+                }
+
+
+                if (
+                    !importedTotals.has(
+                        monthKey
+                    )
+                ) {
+
+                    importedTotals.set(
+                        monthKey,
+                        {
+                            kg: 0,
+                            cost: 0,
+                            hasCost: false
+                        }
+                    );
+                }
+
+
+                const total =
+                    importedTotals.get(
+                        monthKey
+                    );
+
+                total.kg += kg;
+
+
+                const cost =
+                    woodyPelletCostAt(
+                        date,
+                        kg
+                    );
+
+                if (
+                    cost !== null &&
+                    Number.isFinite(cost)
+                ) {
+
+                    total.cost += cost;
+                    total.hasCost = true;
+                }
+            }
+
+
+            for (
+                const [
+                    monthKey,
+                    importedTotal
+                ] of importedTotals
+            ) {
+
+                const target =
+                    ensurePreviousMonth(
+                        monthKey
+                    );
+
+
+                if (
+                    importedFullMonths.has(
+                        monthKey
+                    )
+                ) {
+
+                    target.kg =
+                        importedTotal.kg;
+
+                    target.cost =
+                        importedTotal.cost;
+
+                    target.hasCost =
+                        importedTotal.hasCost;
+
+                } else {
+
+                    target.kg +=
+                        importedTotal.kg;
+
+                    if (
+                        importedTotal.hasCost
+                    ) {
+
+                        target.cost +=
+                            importedTotal.cost;
+
+                        target.hasCost =
+                            true;
+                    }
+                }
+
+                target.hasData = true;
+            }
+
+
+            /*
+             * Match every visible month with the same month
+             * exactly one year earlier.
+             */
+
+            previousYearValues =
+                items.map(
+                    item => {
+
+                        const previousDate =
+                            new Date(
+                                item.date.getFullYear() - 1,
+                                item.date.getMonth(),
+                                1
+                            );
+
+                        const key =
+                            previousDate.getFullYear() +
+                            "-" +
+                            String(
+                                previousDate.getMonth() + 1
+                            ).padStart(2, "0");
+
+                        const previous =
+                            previousMonths.get(key);
+
+                        if (
+                            !previous ||
+                            !previous.hasData
+                        ) {
+                            return null;
+                        }
+
+                        return pelletConsumptionValue(
+                            previous.kg,
+                            previous.hasCost
+                                ? previous.cost
+                                : null
+                        );
+                    }
+                );
+
+
+            previousYearLabels =
+                items.map(
+                    item => {
+
+                        const previousDate =
+                            new Date(
+                                item.date.getFullYear() - 1,
+                                item.date.getMonth(),
+                                1
+                            );
+
+                        return previousDate
+                            .toLocaleDateString(
+                                "en-GB",
+                                {
+                                    month: "short",
+                                    year: "numeric"
+                                }
+                            );
+                    }
+                );
+
+
+        } catch (error) {
+
+            console.warn(
+                "Unable to load previous-year monthly consumption",
+                error
+            );
+
+            previousYearValues = null;
+            previousYearLabels = null;
+        }
+    }
+
+
+    /*
      * HIGHEST CONSUMPTION BUCKET
      */
 
@@ -16043,10 +17015,14 @@ async function updatePelletOverviewChart(config) {
                             estimated,
 
                         backgroundColor:
-                            "rgba(148, 163, 184, 0.14)",
+                            pelletConsumptionDisplayMode === "cost"
+                                ? "rgba(168, 85, 247, 0.22)"
+                                : "rgba(59, 130, 246, 0.22)",
 
                         borderColor:
-                            "rgba(148, 163, 184, 0.28)",
+                            pelletConsumptionDisplayMode === "cost"
+                                ? "rgba(168, 85, 247, 0.48)"
+                                : "rgba(59, 130, 246, 0.48)",
 
                         borderWidth:
                             1,
@@ -16055,7 +17031,13 @@ async function updatePelletOverviewChart(config) {
                             false,
 
                         order:
-                            3
+                            3,
+
+                        barPercentage:
+                            0.62,
+
+                        categoryPercentage:
+                            0.82
                     },
 
 
@@ -16069,10 +17051,14 @@ async function updatePelletOverviewChart(config) {
                             actual,
 
                         backgroundColor:
-                            "rgba(59, 130, 246, 0.70)",
+                            pelletConsumptionDisplayMode === "cost"
+                                ? "rgba(168, 85, 247, 0.70)"
+                                : "rgba(59, 130, 246, 0.70)",
 
                         borderColor:
-                            "rgba(59, 130, 246, 0.95)",
+                            pelletConsumptionDisplayMode === "cost"
+                                ? "rgba(168, 85, 247, 0.95)"
+                                : "rgba(59, 130, 246, 0.95)",
 
                         borderWidth:
                             1,
@@ -16089,6 +17075,57 @@ async function updatePelletOverviewChart(config) {
                         categoryPercentage:
                             0.82
                     },
+
+
+                    ...(
+                        previousYearValues
+                            ? [
+                                {
+                                    label:
+                                        pelletConsumptionDisplayMode === "cost"
+                                            ? "Same month previous year cost"
+                                            : "Same month previous year",
+
+                                    data:
+                                        previousYearValues,
+
+                                    backgroundColor:
+                                        pelletConsumptionDisplayMode === "cost"
+                                            ? "rgba(216, 180, 254, 0.42)"
+                                            : "rgba(147, 197, 253, 0.42)",
+
+                                    borderColor:
+                                        pelletConsumptionDisplayMode === "cost"
+                                            ? "rgba(216, 180, 254, 0.90)"
+                                            : "rgba(147, 197, 253, 0.90)",
+
+                                    borderWidth:
+                                        1,
+
+                                    borderDash:
+                                        [4, 3],
+
+                                    grouped:
+                                        false,
+
+                                    order:
+                                        1,
+
+                                    barPercentage:
+                                        0.34,
+
+                                    categoryPercentage:
+                                        0.82,
+
+                                    woodyPreviousYear:
+                                        true,
+
+                                    woodyPreviousYearLabels:
+                                        previousYearLabels
+                                }
+                            ]
+                            : []
+                    ),
 
 
                     {
@@ -16290,6 +17327,35 @@ async function updatePelletOverviewChart(config) {
                                                 Number.isFinite(value)
                                                     ? value.toFixed(1) +
                                                       " %"
+                                                    : "--"
+                                            )
+                                        );
+                                    }
+
+
+                                    if (
+                                        context.dataset
+                                            .woodyPreviousYear
+                                    ) {
+
+                                        const previousLabel =
+                                            context.dataset
+                                                .woodyPreviousYearLabels?.[
+                                                    context.dataIndex
+                                                ];
+
+                                        return (
+                                            (
+                                                previousLabel
+                                                    ? previousLabel
+                                                    : context.dataset.label
+                                            ) +
+                                            ": " +
+                                            (
+                                                Number.isFinite(value)
+                                                    ? value.toFixed(2) +
+                                                      " " +
+                                                      pelletConsumptionUnit()
                                                     : "--"
                                             )
                                         );
@@ -16661,7 +17727,7 @@ async function updatePelletOverviewChart(config) {
 async function updatePelletFiveYearChart() {
 
     const result =
-        await api(
+        await woodyPelletCachedApi(
             "/consumption/overview?days=3653"
         );
 
@@ -16683,7 +17749,7 @@ async function updatePelletFiveYearChart() {
     try {
 
         const completeTemperatureResult =
-            await api(
+            await woodyPelletCachedApi(
                 "/consumption/outdoor-temperature" +
                 "?mode=day&days=3653"
             );
@@ -17233,10 +18299,14 @@ async function updatePelletFiveYearChart() {
                             "y",
 
                         backgroundColor:
-                            "rgba(148, 163, 184, 0.20)",
+                            pelletConsumptionDisplayMode === "cost"
+                                ? "rgba(168, 85, 247, 0.22)"
+                                : "rgba(59, 130, 246, 0.22)",
 
                         borderColor:
-                            "rgba(148, 163, 184, 0.55)",
+                            pelletConsumptionDisplayMode === "cost"
+                                ? "rgba(168, 85, 247, 0.48)"
+                                : "rgba(59, 130, 246, 0.48)",
 
                         borderWidth:
                             1,
@@ -17245,7 +18315,7 @@ async function updatePelletFiveYearChart() {
                             3,
 
                         barPercentage:
-                            0.82,
+                            0.58,
 
                         categoryPercentage:
                             0.75,
@@ -17277,10 +18347,14 @@ async function updatePelletFiveYearChart() {
                             "y",
 
                         backgroundColor:
-                            "rgba(59, 130, 246, 0.55)",
+                            pelletConsumptionDisplayMode === "cost"
+                                ? "rgba(168, 85, 247, 0.62)"
+                                : "rgba(59, 130, 246, 0.55)",
 
                         borderColor:
-                            "rgba(59, 130, 246, 0.95)",
+                            pelletConsumptionDisplayMode === "cost"
+                                ? "rgba(168, 85, 247, 0.95)"
+                                : "rgba(59, 130, 246, 0.95)",
 
                         borderWidth:
                             1,
@@ -17917,24 +18991,78 @@ async function updatePelletOverviewCharts() {
     ];
 
 
-    await Promise.allSettled(
-        pelletOverviewConfigs.map(
-            config =>
-                updatePelletOverviewChart(
+    /*
+     * Load overview charts progressively.
+     *
+     * The backend uses serialized SQLite access, so firing all
+     * chart queries simultaneously increases total startup time.
+     *
+     * Order is intentional:
+     *   24 hours
+     *   7 days
+     *   3 months
+     *   12 months
+     */
+
+    woodyPelletOverviewBusy =
+        true;
+
+    try {
+
+        for (const config of pelletOverviewConfigs) {
+
+            try {
+
+                await updatePelletOverviewChart(
                     config
-                )
-        )
-    );
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Pellet overview chart error",
+                    config.canvas,
+                    error
+                );
+            }
+        }
+
+    } finally {
+
+        woodyPelletOverviewBusy =
+            false;
+    }
 
 }
 
 
 
-async function updatePelletChart() {
+/*
+ * Prevent overlapping pellet-consumption refreshes.
+ *
+ * The SQLite backend serializes database access. Starting many
+ * chart requests at the same time therefore makes every request
+ * slower. Keep one complete consumption refresh in flight.
+ */
+
+let woodyPelletChartRefreshPromise =
+    null;
+
+let woodyPelletOverviewBusy =
+    false;
+
+
+async function woodyUpdatePelletChartInternal() {
 
     updatePelletStatistics();
-    updatePelletOverviewCharts();
 
+
+    /*
+     * Do not let the main consumption chart and all overview
+     * charts compete for the database at the same time.
+     */
+
+    await updatePelletOverviewCharts();
 
 
     try {
@@ -18661,6 +19789,30 @@ async function updatePelletChart() {
 
         if (costElement)
             costElement.textContent = "--";
+    }
+}
+
+
+async function updatePelletChart() {
+
+    if (woodyPelletChartRefreshPromise) {
+
+        return woodyPelletChartRefreshPromise;
+    }
+
+
+    woodyPelletChartRefreshPromise =
+        woodyUpdatePelletChartInternal();
+
+
+    try {
+
+        return await woodyPelletChartRefreshPromise;
+
+    } finally {
+
+        woodyPelletChartRefreshPromise =
+            null;
     }
 }
 
@@ -19713,6 +20865,14 @@ function showPage(page) {
    SILO FORECAST
    ============================================================ */
 
+const woodySiloPageLoadTime =
+    performance.now();
+
+console.log(
+    "[SILO TIMING] page script ready",
+    "0 ms"
+);
+
 let siloForecastChart = null;
 let siloForecastBusy = false;
 
@@ -19759,6 +20919,57 @@ function extractPelletTotal(result) {
     return Number.isFinite(direct) && direct > 0
         ? direct
         : null;
+}
+
+
+async function getPelletConsumptionBetween(startDate, endDate) {
+
+    if (
+        !(startDate instanceof Date) ||
+        !(endDate instanceof Date) ||
+        Number.isNaN(startDate.getTime()) ||
+        Number.isNaN(endDate.getTime()) ||
+        endDate <= startDate
+    ) {
+        return null;
+    }
+
+    try {
+
+        const url =
+            "/consumption/pellets" +
+            "?start=" +
+            encodeURIComponent(startDate.toISOString()) +
+            "&end=" +
+            encodeURIComponent(endDate.toISOString());
+
+        const response = await fetch(
+            API + url,
+            { cache: "no-store" }
+        );
+
+        if (!response.ok)
+            return null;
+
+        const result =
+            await response.json();
+
+        const total =
+            extractPelletTotal(result);
+
+        return Number.isFinite(total)
+            ? total
+            : null;
+
+    } catch(error) {
+
+        console.debug(
+            "Silo consumption since refill:",
+            error
+        );
+
+        return null;
+    }
 }
 
 
@@ -19834,51 +21045,300 @@ function formatSiloDateTime(date) {
 }
 
 
-async function getSiloHistory() {
+/*
+ * Silo history changes very rarely.
+ *
+ * The history endpoint takes about 1-1.5 seconds even for a
+ * short period, so do not request it every 15 seconds.
+ *
+ * Keep the parsed history in memory for five minutes.
+ */
+
+let woodySiloHistoryCache =
+    null;
+
+let woodySiloHistoryCacheTime =
+    0;
+
+let woodySiloHistoryPromise =
+    null;
+
+const WOODY_SILO_HISTORY_CACHE_MS =
+    5 * 60 * 1000;
+
+const WOODY_SILO_HISTORY_STORAGE_KEY =
+    "woodySiloHistoryCacheV1";
+
+
+function loadPersistentSiloHistory() {
 
     try {
 
-        const response = await fetch(
-            API +
-            "/history?parameter=magazine_content&hours=2160",
-            { cache: "no-store" }
-        );
+        const raw =
+            localStorage.getItem(
+                WOODY_SILO_HISTORY_STORAGE_KEY
+            );
 
-        if (!response.ok)
-            return [];
+        if (!raw)
+            return null;
 
-        const result = await response.json();
+        const parsed =
+            JSON.parse(raw);
+
+        if (
+            !parsed ||
+            !Array.isArray(parsed.rows)
+        )
+            return null;
 
         const rows =
-            Array.isArray(result?.data)
-                ? result.data
-                : [];
+            parsed.rows
+                .map(row => ({
+                    date:
+                        new Date(
+                            row.timestamp
+                        ),
+                    kg:
+                        siloNumber(
+                            row.kg
+                        )
+                }))
+                .filter(row =>
+                    row.kg !== null &&
+                    row.kg >= 0 &&
+                    !Number.isNaN(
+                        row.date.getTime()
+                    )
+                )
+                .sort(
+                    (a, b) =>
+                        a.date.getTime() -
+                        b.date.getTime()
+                );
 
-        return rows
-            .map(row => ({
-                date: new Date(row.timestamp),
-                kg: siloNumber(row.value)
-            }))
-            .filter(row =>
-                row.kg !== null &&
-                row.kg >= 0 &&
-                !Number.isNaN(row.date.getTime())
-            )
-            .sort(
-                (a, b) =>
-                    a.date.getTime() -
-                    b.date.getTime()
-            );
+        if (!rows.length)
+            return null;
+
+        return {
+            rows,
+            savedAt:
+                Number(parsed.savedAt) || 0
+        };
 
     } catch(error) {
 
         console.debug(
-            "Silo history:",
+            "Persistent silo history:",
             error
         );
 
-        return [];
+        return null;
     }
+}
+
+
+function savePersistentSiloHistory(rows) {
+
+    try {
+
+        localStorage.setItem(
+            WOODY_SILO_HISTORY_STORAGE_KEY,
+            JSON.stringify({
+                savedAt:
+                    Date.now(),
+
+                rows:
+                    rows.map(row => ({
+                        timestamp:
+                            row.date.toISOString(),
+                        kg:
+                            row.kg
+                    }))
+            })
+        );
+
+    } catch(error) {
+
+        console.debug(
+            "Persistent silo history save:",
+            error
+        );
+    }
+}
+
+
+/*
+ * Restore silo history synchronously during script initialization.
+ *
+ * This happens before updateSiloForecast() can run, so the first
+ * forecast after Ctrl+F5 does not have to wait for SQLite.
+ */
+{
+    const persistent =
+        loadPersistentSiloHistory();
+
+    if (persistent) {
+
+        woodySiloHistoryCache =
+            persistent.rows;
+
+        woodySiloHistoryCacheTime =
+            Date.now();
+
+        console.log(
+            "[SILO CACHE] startup restored",
+            woodySiloHistoryCache.length,
+            "rows from browser storage"
+        );
+    }
+}
+
+
+async function getSiloHistory() {
+
+    const now =
+        Date.now();
+
+
+    /*
+     * After a browser refresh the JavaScript memory cache is empty.
+     * Restore the last valid silo history from localStorage so the
+     * forecast can be drawn without waiting for SQLite.
+     */
+
+    if (!woodySiloHistoryCache) {
+
+        const persistent =
+            loadPersistentSiloHistory();
+
+        if (persistent) {
+
+            woodySiloHistoryCache =
+                persistent.rows;
+
+            /*
+             * Give restored data a fresh in-memory lifetime.
+             * The normal five-minute refresh will later verify it
+             * against the database.
+             */
+
+            woodySiloHistoryCacheTime =
+                now;
+
+            console.log(
+                "[SILO CACHE] restored",
+                woodySiloHistoryCache.length,
+                "rows from browser storage"
+            );
+
+            return woodySiloHistoryCache;
+        }
+    }
+
+
+    if (
+        woodySiloHistoryCache &&
+        now - woodySiloHistoryCacheTime <
+            WOODY_SILO_HISTORY_CACHE_MS
+    ) {
+        return woodySiloHistoryCache;
+    }
+
+
+    /*
+     * If another silo refresh is already loading the history,
+     * share that request instead of starting another one.
+     */
+
+    if (woodySiloHistoryPromise) {
+
+        return woodySiloHistoryPromise;
+    }
+
+
+    woodySiloHistoryPromise =
+        (async () => {
+
+            try {
+
+                const response =
+                    await fetch(
+                        API +
+                        "/history?parameter=magazine_content&hours=2160",
+                        { cache: "no-store" }
+                    );
+
+                if (!response.ok)
+                    return woodySiloHistoryCache || [];
+
+
+                const result =
+                    await response.json();
+
+
+                const rows =
+                    (
+                        Array.isArray(result?.data)
+                            ? result.data
+                            : []
+                    )
+                    .map(row => ({
+                        date:
+                            new Date(
+                                row.timestamp
+                            ),
+                        kg:
+                            siloNumber(
+                                row.value
+                            )
+                    }))
+                    .filter(row =>
+                        row.kg !== null &&
+                        row.kg >= 0 &&
+                        !Number.isNaN(
+                            row.date.getTime()
+                        )
+                    )
+                    .sort(
+                        (a, b) =>
+                            a.date.getTime() -
+                            b.date.getTime()
+                    );
+
+
+                woodySiloHistoryCache =
+                    rows;
+
+                woodySiloHistoryCacheTime =
+                    Date.now();
+
+                if (rows.length) {
+                    savePersistentSiloHistory(
+                        rows
+                    );
+                }
+
+
+                return rows;
+
+            } catch(error) {
+
+                console.debug(
+                    "Silo history:",
+                    error
+                );
+
+                return woodySiloHistoryCache || [];
+
+            } finally {
+
+                woodySiloHistoryPromise =
+                    null;
+            }
+        })();
+
+
+    return woodySiloHistoryPromise;
 }
 
 
@@ -19940,8 +21400,50 @@ function reduceSiloHistoryPoints(rows, maxPoints = 40) {
 
 async function updateSiloForecast() {
 
-    if (siloForecastBusy)
+    console.log(
+        "[SILO TIMING] updateSiloForecast called",
+        Math.round(
+            performance.now() -
+            woodySiloPageLoadTime
+        ) + " ms",
+        {
+            siloForecastBusy,
+            woodyPelletOverviewBusy
+        }
+    );
+
+    if (siloForecastBusy) {
+        console.log(
+            "[SILO TIMING] forecast already running"
+        );
+
         return;
+    }
+
+    if (woodyPelletOverviewBusy) {
+
+        console.log(
+            "[SILO TIMING] overview busy - retry in 250 ms"
+        );
+
+        setTimeout(
+            updateSiloForecast,
+            250
+        );
+
+        return;
+    }
+
+    const woodySiloRunStart =
+        performance.now();
+
+    console.log(
+        "[SILO TIMING] forecast START",
+        Math.round(
+            woodySiloRunStart -
+            woodySiloPageLoadTime
+        ) + " ms after page load"
+    );
 
     const canvas =
         document.getElementById(
@@ -19964,25 +21466,49 @@ async function updateSiloForecast() {
     if (
         currentKg === null ||
         currentKg < 0
-    )
+    ) {
+
+        /*
+         * Live magazine content may not be populated yet during
+         * the first milliseconds after page load.
+         *
+         * Retry shortly instead of waiting for the next
+         * 15-second silo interval.
+         */
+        console.log(
+            "[SILO TIMING] live magazine content not ready - retry in 250 ms"
+        );
+
+        setTimeout(
+            updateSiloForecast,
+            250
+        );
+
         return;
+    }
 
     siloForecastBusy = true;
 
     try {
 
-        const [
-            sevenDayKg,
-            siloHistory
-        ] = await Promise.all([
-            getSevenDayPelletConsumption(),
-            getSiloHistory()
-        ]);
+        const woodyHistoryStart =
+            performance.now();
 
-        const daily =
-            sevenDayKg !== null
-                ? sevenDayKg / 7
-                : null;
+        const siloHistory =
+            await getSiloHistory();
+
+        console.log(
+            "[SILO TIMING] history DONE",
+            Math.round(
+                performance.now() -
+                woodyHistoryStart
+            ) + " ms",
+            "total",
+            Math.round(
+                performance.now() -
+                woodySiloRunStart
+            ) + " ms"
+        );
 
         const dailyEl =
             document.getElementById(
@@ -19998,33 +21524,6 @@ async function updateSiloForecast() {
             document.getElementById(
                 "siloLastRefill"
             );
-
-        if (
-            daily === null ||
-            !Number.isFinite(daily) ||
-            daily <= 0
-        ) {
-
-            if (dailyEl)
-                dailyEl.textContent = "--";
-
-            if (emptyEl)
-                emptyEl.textContent = "--";
-
-            if (lastRefillEl)
-                lastRefillEl.textContent = "--";
-
-            if (siloForecastChart) {
-                siloForecastChart.destroy();
-                siloForecastChart = null;
-            }
-
-            return;
-        }
-
-        if (dailyEl)
-            dailyEl.textContent =
-                daily.toFixed(1);
 
         const now =
             new Date();
@@ -20051,10 +21550,19 @@ async function updateSiloForecast() {
             const current =
                 siloHistory[i].kg;
 
+            /*
+             * A new silo period starts only when pellets are
+             * ADDED to the magazine.
+             *
+             * Normal consumption makes magazine_content fall
+             * and must never move the refill/start date.
+             *
+             * Ignore small corrections/noise as well.
+             */
             if (
                 Number.isFinite(previous) &&
                 Number.isFinite(current) &&
-                Math.abs(current - previous) >= 0.1
+                (current - previous) >= 5
             ) {
                 anchorIndex = i;
             }
@@ -20094,6 +21602,81 @@ async function updateSiloForecast() {
             anchorDate = now;
         }
 
+
+        /*
+         * Forecast consumption is based on the complete current
+         * silo period: from the latest refill until NOW.
+         *
+         * This means today's live pellet consumption immediately
+         * affects the estimated empty date.
+         */
+        const woodyConsumptionStart =
+            performance.now();
+
+        const consumedSinceRefill =
+            await getPelletConsumptionBetween(
+                anchorDate,
+                now
+            );
+
+        console.log(
+            "[SILO TIMING] consumption DONE",
+            Math.round(
+                performance.now() -
+                woodyConsumptionStart
+            ) + " ms",
+            "total",
+            Math.round(
+                performance.now() -
+                woodySiloRunStart
+            ) + " ms"
+        );
+
+        const elapsedDays =
+            Math.max(
+                (
+                    now.getTime() -
+                    anchorDate.getTime()
+                ) / 86400000,
+                1 / 24
+            );
+
+        const daily =
+            (
+                consumedSinceRefill !== null &&
+                Number.isFinite(consumedSinceRefill) &&
+                consumedSinceRefill > 0
+            )
+                ? consumedSinceRefill / elapsedDays
+                : null;
+
+        if (
+            daily === null ||
+            !Number.isFinite(daily) ||
+            daily <= 0
+        ) {
+
+            if (dailyEl)
+                dailyEl.textContent = "--";
+
+            if (emptyEl)
+                emptyEl.textContent = "--";
+
+            if (lastRefillEl)
+                lastRefillEl.textContent =
+                    formatSiloDateTime(anchorDate);
+
+            if (siloForecastChart) {
+                siloForecastChart.destroy();
+                siloForecastChart = null;
+            }
+
+            return;
+        }
+
+        if (dailyEl)
+            dailyEl.textContent =
+                daily.toFixed(2);
 
         /*
          * History displayed in the chart begins at the fixed
@@ -20420,7 +22003,16 @@ async function updateSiloForecast() {
                                 pointHoverRadius: 4,
                                 tension: 0.15,
                                 spanGaps: false,
-                                fill: false
+
+                                /*
+                                 * Fill from the actual silo-content
+                                 * curve down to zero. Together with
+                                 * the forecast fill this forms one
+                                 * continuous silo "curtain".
+                                 */
+                                fill: "origin",
+                                backgroundColor:
+                                    "rgba(255,255,255,.18)"
                             },
                             {
                                 label:
@@ -20434,7 +22026,15 @@ async function updateSiloForecast() {
                                 pointHoverRadius: 4,
                                 tension: 0.15,
                                 spanGaps: false,
-                                fill: false
+
+                                /*
+                                 * Forecast continues the curtain from
+                                 * the current live silo level all the
+                                 * way to zero at Estimated empty.
+                                 */
+                                fill: "origin",
+                                backgroundColor:
+                                    "rgba(255,255,255,.055)"
                             }
                         ]
                     },
@@ -20556,6 +22156,18 @@ async function updateSiloForecast() {
         );
 
     } finally {
+
+        console.log(
+            "[SILO TIMING] forecast FINISHED",
+            Math.round(
+                performance.now() -
+                woodySiloRunStart
+            ) + " ms runtime",
+            Math.round(
+                performance.now() -
+                woodySiloPageLoadTime
+            ) + " ms after page load"
+        );
 
         siloForecastBusy = false;
     }
@@ -21215,16 +22827,22 @@ async function initialize() {
     );
 
     /*
-     * Silo forecast depends on live magazine content,
-     * so start it after live startup has had a chance
-     * to populate the dashboard.
+     * Silo forecast starts independently outside initialize().
+     * This prevents normal dashboard startup from delaying it.
      */
-    /*
-     * Silo forecast is not critical for initial dashboard rendering.
-     * Delay it slightly so History can finish first.
-     */
-    setTimeout(updateSiloForecast, 5000);
 }
+
+/*
+ * Silo forecast has its own startup path.
+ *
+ * Do not wait for initialize(), because initial History,
+ * pellet charts and other dashboard requests can take several
+ * seconds before initialize() completes.
+ */
+setTimeout(
+    updateSiloForecast,
+    0
+);
 
 initialize().finally(() => {
     /*
@@ -21239,7 +22857,45 @@ setInterval(loadSystemStatus, 30000);
 
 setInterval(loadLive,5000);
 setInterval(runGraphAutoUpdate,60000);
-setInterval(updateSiloForecast,60000);
+
+/*
+ * Live pellet consumption
+ *
+ * /consumption/pellets already calculates the incomplete
+ * current hour directly from feeder_time. Refresh the pellet
+ * charts while the page is open so the current bar grows
+ * while pellets are being consumed.
+ *
+ * This only reads the API. It causes no additional database
+ * writes.
+ */
+setInterval(() => {
+
+    const activePage =
+        document.querySelector(
+            ".page.active"
+        );
+
+
+    if (
+        !activePage ||
+        activePage.id !== "page-consumption"
+    ) {
+        return;
+    }
+
+
+    updatePelletChart().catch(
+        error =>
+            console.warn(
+                "Live pellet chart refresh failed",
+                error
+            )
+    );
+
+},15000);
+
+setInterval(updateSiloForecast,15000);
 setInterval(loadActivityLog,10000);
 
 loadPelletPrice();
@@ -21533,6 +23189,13 @@ function woodyArrangeGraphControls() {
 
 const woodyBurnerTrendValues = new Map();
 
+const WOODY_BURNER_TREND_WINDOW_MS =
+    5 * 60 * 1000;
+
+const WOODY_BURNER_TREND_MAX_AGE_MS =
+    6 * 60 * 1000;
+
+
 const woodyBurnerTrendIds = [
     "statusBoilerTemp",
     "statusHotWater",
@@ -21545,6 +23208,7 @@ const woodyBurnerTrendIds = [
 /*
  * Outdoor temperature intentionally excluded.
  */
+
 
 function woodyNumericText(element) {
 
@@ -21586,7 +23250,7 @@ function woodyEnsureTrendElement(valueElement) {
         "burner-trend burner-trend-stable";
 
     trend.textContent = "→";
-    trend.title = "Stable";
+    trend.title = "Waiting for 5 minute trend";
 
     const valueContainer =
         valueElement.closest(
@@ -21635,18 +23299,76 @@ function woodySetTrend(
     if (!trend)
         return;
 
-    const previous =
+    const now =
+        Date.now();
+
+    let samples =
         woodyBurnerTrendValues.get(
             valueElement.id
         );
 
+    if (!Array.isArray(samples))
+        samples = [];
+
+
     /*
-     * First reading has no previous sample.
+     * Store current sample.
      */
-    if (
-        previous === undefined ||
-        previous === null
-    ) {
+    samples.push({
+        time: now,
+        value: currentValue
+    });
+
+
+    /*
+     * Keep only a small rolling history.
+     */
+    const oldestAllowed =
+        now -
+        WOODY_BURNER_TREND_MAX_AGE_MS;
+
+    samples =
+        samples.filter(
+            sample =>
+                sample.time >=
+                oldestAllowed
+        );
+
+
+    /*
+     * Find the newest sample which is at least
+     * five minutes old.
+     */
+    const referenceTime =
+        now -
+        WOODY_BURNER_TREND_WINDOW_MS;
+
+    let reference = null;
+
+    for (const sample of samples) {
+
+        if (
+            sample.time <=
+            referenceTime
+        ) {
+            reference = sample;
+        } else {
+            break;
+        }
+    }
+
+
+    woodyBurnerTrendValues.set(
+        valueElement.id,
+        samples
+    );
+
+
+    /*
+     * Until five minutes of samples are available,
+     * do not show a misleading short-term trend.
+     */
+    if (!reference) {
 
         trend.textContent = "→";
 
@@ -21654,19 +23376,15 @@ function woodySetTrend(
             "burner-trend burner-trend-stable";
 
         trend.title =
-            "Waiting for trend";
-
-        woodyBurnerTrendValues.set(
-            valueElement.id,
-            currentValue
-        );
+            "Waiting for 5 minute trend";
 
         return;
     }
 
 
     const difference =
-        currentValue - previous;
+        currentValue -
+        reference.value;
 
     /*
      * Ignore tiny floating point changes.
@@ -21682,9 +23400,11 @@ function woodySetTrend(
             "burner-trend burner-trend-up";
 
         trend.title =
-            "Increasing";
+            "Increasing over 5 minutes";
 
-    } else if (difference < -epsilon) {
+    } else if (
+        difference < -epsilon
+    ) {
 
         trend.textContent = "↓";
 
@@ -21692,7 +23412,7 @@ function woodySetTrend(
             "burner-trend burner-trend-down";
 
         trend.title =
-            "Decreasing";
+            "Decreasing over 5 minutes";
 
     } else {
 
@@ -21702,14 +23422,8 @@ function woodySetTrend(
             "burner-trend burner-trend-stable";
 
         trend.title =
-            "Stable";
+            "Stable over 5 minutes";
     }
-
-
-    woodyBurnerTrendValues.set(
-        valueElement.id,
-        currentValue
-    );
 }
 
 
@@ -21733,7 +23447,12 @@ function woodyWatchBurnerTrend(id) {
 
         woodyBurnerTrendValues.set(
             id,
-            initial
+            [
+                {
+                    time: Date.now(),
+                    value: initial
+                }
+            ]
         );
     }
 
