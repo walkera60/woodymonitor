@@ -5742,6 +5742,54 @@ strong {
             </div>
 
             <div style="padding:12px 0;border-top:1px solid var(--border);">
+
+                <div style="display:flex;align-items:center;gap:10px;">
+
+                    <span>Low pellet alarm</span>
+
+                    <input
+                        id="lowPelletAlarmEnabled"
+                        type="checkbox"
+                        style="margin-left:auto;width:18px;height:18px;"
+                    >
+
+                </div>
+
+                <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+
+                    <span>Alarm threshold</span>
+
+                    <input
+                        id="lowPelletAlarmKg"
+                        type="number"
+                        value="25"
+                        min="1"
+                        max="5000"
+                        step="1"
+                        style="margin-left:auto;width:90px;background:#202934;color:white;border:1px solid #2b3542;border-radius:8px;padding:8px;"
+                    >
+
+                    <span>kg</span>
+
+                    <button
+                        class="btn"
+                        onclick="saveSiloCapacity()"
+                    >
+                        Save
+                    </button>
+
+                </div>
+
+                <div
+                    id="lowPelletAlarmInfo"
+                    style="font-size:12px;color:var(--muted);margin-top:8px;"
+                >
+                    Warning when silo content falls below the threshold
+                </div>
+
+            </div>
+
+            <div style="padding:12px 0;border-top:1px solid var(--border);">
                 <div style="display:flex;align-items:center;gap:10px;">
 
                     <span>Cleaning interval</span>
@@ -13382,10 +13430,16 @@ async function loadFeederSettings() {
 
 async function loadSiloCapacity() {
 
-    const input =
+    const capacityInput =
         document.getElementById("siloCapacitySetting");
 
-    if (!input)
+    const alarmEnabledInput =
+        document.getElementById("lowPelletAlarmEnabled");
+
+    const alarmKgInput =
+        document.getElementById("lowPelletAlarmKg");
+
+    if (!capacityInput)
         return;
 
     try {
@@ -13409,18 +13463,55 @@ async function loadSiloCapacity() {
         const capacity =
             Number(data.capacity_kg);
 
+        const alarmKg =
+            Number(data.low_pellet_alarm_kg);
+
+        const alarmEnabled =
+            data.low_pellet_alarm_enabled === true;
+
         if (Number.isFinite(capacity)) {
 
-            input.value =
+            capacityInput.value =
                 capacity.toFixed(0);
 
+            window.siloCapacityKg =
+                capacity;
+
             const info =
-                document.getElementById("siloCapacityInfo");
+                document.getElementById(
+                    "siloCapacityInfo"
+                );
 
             if (info) {
                 info.textContent =
                     `Current capacity: ${capacity.toFixed(0)} kg`;
             }
+        }
+
+        if (alarmEnabledInput) {
+            alarmEnabledInput.checked =
+                alarmEnabled;
+        }
+
+        if (
+            alarmKgInput &&
+            Number.isFinite(alarmKg)
+        ) {
+            alarmKgInput.value =
+                alarmKg.toFixed(0);
+        }
+
+        const alarmInfo =
+            document.getElementById(
+                "lowPelletAlarmInfo"
+            );
+
+        if (alarmInfo) {
+
+            alarmInfo.textContent =
+                alarmEnabled
+                    ? `Alarm enabled below ${alarmKg.toFixed(0)} kg`
+                    : "Low pellet alarm disabled";
         }
 
     } catch(error) {
@@ -13435,14 +13526,36 @@ async function loadSiloCapacity() {
 
 async function saveSiloCapacity() {
 
-    const input =
-        document.getElementById("siloCapacitySetting");
+    const capacityInput =
+        document.getElementById(
+            "siloCapacitySetting"
+        );
 
-    if (!input)
+    const alarmEnabledInput =
+        document.getElementById(
+            "lowPelletAlarmEnabled"
+        );
+
+    const alarmKgInput =
+        document.getElementById(
+            "lowPelletAlarmKg"
+        );
+
+    if (
+        !capacityInput ||
+        !alarmEnabledInput ||
+        !alarmKgInput
+    )
         return;
 
     const capacity =
-        Number(input.value);
+        Number(capacityInput.value);
+
+    const alarmKg =
+        Number(alarmKgInput.value);
+
+    const alarmEnabled =
+        alarmEnabledInput.checked;
 
     if (
         !Number.isFinite(capacity) ||
@@ -13457,13 +13570,38 @@ async function saveSiloCapacity() {
         return;
     }
 
+    if (
+        !Number.isFinite(alarmKg) ||
+        alarmKg < 1 ||
+        alarmKg > capacity
+    ) {
+
+        alert(
+            "Alarm threshold must be between 1 kg and the silo capacity."
+        );
+
+        return;
+    }
+
     try {
+
+        const params =
+            new URLSearchParams({
+                capacity_kg:
+                    String(capacity),
+
+                low_pellet_alarm_enabled:
+                    String(alarmEnabled),
+
+                low_pellet_alarm_kg:
+                    String(alarmKg)
+            });
 
         const response =
             await fetch(
                 API +
-                "/settings/silo?capacity_kg=" +
-                encodeURIComponent(capacity),
+                    "/settings/silo?" +
+                    params.toString(),
                 {
                     method: "POST",
                     cache: "no-store"
@@ -13478,40 +13616,61 @@ async function saveSiloCapacity() {
         const data =
             await response.json();
 
-        const saved =
+        const savedCapacity =
             Number(data.capacity_kg);
 
-        if (Number.isFinite(saved)) {
+        const savedAlarmKg =
+            Number(data.low_pellet_alarm_kg);
 
-            input.value =
-                saved.toFixed(0);
+        const savedAlarmEnabled =
+            data.low_pellet_alarm_enabled === true;
 
-            const info =
-                document.getElementById("siloCapacityInfo");
+        capacityInput.value =
+            savedCapacity.toFixed(0);
 
-            if (info) {
-                info.textContent =
-                    `Current capacity: ${saved.toFixed(0)} kg`;
-            }
+        alarmKgInput.value =
+            savedAlarmKg.toFixed(0);
 
-            /*
-             * Update dashboard immediately if it is visible.
-             */
-            window.siloCapacityKg =
-                saved;
+        alarmEnabledInput.checked =
+            savedAlarmEnabled;
 
-            updateDashboard();
+        window.siloCapacityKg =
+            savedCapacity;
+
+        const capacityInfo =
+            document.getElementById(
+                "siloCapacityInfo"
+            );
+
+        if (capacityInfo) {
+            capacityInfo.textContent =
+                `Current capacity: ${savedCapacity.toFixed(0)} kg`;
         }
+
+        const alarmInfo =
+            document.getElementById(
+                "lowPelletAlarmInfo"
+            );
+
+        if (alarmInfo) {
+
+            alarmInfo.textContent =
+                savedAlarmEnabled
+                    ? `Alarm enabled below ${savedAlarmKg.toFixed(0)} kg`
+                    : "Low pellet alarm disabled";
+        }
+
+        updateDashboard();
 
     } catch(error) {
 
         console.error(
-            "Save silo capacity:",
+            "Save silo settings:",
             error
         );
 
         alert(
-            "Could not save silo capacity."
+            "Could not save silo settings."
         );
     }
 }
