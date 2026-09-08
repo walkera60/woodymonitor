@@ -4478,6 +4478,18 @@ strong {
 
 </style>
 
+
+<style id="woody-ai-style">
+#woody-ai-panel .woody-ai-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px;margin-top:16px}
+#woody-ai-panel .woody-ai-field{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);min-width:0}
+#woody-ai-panel input:not([type=checkbox]),#woody-ai-panel select{box-sizing:border-box;width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--card,#202934);color:var(--text,#fff);font:inherit}
+#woody-ai-panel input[type=checkbox]{align-self:flex-start;width:20px;height:20px}
+#woody-ai-panel .woody-ai-actions{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
+#woody-ai-panel .woody-ai-report{white-space:pre-wrap;overflow-wrap:anywhere;max-height:650px;overflow:auto;padding:16px;border:1px solid var(--border);border-radius:8px;font:inherit;line-height:1.6}
+</style>
+
+
+
 </head>
 
 <body>
@@ -6188,6 +6200,7 @@ strong {
                         </button>
                     </div>
                     </div>
+
                 </div>
 
             </div>
@@ -6222,6 +6235,64 @@ strong {
 
 
 
+
+
+<div class="card col-12 woody-ai-accordion-card">
+
+    <div class="card-header">
+        <div>
+            <div class="card-title">
+                AI driftsanalyse
+            </div>
+            <div class="card-subtitle">
+                Gemini · Varmebehov · Gmail
+            </div>
+        </div>
+
+        <button
+            type="button"
+            id="woody-ai-accordion-toggle"
+            aria-label="Expand or collapse"
+            aria-expanded="false"
+            aria-controls="woody-ai-accordion-content"
+        >
+            ▶
+        </button>
+    </div>
+
+    <div
+        id="woody-ai-accordion-content"
+        hidden
+    >
+<div id="woody-ai-panel">
+  
+  <div class="woody-ai-grid">
+    <label class="woody-ai-field">Aktivér AI <input id="wai-enabled" type="checkbox"></label>
+    <label class="woody-ai-field">Gemini API-nøgle <input id="wai-key" type="password" autocomplete="new-password" placeholder="Lad stå tomt for at beholde nøgle"></label>
+    <label class="woody-ai-field">Model <select id="wai-model"><option value="gemini-3.8-flash">gemini-3.8-flash</option></select> <button class="btn" type="button" id="wai-models">Hent modeller</button></label>
+    <label class="woody-ai-field">Analyseperiode (dage) <input id="wai-days" type="number" min="1" max="30" value="7"></label>
+    <label class="woody-ai-field">Ønsket indetemperatur (°C) <input id="wai-target" type="number" min="10" max="30" step="0.5" value="21"></label>
+    <label class="woody-ai-field">Send rapport på e-mail <input id="wai-email-enabled" type="checkbox"></label>
+    <label class="woody-ai-field">Modtager <input id="wai-to" type="email"></label>
+    <label class="woody-ai-field">SMTP-server <input id="wai-host" placeholder="smtp.example.com"></label>
+    <label class="woody-ai-field">SMTP-port <input id="wai-port" type="number" value="465"></label>
+    <label class="woody-ai-field">Sikkerhed <select id="wai-security"><option value="ssl">SSL/TLS</option><option value="starttls">STARTTLS</option></select></label>
+    <label class="woody-ai-field">SMTP-brugernavn <input id="wai-user" autocomplete="username"></label>
+    <label class="woody-ai-field">SMTP-password <input id="wai-password" type="password" autocomplete="new-password" placeholder="Lad stå tomt for at beholde password"></label>
+    <label class="woody-ai-field">Afsenderadresse <input id="wai-from" type="email"></label>
+  </div>
+  <div class="woody-ai-actions"><button class="btn" type="button" id="wai-gmail">Brug Gmail SMTP</button><button class="btn" type="button" id="wai-test">Send testmail</button>
+    <button class="btn" type="button" id="wai-save">Gem AI-indstillinger</button>
+    <button class="btn" type="button" id="wai-run">Kør AI-analyse nu</button>
+    <button class="btn" type="button" id="wai-refresh">Vis seneste rapport</button>
+  </div>
+  <div id="wai-status" class="card-subtitle" role="status" aria-live="polite">Indlæser AI-status…</div>
+  <div class="card-subtitle" style="margin-top:8px">Analysen er kun rådgivende. Den ændrer ikke fyr, timer eller Home Assistant. Gemini modtager måledata, når du starter analysen.</div>
+  <div class="card-subtitle">Gmail: Brug en appadgangskode fra Google, ikke din almindelige adgangskode. Testmail sendes kun, når du trykker på knappen.</div><pre id="wai-report" class="woody-ai-report" style="display:none"></pre>
+</div>
+    </div>
+
+</div>
 
 <div class="card col-12">
 
@@ -6267,6 +6338,8 @@ strong {
             </div>
 
 </div>
+
+
 </section>
 
 </main>
@@ -6489,6 +6562,18 @@ document.addEventListener(
     () => {
         initializeUnifiedSettingsCard();
         initializeOperationStatusObservers();
+
+        setTimeout(
+            () => {
+                if (
+                    typeof syncHistoryRangeButtons ===
+                    "function"
+                ) {
+                    syncHistoryRangeButtons();
+                }
+            },
+            0
+        );
     }
 );
 
@@ -6500,7 +6585,53 @@ let historyChart = null;
 let pelletChart = null;
 let historyRequestController = null;
 let historyRequestGeneration = 0;
-let historyHours = 1;
+function getSavedHistoryHours() {
+
+    try {
+
+        const value =
+            Number(
+                localStorage.getItem(
+                    "woodyHistoryHours"
+                )
+            );
+
+        if (
+            Number.isFinite(value) &&
+            value > 0
+        ) {
+            return value;
+        }
+
+    } catch (_) {}
+
+    return 24;
+}
+
+
+function saveHistoryHours(hours) {
+
+    const value = Number(hours);
+
+    if (
+        !Number.isFinite(value) ||
+        value <= 0
+    ) {
+        return;
+    }
+
+    try {
+
+        localStorage.setItem(
+            "woodyHistoryHours",
+            String(value)
+        );
+
+    } catch (_) {}
+}
+
+
+let historyHours = getSavedHistoryHours();
 let consumptionHours = 24;
 
 let historyStart = null;
@@ -7723,6 +7854,24 @@ function updateWeatherCompensationBadge() {
 
 
 
+function weatherCurveLabel(number) {
+
+    const value = Number(number);
+
+    if (value === 5)
+        return "Non-Stop";
+
+    if (
+        Number.isFinite(value) &&
+        value > 0
+    ) {
+        return `Curve ${value}`;
+    }
+
+    return "No extension";
+}
+
+
 function weatherFormatTemperature(value) {
 
     const number =
@@ -7886,7 +8035,9 @@ function renderWeatherCompensationSettings() {
                     ? "SUMMER STOP"
                     : (
                         data.active_curve
-                            ? `Curve ${data.active_curve}`
+                            ? weatherCurveLabel(
+                                data.active_curve
+                            )
                             : "No extension"
                     );
 
@@ -8065,7 +8216,7 @@ function renderWeatherCompensationSettings() {
                     <tr class="${active}">
 
                         <td>
-                            Curve ${number}
+                            ${weatherCurveLabel(number)}
                         </td>
 
                         <td>
@@ -8104,6 +8255,54 @@ function renderWeatherCompensationSettings() {
 }
 
 
+function applyWeatherNonStopLabel() {
+
+    const rows =
+        document.querySelectorAll(
+            "#weatherCurveRows tr"
+        );
+
+    if (rows.length < 5)
+        return;
+
+    const firstCell =
+        rows[4].querySelector("td");
+
+    if (!firstCell)
+        return;
+
+    /*
+     * Only change the visible label.
+     * API/internal active_curve remains numeric value 5.
+     */
+    firstCell.childNodes.forEach(node => {
+
+        if (
+            node.nodeType === Node.TEXT_NODE &&
+            node.textContent.includes("Curve 5")
+        ) {
+            node.textContent =
+                node.textContent.replace(
+                    "Curve 5",
+                    "Non-Stop"
+                );
+        }
+    });
+
+    if (
+        firstCell.textContent
+            .trim()
+            .startsWith("Curve 5")
+    ) {
+        firstCell.innerHTML =
+            firstCell.innerHTML.replace(
+                "Curve 5",
+                "Non-Stop"
+            );
+    }
+}
+
+
 async function loadWeatherCompensationStatus() {
 
     try {
@@ -8126,6 +8325,8 @@ async function loadWeatherCompensationStatus() {
             await response.json();
 
         renderWeatherCompensationSettings();
+
+        applyWeatherNonStopLabel();
 
         bindWeatherCompensationControls();
 
@@ -8278,6 +8479,8 @@ async function saveWeatherCurves() {
             await response.json();
 
         renderWeatherCompensationSettings();
+
+        applyWeatherNonStopLabel();
 
         updateWeatherCompensationBadge();
 
@@ -8593,7 +8796,7 @@ function ensureAdvancedTimerCard() {
                 </button>
 
                 <span class="weather-curve-note">
-                    Curve 5: continuous 24h operation
+                    Non-Stop: continuous 24h operation
                 </span>
 
             </div>
@@ -9556,7 +9759,9 @@ function renderAdvancedTimer() {
 
                     const curve =
                         decision.weather_curve
-                            ? `Curve ${decision.weather_curve}`
+                            ? weatherCurveLabel(
+                                decision.weather_curve
+                            )
                             : "No extension";
 
                     const before =
@@ -11500,10 +11705,7 @@ async function updateHistoryChart() {
                 tension: 0.2,
                 spanGaps: true,
 
-                yAxisID:
-                    unitFor(parameter) === "°C"
-                        ? "temperature"
-                        : "other"
+                yAxisID: "y"
             };
         });
 
@@ -11542,6 +11744,34 @@ async function updateHistoryChart() {
 
             historyChart.data.datasets =
                 datasets;
+
+            historyChart.data.datasets.forEach(dataset => {
+                dataset.yAxisID = "y";
+            });
+
+            historyChart.options.scales =
+                historyChart.options.scales || {};
+
+            historyChart.options.scales.y = {
+                type: "linear",
+                position: "left",
+                display: true,
+                beginAtZero: false,
+                ticks: {
+                    color: "#9aa4b2"
+                },
+                grid: {
+                    color: "rgba(255,255,255,0.08)"
+                }
+            };
+
+            if (historyChart.options.scales.temperature) {
+                historyChart.options.scales.temperature.display = false;
+            }
+
+            if (historyChart.options.scales.other) {
+                historyChart.options.scales.other.display = false;
+            }
 
             historyChart.options.scales.x.time =
                 useTime
@@ -11619,6 +11849,54 @@ async function updateHistoryChart() {
                     intersect: false
                 },
 
+                /*
+                 * Desktop + mobile interaction.
+                 * A tap on the chart activates the nearest
+                 * visible datapoint and opens its tooltip.
+                 */
+                events: [
+                    "mousemove",
+                    "mouseout",
+                    "click",
+                    "touchstart",
+                    "touchmove"
+                ],
+
+                onClick: (event, activeElements, chart) => {
+
+                    const elements =
+                        chart.getElementsAtEventForMode(
+                            event,
+                            "nearest",
+                            {
+                                intersect: false
+                            },
+                            false
+                        );
+
+                    if (!elements.length) {
+                        return;
+                    }
+
+                    chart.setActiveElements(elements);
+
+                    if (
+                        chart.tooltip &&
+                        typeof chart.tooltip.setActiveElements ===
+                            "function"
+                    ) {
+                        chart.tooltip.setActiveElements(
+                            elements,
+                            {
+                                x: event.x,
+                                y: event.y
+                            }
+                        );
+                    }
+
+                    chart.update("none");
+                },
+
                 plugins: {
 
                     legend: {
@@ -11628,6 +11906,12 @@ async function updateHistoryChart() {
                             usePointStyle: true,
                             boxWidth: 8
                         }
+                    },
+
+                    tooltip: {
+                        enabled: true,
+                        mode: "nearest",
+                        intersect: false
                     },
 
                     zoom: {
@@ -11776,7 +12060,41 @@ async function updateHistoryChart() {
             }
         });
 
-        const historyFirstRenderEnd = performance.now();
+        if (
+        historyChart &&
+        historyChart.options &&
+        historyChart.options.scales
+    ) {
+
+        historyChart.data.datasets.forEach(dataset => {
+            dataset.yAxisID = "y";
+        });
+
+        historyChart.options.scales.y = {
+            type: "linear",
+            position: "left",
+            display: true,
+            beginAtZero: false,
+            ticks: {
+                color: "#9aa4b2"
+            },
+            grid: {
+                color: "rgba(255,255,255,0.08)"
+            }
+        };
+
+        if (historyChart.options.scales.temperature) {
+            historyChart.options.scales.temperature.display = false;
+        }
+
+        if (historyChart.options.scales.other) {
+            historyChart.options.scales.other.display = false;
+        }
+
+        historyChart.update("none");
+    }
+
+    const historyFirstRenderEnd = performance.now();
 
         console.log(
             "[Woody History First Render Timing]",
@@ -11871,133 +12189,115 @@ function historyResetZoom() {
 
 async function getHistoryExportRows() {
 
-    /*
-     * Export directly from the History API instead of reading
-     * Chart.js. This guarantees that export follows the same
-     * period and selected parameters as the History graph.
-     */
-
-    const selected =
-        [...document.querySelectorAll(
-            "#historyParameterList input:checked"
-        )]
-        .map(el => el.dataset.parameter)
-        .filter(Boolean);
-
-    if (!selected.length) {
+    if (!historyChart) {
         return [];
     }
 
-    let url =
-        `/history/multi?parameters=${encodeURIComponent(
-            selected.join(",")
-        )}`;
-
-    /*
-     * Use the manually selected From/To period when active.
-     */
-    if (historyStart && historyEnd) {
-
-        url +=
-            `&start=${encodeURIComponent(historyStart)}` +
-            `&end=${encodeURIComponent(historyEnd)}`;
-
-    } else {
-
-        /*
-         * Otherwise use exactly the selected range button:
-         * 1h, 6h, 12h, 24h, 48h, 7d, etc.
-         */
-        url +=
-            `&hours=${encodeURIComponent(historyHours)}`;
-    }
-
-    const response =
-        await fetch(
-            API + url,
-            {
-                cache: "no-store"
-            }
-        );
-
-    if (!response.ok) {
-
-        throw new Error(
-            `History API error: ${response.status} ${response.statusText}`
-        );
-    }
-
-    const result =
-        await response.json();
-
-    const apiRows =
-        result.data || [];
-
     const rows = [];
 
-    apiRows.forEach(row => {
+    const xScale =
+        historyChart.scales &&
+        historyChart.scales.x
+            ? historyChart.scales.x
+            : null;
+
+    const visibleMin =
+        xScale && Number.isFinite(Number(xScale.min))
+            ? Number(xScale.min)
+            : null;
+
+    const visibleMax =
+        xScale && Number.isFinite(Number(xScale.max))
+            ? Number(xScale.max)
+            : null;
+
+
+    historyChart.data.datasets.forEach(dataset => {
+
+        if (dataset.hidden) {
+            return;
+        }
 
         const parameter =
-            row.parameter;
-
-        if (!parameter) {
-            return;
-        }
-
-        const display =
-            DISPLAY[parameter] ||
-            [parameter, ""];
+            dataset.parameter ||
+            dataset.label ||
+            "";
 
         const unit =
-            display[1] || "";
+            dataset.unit ||
+            "";
 
-        const timestamp =
-            row.timestamp ||
-            row.time;
+        const data =
+            Array.isArray(dataset.data)
+                ? dataset.data
+                : [];
 
-        if (!timestamp) {
-            return;
-        }
+        data.forEach(point => {
 
-        const numericVærdi =
-            Number(row.value);
+            if (
+                !point ||
+                point.y === null ||
+                point.y === undefined
+            ) {
+                return;
+            }
 
-        rows.push({
+            const timestamp =
+                new Date(point.x);
 
-            Tidspunkt:
-                timestamp,
+            const timestampMs =
+                timestamp.getTime();
 
-            Parameter:
-                parameter,
+            if (!Number.isFinite(timestampMs)) {
+                return;
+            }
 
-            Værdi:
-                Number.isFinite(numericVærdi)
-                    ? numericVærdi
-                    : row.value,
+            if (
+                visibleMin !== null &&
+                visibleMax !== null &&
+                (
+                    timestampMs < visibleMin ||
+                    timestampMs > visibleMax
+                )
+            ) {
+                return;
+            }
 
-            Enhed:
-                unit
+            rows.push({
+                Timestamp:
+                    timestamp.toISOString(),
+
+                Parameter:
+                    parameter,
+
+                Value:
+                    point.y,
+
+                Unit:
+                    unit
+            });
         });
     });
 
-    /*
-     * Keep export ordered chronologically and then by parameter.
-     */
+
     rows.sort((a, b) => {
 
         const ta =
-            new Date(a.Tidspunkt).getTime();
+            new Date(a.Timestamp).getTime();
 
         const tb =
-            new Date(b.Tidspunkt).getTime();
+            new Date(b.Timestamp).getTime();
 
         if (ta !== tb) {
             return ta - tb;
         }
 
         return String(a.Parameter)
-            .localeCompare(String(b.Parameter));
+            .localeCompare(
+                String(b.Parameter)
+            );
     });
+
 
     return rows;
 }
@@ -12056,8 +12356,6 @@ async function exportHistoryCSV() {
 
     try {
 
-        alert("CSV button works - reading history data...");
-
         const rows =
             await getHistoryExportRows();
 
@@ -12087,10 +12385,10 @@ async function exportHistoryCSV() {
         rows.forEach(row => {
 
             lines.push([
-                row.Tidspunkt,
+                row.Timestamp,
                 row.Parameter,
-                row.Værdi,
-                row.Enhed
+                row.Value,
+                row.Unit
             ].map(value => {
 
                 const text =
@@ -12202,9 +12500,54 @@ async function exportHistoryExcel() {
 }
 
 
+function resetHistoryZoomForNewRange() {
+
+    if (historyChart) {
+        historyChart.destroy();
+        historyChart = null;
+    }
+}
+
+
+function syncHistoryRangeButtons() {
+
+    const value =
+        Number(historyHours);
+
+    document
+        .querySelectorAll(
+            ".dashboard-range-btn, .range-btn"
+        )
+        .forEach(button => {
+
+            const onclick =
+                button.getAttribute(
+                    "onclick"
+                ) || "";
+
+            const match =
+                onclick.match(
+                    /setHistoryRange\(\s*([0-9.]+)/
+                );
+
+            if (!match)
+                return;
+
+            button.classList.toggle(
+                "active",
+                Number(match[1]) === value
+            );
+        });
+}
+
+
 function setHistoryRange(hours, button) {
 
     historyHours = Number(hours);
+
+    saveHistoryHours(
+        historyHours
+    );
 
     historyStart = null;
     historyEnd = null;
@@ -12222,6 +12565,10 @@ function setHistoryRange(hours, button) {
 
     if (button)
         button.classList.add("active");
+
+    syncHistoryRangeButtons();
+
+    resetHistoryZoomForNewRange();
 
     updateHistoryChart();
 }
@@ -12269,6 +12616,8 @@ function applyHistoryDateRange() {
             btn.classList.remove("active")
         );
 
+    resetHistoryZoomForNewRange();
+
     updateHistoryChart();
 }
 
@@ -12307,6 +12656,8 @@ function applyDashboardHistoryDateRange() {
             btn.classList.remove("active")
         );
 
+    resetHistoryZoomForNewRange();
+
     updateHistoryChart();
 }
 
@@ -12333,7 +12684,10 @@ function clearDashboardHistoryDateRange() {
     if (first)
         first.classList.add("active");
 
-    historyHours = 1;
+    historyHours =
+        getSavedHistoryHours();
+
+    resetHistoryZoomForNewRange();
 
     updateHistoryChart();
 }
@@ -12357,7 +12711,10 @@ function clearHistoryDateRange() {
         .querySelector('.range-btn')
         .classList.add("active");
 
-    historyHours = 24;
+    historyHours =
+        getSavedHistoryHours();
+
+    resetHistoryZoomForNewRange();
 
     updateHistoryChart();
 }
@@ -13979,101 +14336,245 @@ async function getPelletPeriodExportRows() {
                 ) || 1
             );
 
-    const end =
+
+    /*
+     * Calendar-day boundaries in the browser's local timezone.
+     */
+
+    const now =
         new Date();
 
-    const start =
-        new Date(end);
+    const end =
+        new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() + 1,
+            0, 0, 0, 0
+        );
+
+    let start;
+
 
     if (totalExport) {
 
-        /*
-         * Overview API supports up to 4000 days.
-         * This retrieves all history currently available
-         * within that API range.
-         */
-        start.setDate(
-            start.getDate() - 4000
-        );
+        start =
+            new Date(
+                end.getFullYear() - 11,
+                0,
+                1,
+                0, 0, 0, 0
+            );
 
     } else {
 
+        /*
+         * Rolling period:
+         * 1 month  = one month back from today
+         * 3 months = three months back from today
+         * 12 months = twelve months back from today
+         */
+
+        start =
+            new Date(
+                end.getTime()
+            );
+
         start.setMonth(
-            start.getMonth() - months
+            start.getMonth() -
+            months
         );
     }
 
 
     const days =
-        totalExport
-            ? 4000
-            : Math.min(
-                4000,
-                Math.ceil(
-                    (
-                        end.getTime() -
-                        start.getTime()
-                    ) /
-                    86400000
-                ) + 3
-            );
+        Math.min(
+            4000,
+            Math.ceil(
+                (
+                    end.getTime() -
+                    start.getTime()
+                ) /
+                86400000
+            ) + 3
+        );
 
 
     const response =
         await fetch(
             "/api/v1/consumption/overview?days=" +
-            days
+            days,
+            {
+                cache: "no-store"
+            }
         );
 
+
     if (!response.ok) {
+
         throw new Error(
             "HTTP " +
             response.status
         );
     }
 
+
     const payload =
         await response.json();
+
 
     const daily =
         Array.isArray(payload.daily)
             ? payload.daily
             : (
-                Array.isArray(payload.daily_stats)
+                Array.isArray(
+                    payload.daily_stats
+                )
                     ? payload.daily_stats
                     : []
             );
 
 
-    return daily
-        .filter(row => {
+    const imported =
+        Array.isArray(payload.imported)
+            ? payload.imported
+            : [];
 
-            const date =
-                new Date(
-                    row.date +
-                    "T00:00:00"
-                );
 
-            return (
-                Number.isFinite(
-                    date.getTime()
-                ) &&
-                date >= start &&
-                date <= end
+    /*
+     * YYYY-MM-DD -> kg
+     */
+
+    const totals =
+        new Map();
+
+
+    function validDateKey(value) {
+
+        return (
+            typeof value === "string" &&
+            /^\d{4}-\d{2}-\d{2}$/.test(
+                value
+            )
+        );
+    }
+
+
+    function dateInsideRange(dateKey) {
+
+        if (!validDateKey(dateKey)) {
+            return false;
+        }
+
+        const date =
+            new Date(
+                dateKey +
+                "T12:00:00"
             );
 
-        })
-        .map(row => ({
+        return (
+            Number.isFinite(
+                date.getTime()
+            ) &&
+            date >= start &&
+            date < end
+        );
+    }
 
-            Date:
-                row.date,
 
-            "Pellet consumption (kg)":
-                Number(
-                    row.pellet_kg || 0
+    /*
+     * First add Woody Monitor daily consumption.
+     */
+
+    for (const row of daily) {
+
+        const dateKey =
+            String(
+                row.date || ""
+            );
+
+        const kg =
+            Number(
+                row.pellet_kg
+            );
+
+        if (
+            !dateInsideRange(
+                dateKey
+            ) ||
+            !Number.isFinite(kg)
+        ) {
+            continue;
+        }
+
+        totals.set(
+            dateKey,
+            kg
+        );
+    }
+
+
+    /*
+     * Imported daily PellMon history is authoritative for the
+     * imported date, so it replaces a Woody value if there is
+     * ever an overlap.
+     *
+     * Monthly imports cannot truthfully be converted into one
+     * row per day and are therefore not fabricated.
+     */
+
+    for (const row of imported) {
+
+        if (
+            String(
+                row.period_type || ""
+            ) !== "day"
+        ) {
+            continue;
+        }
+
+        const dateKey =
+            String(
+                row.period || ""
+            );
+
+        const kg =
+            Number(
+                row.pellet_kg
+            );
+
+        if (
+            !dateInsideRange(
+                dateKey
+            ) ||
+            !Number.isFinite(kg)
+        ) {
+            continue;
+        }
+
+        totals.set(
+            dateKey,
+            kg
+        );
+    }
+
+
+    return [...totals.entries()]
+        .sort(
+            (a, b) =>
+                a[0].localeCompare(
+                    b[0]
                 )
+        )
+        .map(
+            ([date, kg]) => ({
 
-        }));
+                Date:
+                    date,
+
+                "Pellet consumption (kg)":
+                    Number(kg)
+            })
+        );
 }
 
 
@@ -14819,6 +15320,126 @@ function pelletOverviewLabel(date, mode) {
             day: "2-digit",
             month: "short"
         }
+    );
+}
+
+
+
+function pelletOverviewCurrentBucket(mode) {
+
+    return pelletOverviewBucketDate(
+        new Date(),
+        mode
+    );
+}
+
+
+function pelletOverviewIsCurrentBucket(date, mode) {
+
+    return (
+        date.getTime() ===
+        pelletOverviewCurrentBucket(mode).getTime()
+    );
+}
+
+
+function pelletOverviewPeriodUnit(mode) {
+
+    if (mode === "hour")
+        return "hour";
+
+    if (mode === "day")
+        return "day";
+
+    if (mode === "week")
+        return "week";
+
+    if (mode === "month")
+        return "month";
+
+    return "period";
+}
+
+
+function pelletOverviewHighestPeriodLabel(date, mode) {
+
+    if (mode === "hour") {
+
+        return date.toLocaleString(
+            "en-GB",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
+    }
+
+
+    if (mode === "day") {
+
+        return date.toLocaleDateString(
+            "en-GB",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            }
+        );
+    }
+
+
+    if (mode === "week") {
+
+        const end = new Date(date);
+
+        end.setDate(
+            end.getDate() + 6
+        );
+
+        return (
+            pelletOverviewLabel(
+                date,
+                "week"
+            ) +
+            " · " +
+            date.toLocaleDateString(
+                "en-GB",
+                {
+                    day: "2-digit",
+                    month: "short"
+                }
+            ) +
+            "–" +
+            end.toLocaleDateString(
+                "en-GB",
+                {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric"
+                }
+            )
+        );
+    }
+
+
+    if (mode === "month") {
+
+        return date.toLocaleDateString(
+            "en-GB",
+            {
+                month: "short",
+                year: "numeric"
+            }
+        );
+    }
+
+
+    return pelletOverviewLabel(
+        date,
+        mode
     );
 }
 
@@ -16768,14 +17389,22 @@ async function updatePelletOverviewChart(config) {
 
 
     /*
-     * Estimated consumption is shown as the average
-     * consumption for one bucket, not as a cumulative
-     * running total.
+     * Estimated consumption/cost is shown only for the
+     * currently running hour/day/week/month.
+     *
+     * Completed and historical periods contain actual
+     * consumption only.
      */
 
     const estimated =
         items.map(
-            () => averagePerBucket
+            item =>
+                pelletOverviewIsCurrentBucket(
+                    item.date,
+                    config.mode
+                )
+                    ? averagePerBucket
+                    : null
         );
 
 
@@ -17807,6 +18436,12 @@ async function updatePelletOverviewChart(config) {
 
     /*
      * FOOTER
+     *
+     * Weight:
+     * kg/hour, kg/day, kg/week, kg/month
+     *
+     * Cost:
+     * DKK/hour, DKK/day, DKK/week, DKK/month
      */
 
     const averageElement =
@@ -17825,80 +18460,88 @@ async function updatePelletOverviewChart(config) {
         );
 
 
-    let averageValue = 0;
-    let averageUnit = "";
+    const displayUnit =
+        pelletConsumptionUnit();
 
+    const periodUnit =
+        pelletOverviewPeriodUnit(
+            config.mode
+        );
+
+
+    /*
+     * Average is based on the selected display mode.
+     *
+     * Weight -> kg / period
+     * Cost   -> currency / period
+     */
+
+    let averageDivisor;
 
     if (config.mode === "hour") {
 
-        averageValue =
-            totalKg / 24;
+        averageDivisor = 24;
 
-        averageUnit =
-            " kg/hour";
+    } else if (config.mode === "day") {
 
-    } else if (
-        config.mode === "month"
-    ) {
-
-        averageValue =
-            totalKg /
+        averageDivisor =
             Math.max(
-                items.length,
+                config.hours / 24,
                 1
             );
-
-        averageUnit =
-            " kg/month";
-
-    } else if (
-        config.mode === "week"
-    ) {
-
-        averageValue =
-            totalKg /
-            Math.max(
-                items.length,
-                1
-            );
-
-        averageUnit =
-            " kg/week";
 
     } else {
 
-        averageValue =
-            totalKg /
-            (
-                config.hours /
-                24
+        averageDivisor =
+            Math.max(
+                items.length,
+                1
             );
-
-        averageUnit =
-            " kg/day";
     }
+
+
+    const averageValue =
+        totalValue /
+        averageDivisor;
 
 
     if (averageElement) {
 
         averageElement.textContent =
-            averageValue.toLocaleString(
-                "en-GB",
-                {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                }
-            ) +
-            averageUnit;
+            Number.isFinite(averageValue)
+                ? (
+                    averageValue.toLocaleString(
+                        "en-GB",
+                        {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }
+                    ) +
+                    " " +
+                    displayUnit +
+                    "/" +
+                    periodUnit
+                )
+                : "--";
     }
 
 
     if (totalElement) {
 
         totalElement.textContent =
-            pelletOverviewFormatKg(
-                totalKg
-            );
+            Number.isFinite(totalValue)
+                ? (
+                    totalValue.toLocaleString(
+                        "en-GB",
+                        {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }
+                    ) +
+                    " " +
+                    displayUnit
+                )
+                : "--";
     }
 
 
@@ -17913,11 +18556,12 @@ async function updatePelletOverviewChart(config) {
 
         const highestPeriod =
             highest
-                ? pelletOverviewLabel(
+                ? pelletOverviewHighestPeriodLabel(
                     highest.date,
                     config.mode
                 )
                 : "--";
+
 
         highestElement.title =
             (
@@ -17949,57 +18593,19 @@ async function updatePelletOverviewChart(config) {
                     highest.temperatures
                 );
 
-            let periodLabel;
-
-            if (
-                config.mode ===
-                "hour"
-            ) {
-
-                periodLabel =
-                    highest.date.toLocaleString(
-                        "en-GB",
-                        {
-                            day: "2-digit",
-                            month: "short",
-                            hour: "2-digit",
-                            minute: "2-digit"
-                        }
-                    );
-
-            } else if (
-                config.mode ===
-                "month"
-            ) {
-
-                periodLabel =
-                    highest.date.toLocaleDateString(
-                        "en-GB",
-                        {
-                            month: "short",
-                            year: "numeric"
-                        }
-                    );
-
-            } else {
-
-                periodLabel =
-                    highest.date.toLocaleDateString(
-                        "en-GB",
-                        {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric"
-                        }
-                    );
-            }
-
-
             highestElement.textContent =
-                periodLabel +
+                highestPeriod +
                 " · " +
-                highest.kg.toFixed(2) +
-                " kg · " +
+                highest.displayValue.toLocaleString(
+                    "en-GB",
+                    {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }
+                ) +
+                " " +
+                displayUnit +
+                " · " +
                 (
                     temperature !== null
                         ? temperature.toFixed(1) +
@@ -21151,6 +21757,343 @@ function showPage(page) {
 }
 
 
+/* ============================================================
+   WOODY MOBILE SWIPE NAVIGATION V3
+   ============================================================ */
+
+/*
+ * Allow normal vertical scrolling but reserve horizontal
+ * touch gestures for Woody page navigation.
+ */
+(function installWoodySwipeStyles() {
+
+    if (document.getElementById("woodySwipeStyles"))
+        return;
+
+    const style = document.createElement("style");
+
+    style.id = "woodySwipeStyles";
+
+    style.textContent = `
+        @media (max-width: 1000px), (pointer: coarse) {
+            html,
+            body,
+            .page {
+                touch-action: pan-y !important;
+            }
+        }
+    `;
+
+    document.head.appendChild(style);
+
+})();
+
+
+const woodySwipePages = [
+    "dashboard",
+    "consumption",
+    "log",
+    "settings"
+];
+
+let woodySwipeX = null;
+let woodySwipeY = null;
+let woodySwipeTime = null;
+let woodySwipeActive = false;
+let woodySwipeHandled = false;
+
+
+/* ------------------------------------------------------------
+   Find current Woody page
+   ------------------------------------------------------------ */
+
+function woodyCurrentSwipePage() {
+
+    const page =
+        document.querySelector(".page.active");
+
+    if (
+        !page ||
+        !page.id ||
+        !page.id.startsWith("page-")
+    ) {
+        return null;
+    }
+
+    return page.id.substring(5);
+}
+
+
+/* ------------------------------------------------------------
+   Do not swipe while operating controls
+   ------------------------------------------------------------ */
+
+function woodySwipeBlocked(target) {
+
+    if (!target || !target.closest)
+        return false;
+
+    return Boolean(
+        target.closest(
+            [
+                "input",
+                "textarea",
+                "select",
+                "button",
+                "a",
+                "[contenteditable='true']",
+                ".pellet-overview-navigation"
+            ].join(",")
+        )
+    );
+}
+
+
+/* ------------------------------------------------------------
+   Change page
+   ------------------------------------------------------------ */
+
+function woodySwipeGo(direction) {
+
+    if (woodySwipeHandled)
+        return;
+
+    const current =
+        woodyCurrentSwipePage();
+
+    const index =
+        woodySwipePages.indexOf(current);
+
+    if (index === -1)
+        return;
+
+    const newIndex =
+        index + direction;
+
+    if (
+        newIndex < 0 ||
+        newIndex >= woodySwipePages.length
+    ) {
+        return;
+    }
+
+    woodySwipeHandled = true;
+
+    console.log(
+        "[WOODY SWIPE]",
+        current,
+        "=>",
+        woodySwipePages[newIndex]
+    );
+
+    showPage(
+        woodySwipePages[newIndex]
+    );
+}
+
+
+/* ------------------------------------------------------------
+   Evaluate gesture
+   ------------------------------------------------------------ */
+
+function woodyEvaluateSwipe(endX, endY) {
+
+    if (
+        !woodySwipeActive ||
+        woodySwipeX === null ||
+        woodySwipeY === null
+    ) {
+        return;
+    }
+
+    const dx =
+        endX - woodySwipeX;
+
+    const dy =
+        endY - woodySwipeY;
+
+    const elapsed =
+        Date.now() - woodySwipeTime;
+
+    /*
+     * Horizontal threshold:
+     * 35 px makes this responsive without making
+     * ordinary taps trigger navigation.
+     */
+    if (Math.abs(dx) < 35)
+        return;
+
+    /*
+     * Must primarily be horizontal.
+     */
+    if (Math.abs(dx) <= Math.abs(dy))
+        return;
+
+    /*
+     * Ignore very slow movements.
+     */
+    if (elapsed > 2000)
+        return;
+
+    if (dx < 0) {
+
+        /* swipe LEFT = next page */
+        woodySwipeGo(1);
+
+    } else {
+
+        /* swipe RIGHT = previous page */
+        woodySwipeGo(-1);
+
+    }
+}
+
+
+/* ============================================================
+   POINTER EVENTS
+   ============================================================ */
+
+document.addEventListener(
+    "pointerdown",
+    event => {
+
+        if (
+            event.pointerType &&
+            event.pointerType !== "touch"
+        ) {
+            return;
+        }
+
+        if (woodySwipeBlocked(event.target))
+            return;
+
+        woodySwipeX =
+            event.clientX;
+
+        woodySwipeY =
+            event.clientY;
+
+        woodySwipeTime =
+            Date.now();
+
+        woodySwipeActive =
+            true;
+
+        woodySwipeHandled =
+            false;
+    },
+    {
+        passive: true
+    }
+);
+
+
+document.addEventListener(
+    "pointerup",
+    event => {
+
+        if (!woodySwipeActive)
+            return;
+
+        woodyEvaluateSwipe(
+            event.clientX,
+            event.clientY
+        );
+
+        woodySwipeActive =
+            false;
+    },
+    {
+        passive: true
+    }
+);
+
+
+document.addEventListener(
+    "pointercancel",
+    () => {
+
+        woodySwipeActive =
+            false;
+    },
+    {
+        passive: true
+    }
+);
+
+
+/* ============================================================
+   TOUCH FALLBACK
+   ============================================================ */
+
+document.addEventListener(
+    "touchstart",
+    event => {
+
+        if (
+            event.touches.length !== 1 ||
+            woodySwipeBlocked(event.target)
+        ) {
+            return;
+        }
+
+        const touch =
+            event.touches[0];
+
+        woodySwipeX =
+            touch.clientX;
+
+        woodySwipeY =
+            touch.clientY;
+
+        woodySwipeTime =
+            Date.now();
+
+        woodySwipeActive =
+            true;
+
+        woodySwipeHandled =
+            false;
+    },
+    {
+        passive: true
+    }
+);
+
+
+document.addEventListener(
+    "touchend",
+    event => {
+
+        if (
+            !woodySwipeActive ||
+            event.changedTouches.length !== 1
+        ) {
+            return;
+        }
+
+        const touch =
+            event.changedTouches[0];
+
+        woodyEvaluateSwipe(
+            touch.clientX,
+            touch.clientY
+        );
+
+        woodySwipeActive =
+            false;
+    },
+    {
+        passive: true
+    }
+);
+
+
+console.log(
+    "[WOODY SWIPE V3] loaded",
+    woodySwipePages
+);
+
 
 /* ============================================================
    SILO FORECAST
@@ -21166,6 +22109,19 @@ console.log(
 
 let siloForecastChart = null;
 let siloForecastBusy = false;
+
+/*
+ * Old versions stored the refill date in browser localStorage.
+ * That could make a temporary manual magazine-content test look
+ * like a real refill. History is authoritative now.
+ */
+localStorage.removeItem(
+    "woodySiloForecastAnchorTimestamp"
+);
+
+localStorage.removeItem(
+    "woodySiloForecastAnchorKg"
+);
 
 function siloNumber(value) {
     const n = Number(
@@ -21358,7 +22314,7 @@ const WOODY_SILO_HISTORY_CACHE_MS =
     5 * 60 * 1000;
 
 const WOODY_SILO_HISTORY_STORAGE_KEY =
-    "woodySiloHistoryCacheV1";
+    "woodySiloHistoryCacheV2";
 
 
 function loadPersistentSiloHistory() {
@@ -21633,6 +22589,134 @@ async function getSiloHistory() {
 }
 
 
+
+/*
+ * Remove short-lived manual Magazine content tests from the
+ * forecast calculation.
+ *
+ * Example:
+ *
+ *     204 -> 10 -> 204
+ *
+ * or:
+ *
+ *     205 -> 25 -> 16 -> 205
+ *
+ * If the silo drops by at least 20 kg and returns to within
+ * 3 kg of the previous value within 10 minutes, the low values
+ * are treated as a temporary test.
+ *
+ * Nothing is removed from SQLite. This only filters the rows
+ * used by the forecast graph.
+ */
+function cleanSiloHistoryForForecast(rows) {
+
+    if (
+        !Array.isArray(rows) ||
+        rows.length < 3
+    ) {
+        return Array.isArray(rows)
+            ? rows.slice()
+            : [];
+    }
+
+    const minimumTestDropKg = 20;
+    const recoveryToleranceKg = 3;
+    const maximumTestDurationMs =
+        10 * 60 * 1000;
+
+    const cleaned = [];
+
+    let i = 0;
+
+    while (i < rows.length) {
+
+        if (i + 2 < rows.length) {
+
+            const before =
+                rows[i];
+
+            const firstLow =
+                rows[i + 1];
+
+            const dropKg =
+                before.kg -
+                firstLow.kg;
+
+            if (
+                Number.isFinite(before.kg) &&
+                Number.isFinite(firstLow.kg) &&
+                dropKg >= minimumTestDropKg
+            ) {
+
+                let recoveryIndex = -1;
+
+                for (
+                    let j = i + 2;
+                    j < rows.length;
+                    j++
+                ) {
+
+                    const elapsed =
+                        rows[j].date.getTime() -
+                        before.date.getTime();
+
+                    if (
+                        elapsed >
+                        maximumTestDurationMs
+                    ) {
+                        break;
+                    }
+
+                    if (
+                        Number.isFinite(rows[j].kg) &&
+                        Math.abs(
+                            rows[j].kg -
+                            before.kg
+                        ) <= recoveryToleranceKg
+                    ) {
+
+                        recoveryIndex = j;
+                        break;
+                    }
+                }
+
+                if (recoveryIndex >= 0) {
+
+                    cleaned.push(before);
+
+                    console.log(
+                        "[SILO FORECAST] ignored temporary magazine test:",
+                        before.kg,
+                        "kg ->",
+                        firstLow.kg,
+                        "kg ->",
+                        rows[recoveryIndex].kg,
+                        "kg"
+                    );
+
+                    /*
+                     * Skip the temporary low readings.
+                     * The recovered value is processed on the
+                     * next loop iteration.
+                     */
+                    i = recoveryIndex;
+                    continue;
+                }
+            }
+        }
+
+        cleaned.push(
+            rows[i]
+        );
+
+        i++;
+    }
+
+    return cleaned;
+}
+
+
 function findLastSiloRefillIndex(rows) {
 
     /*
@@ -21785,8 +22869,21 @@ async function updateSiloForecast() {
         const woodyHistoryStart =
             performance.now();
 
-        const siloHistory =
+        const rawSiloHistory =
             await getSiloHistory();
+
+        const siloHistory =
+            cleanSiloHistoryForForecast(
+                rawSiloHistory
+            );
+
+        console.log(
+            "[SILO FORECAST] history:",
+            rawSiloHistory.length,
+            "raw rows,",
+            siloHistory.length,
+            "forecast rows"
+        );
 
         console.log(
             "[SILO TIMING] history DONE",
@@ -21932,14 +23029,96 @@ async function updateSiloForecast() {
                 1 / 24
             );
 
-        const daily =
+
+        /*
+         * Preferred source:
+         * calculated pellet consumption since the real refill.
+         */
+        let daily = null;
+        let forecastSource = "none";
+
+        if (
+            consumedSinceRefill !== null &&
+            Number.isFinite(
+                consumedSinceRefill
+            ) &&
+            consumedSinceRefill > 0
+        ) {
+
+            daily =
+                consumedSinceRefill /
+                elapsedDays;
+
+            forecastSource =
+                "consumption since refill";
+        }
+
+
+        /*
+         * Fallback 1:
+         * existing seven-day pellet consumption.
+         */
+        if (
+            daily === null ||
+            !Number.isFinite(daily) ||
+            daily <= 0
+        ) {
+
+            const sevenDayConsumption =
+                await getSevenDayPelletConsumption();
+
+            if (
+                sevenDayConsumption !== null &&
+                Number.isFinite(
+                    sevenDayConsumption
+                ) &&
+                sevenDayConsumption > 0
+            ) {
+
+                daily =
+                    sevenDayConsumption / 7;
+
+                forecastSource =
+                    "7 day consumption";
+            }
+        }
+
+
+        /*
+         * Fallback 2:
+         * derive average consumption from the clean silo-content
+         * decrease.
+         */
+        if (
             (
-                consumedSinceRefill !== null &&
-                Number.isFinite(consumedSinceRefill) &&
-                consumedSinceRefill > 0
-            )
-                ? consumedSinceRefill / elapsedDays
-                : null;
+                daily === null ||
+                !Number.isFinite(daily) ||
+                daily <= 0
+            ) &&
+            Number.isFinite(anchorKg) &&
+            Number.isFinite(currentKg) &&
+            anchorKg > currentKg
+        ) {
+
+            daily =
+                (
+                    anchorKg -
+                    currentKg
+                ) /
+                elapsedDays;
+
+            forecastSource =
+                "magazine content decrease";
+        }
+
+
+        console.log(
+            "[SILO FORECAST] source:",
+            forecastSource,
+            "daily:",
+            daily,
+            "kg/day"
+        );
 
         if (
             daily === null ||
@@ -22073,36 +23252,17 @@ async function updateSiloForecast() {
          * The anchor is the latest Magazine content update.
          */
         if (lastRefillEl) {
-
-            const savedAnchorTimestamp =
-                localStorage.getItem(
-                    "woodySiloForecastAnchorTimestamp"
+            /*
+             * Last refill is determined only from the actual
+             * magazine_content history.
+             *
+             * Browser localStorage must never override the
+             * calculated refill date.
+             */
+            lastRefillEl.textContent =
+                formatSiloDateTime(
+                    anchorDate
                 );
-
-            const savedAnchorDate =
-                savedAnchorTimestamp
-                    ? new Date(savedAnchorTimestamp)
-                    : null;
-
-            if (
-                savedAnchorDate &&
-                !Number.isNaN(
-                    savedAnchorDate.getTime()
-                )
-            ) {
-
-                lastRefillEl.textContent =
-                    formatSiloDateTime(
-                        savedAnchorDate
-                    );
-
-            } else {
-
-                lastRefillEl.textContent =
-                    formatSiloDateTime(
-                        anchorDate
-                    );
-            }
         }
 
 
@@ -23032,17 +24192,10 @@ async function saveControllerSetting(parameter) {
                 result.value ?? value;
         }
 
-        if (parameter === "magazine_content") {
-            localStorage.setItem(
-                "woodySiloForecastAnchorTimestamp",
-                new Date().toISOString()
-            );
-
-            localStorage.setItem(
-                "woodySiloForecastAnchorKg",
-                String(result.value ?? value)
-            );
-        }
+        /*
+         * magazine_content changes are recorded in normal history.
+         * Do not store a separate refill timestamp in the browser.
+         */
 
         if (info) {
 
@@ -24193,6 +25346,162 @@ document.addEventListener(
 }
 
 </style>
+
+
+<script id="woody-ai-script">
+(function(){
+"use strict";
+const base="/api/v1/ai", el=id=>document.getElementById("wai-"+id);
+const fields={enabled:"enabled",model:"gemini_model",days:"analysis_days",target:"target_indoor_temp","email-enabled":"email_enabled",to:"email_to",host:"smtp_host",port:"smtp_port",security:"smtp_security",user:"smtp_username",from:"smtp_from"};
+let busy=false,timer=null;
+async function request(path,method="GET",body){const r=await fetch(base+path,{method,headers:{"Content-Type":"application/json"},body:body===undefined?undefined:JSON.stringify(body),cache:"no-store"});const d=await r.json();if(!r.ok)throw Error(typeof d.detail==="string"?d.detail:"HTTP "+r.status);return d;}
+function message(t){el("status").textContent=t;}
+function setModel(value,names){const e=el("model");e.replaceChildren();for(const name of [...new Set([value,...names])]){const o=document.createElement("option");o.value=name;o.textContent=name;e.append(o);}e.value=value;}
+async function models(){const selected=el("model").value;try{const d=await request("/models");setModel(selected,d.models);message("Modeloversigt hentet. Den gemte model er bevaret.");}catch(e){message("Modeloversigt: "+e.message);}}
+async function load(){try{const d=(await request("/settings")).settings;setModel(d.gemini_model||"gemini-3.8-flash",["gemini-3.8-flash"]);for(const [id,key] of Object.entries(fields)){const e=el(id);if(e.type==="checkbox")e.checked=!!d[key];else e.value=d[key]??"";}el("key").value="";el("password").value="";message("Indstillinger indlæst. Gemini-nøgle: "+(d.gemini_api_key_configured?"gemt":"mangler")+". SMTP-password: "+(d.smtp_password_configured?"gemt":"mangler")+".");await status();}catch(e){message("Fejl: "+e.message);}}
+async function save(){const d={};for(const [id,key] of Object.entries(fields)){const e=el(id);d[key]=e.type==="checkbox"?e.checked:e.type==="number"?Number(e.value):e.value.trim();}if(el("key").value.trim())d.gemini_api_key=el("key").value.trim();if(el("password").value)d.smtp_password=el("password").value;await request("/settings","PUT",d);el("key").value="";el("password").value="";message("AI-indstillinger gemt.");}
+async function report(){try{const d=await request("/report");el("report").textContent=d.report;el("report").style.display="block";}catch(e){message("Rapport: "+e.message);}}
+async function status(){try{const d=await request("/status"),j=d.job||{};busy=j.state==="running";el("run").disabled=busy;if(busy){message(j.message||"Analyserer…");if(!timer)timer=setInterval(status,3000);}else{if(timer){clearInterval(timer);timer=null;}if(j.state==="completed"||j.state==="failed")message(j.message);if(j.state==="completed"&&!el("report").textContent)await report();}}catch(e){message("Statusfejl: "+e.message);}}
+async function run(){try{await save();const d=await request("/analyze","POST",{});el("report").textContent="";el("report").style.display="none";message(d.job.message);await status();}catch(e){message("Analysen kunne ikke startes: "+e.message);}}
+async function test(){try{await save();message("Sender testmail…");const d=await request("/email/test","POST",{});message(d.message);}catch(e){message("Testmail: "+e.message);}}
+function gmail(){el("host").value="smtp.gmail.com";el("port").value="465";el("security").value="ssl";message("Gmail SMTP er udfyldt. Indtast din Gmail-adresse og appadgangskode, og gem.");}
+el("save").addEventListener("click",()=>save().catch(e=>message("Gem fejl: "+e.message)));
+el("run").addEventListener("click",run);el("refresh").addEventListener("click",report);el("test").addEventListener("click",test);el("gmail").addEventListener("click",gmail);el("models").addEventListener("click",models);load();
+})();
+</script>
+
+<script id="woody-ai-accordion-script">
+(function () {
+
+    function setWoodyAiCollapsed(collapsed) {
+
+        const content =
+            document.getElementById(
+                "woody-ai-accordion-content"
+            );
+
+        const button =
+            document.getElementById(
+                "woody-ai-accordion-toggle"
+            );
+
+        if (!content || !button) {
+            return;
+        }
+
+        content.hidden = collapsed;
+
+        button.textContent =
+            collapsed ? "▶" : "▼";
+
+        button.setAttribute(
+            "aria-expanded",
+            collapsed ? "false" : "true"
+        );
+
+        try {
+            localStorage.setItem(
+                "woody-ai-card",
+                collapsed
+                    ? "collapsed"
+                    : "expanded"
+            );
+        } catch (_) {}
+    }
+
+
+    function initWoodyAiAccordion() {
+
+        const button =
+            document.getElementById(
+                "woody-ai-accordion-toggle"
+            );
+
+        const reference =
+            document.getElementById(
+                "unifiedSettingsToggle"
+            );
+
+        if (!button) {
+            return;
+        }
+
+        /*
+         * Brug præcis samme CSS-klasser som den
+         * eksisterende Settings fold-knap.
+         */
+        if (reference) {
+            button.className =
+                reference.className;
+        }
+
+        if (
+            button.dataset.initialized
+            === "1"
+        ) {
+            return;
+        }
+
+        button.dataset.initialized = "1";
+
+        button.addEventListener(
+            "click",
+            function (event) {
+
+                event.stopPropagation();
+
+                const content =
+                    document.getElementById(
+                        "woody-ai-accordion-content"
+                    );
+
+                if (!content) {
+                    return;
+                }
+
+                setWoodyAiCollapsed(
+                    !content.hidden
+                );
+            }
+        );
+
+        let collapsed = true;
+
+        try {
+            const stored =
+                localStorage.getItem(
+                    "woody-ai-card"
+                );
+
+            if (stored === "expanded") {
+                collapsed = false;
+            }
+
+            if (stored === "collapsed") {
+                collapsed = true;
+            }
+
+        } catch (_) {}
+
+        setWoodyAiCollapsed(
+            collapsed
+        );
+    }
+
+
+    if (
+        document.readyState === "loading"
+    ) {
+        document.addEventListener(
+            "DOMContentLoaded",
+            initWoodyAiAccordion
+        );
+    } else {
+        initWoodyAiAccordion();
+    }
+
+})();
+</script>
 
 </body>
 </html>

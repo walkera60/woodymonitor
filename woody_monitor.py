@@ -801,125 +801,89 @@ def get_feeder_calibration():
 
 
 # ============================================================
-# PELLET SILO SETTINGS
-# ============================================================
-
-DEFAULT_SILO_CAPACITY_KG = 215.0
-
-SILO_SETTINGS_FILE = str(BASE_DIR / "data" / "silo_settings.json")
-
-silo_settings_lock = threading.Lock()
-
-silo_settings = {
-    "capacity_kg": DEFAULT_SILO_CAPACITY_KG
-}
-
-
-def load_silo_settings():
-
-    global silo_settings
-
-    try:
-
-        path = Path(SILO_SETTINGS_FILE)
-
-        if path.exists():
-
-            with path.open("r") as f:
-                data = json.load(f)
-
-            capacity = float(
-                data.get(
-                    "capacity_kg",
-                    DEFAULT_SILO_CAPACITY_KG
-                )
-            )
-
-            if 1 <= capacity <= 5000:
-
-                silo_settings["capacity_kg"] = capacity
-
-            logger.info(
-                "Loaded silo capacity: %.1f kg",
-                silo_settings["capacity_kg"]
-            )
-
-    except Exception:
-
-        logger.exception(
-            "Could not load silo settings"
-        )
-
-
-def save_silo_settings():
-
-    path = Path(SILO_SETTINGS_FILE)
-
-    path.parent.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    temporary = path.with_suffix(".tmp")
-
-    with temporary.open("w") as f:
-
-        json.dump(
-            silo_settings,
-            f,
-            indent=2
-        )
-
-    temporary.replace(path)
-
-
-def get_silo_settings():
-
-    with silo_settings_lock:
-        return dict(silo_settings)
-
-
-# ============================================================
 # SILO SETTINGS
 # ============================================================
 
 DEFAULT_SILO_CAPACITY_KG = 215.0
+DEFAULT_LOW_PELLET_ALARM_KG = 25.0
 
-SILO_SETTINGS_FILE = str(BASE_DIR / "data" / "silo_settings.json")
+SILO_SETTINGS_FILE = str(
+    BASE_DIR / "data" / "silo_settings.json"
+)
 
 silo_settings_lock = threading.Lock()
 
 silo_settings = {
-    "capacity_kg": DEFAULT_SILO_CAPACITY_KG
+    "capacity_kg": DEFAULT_SILO_CAPACITY_KG,
+    "low_pellet_alarm_enabled": False,
+    "low_pellet_alarm_kg": DEFAULT_LOW_PELLET_ALARM_KG
+}
+
+low_pellet_alarm_lock = threading.Lock()
+
+low_pellet_alarm_state = {
+    "active": False,
+    "level_kg": None,
+    "threshold_kg": DEFAULT_LOW_PELLET_ALARM_KG
 }
 
 
 def load_silo_settings():
 
-    global silo_settings
-
     try:
 
         path = Path(SILO_SETTINGS_FILE)
 
-        if path.exists():
+        if not path.exists():
+            return
 
-            with path.open("r") as f:
-                data = json.load(f)
+        with path.open(
+            "r",
+            encoding="utf-8"
+        ) as f:
+            data = json.load(f)
 
-            capacity = float(
-                data.get(
-                    "capacity_kg",
-                    DEFAULT_SILO_CAPACITY_KG
-                )
+        capacity = float(
+            data.get(
+                "capacity_kg",
+                DEFAULT_SILO_CAPACITY_KG
             )
+        )
+
+        threshold = float(
+            data.get(
+                "low_pellet_alarm_kg",
+                DEFAULT_LOW_PELLET_ALARM_KG
+            )
+        )
+
+        enabled = bool(
+            data.get(
+                "low_pellet_alarm_enabled",
+                False
+            )
+        )
+
+        with silo_settings_lock:
 
             if 1 <= capacity <= 5000:
                 silo_settings["capacity_kg"] = capacity
 
+            if 0 < threshold <= 5000:
+                silo_settings[
+                    "low_pellet_alarm_kg"
+                ] = threshold
+
+            silo_settings[
+                "low_pellet_alarm_enabled"
+            ] = enabled
+
         logger.info(
-            "Loaded silo capacity: %.1f kg",
-            silo_settings["capacity_kg"]
+            "Loaded silo settings: capacity=%.1f kg, "
+            "low pellet alarm=%s at %.1f kg",
+            silo_settings["capacity_kg"],
+            silo_settings["low_pellet_alarm_enabled"],
+            silo_settings["low_pellet_alarm_kg"]
         )
 
     except Exception:
@@ -940,7 +904,10 @@ def save_silo_settings():
 
     temporary = path.with_suffix(".tmp")
 
-    with temporary.open("w") as f:
+    with temporary.open(
+        "w",
+        encoding="utf-8"
+    ) as f:
 
         json.dump(
             silo_settings,
@@ -956,6 +923,122 @@ def get_silo_settings():
     with silo_settings_lock:
         return dict(silo_settings)
 
+
+def get_low_pellet_alarm_state():
+
+    with low_pellet_alarm_lock:
+        return dict(low_pellet_alarm_state)
+
+
+def evaluate_low_pellet_alarm(values):
+
+    try:
+
+        raw_level = values.get(
+            "magazine_content"
+        )
+
+        if raw_level is None:
+            return
+
+        level = float(raw_level)
+
+        if not (
+            level >= 0 and
+            level < 10000
+        ):
+            return
+
+    except (
+        TypeError,
+        ValueError,
+        AttributeError
+    ):
+        return
+
+    with silo_settings_lock:
+
+        enabled = bool(
+            silo_settings.get(
+                "low_pellet_alarm_enabled",
+                False
+            )
+        )
+
+        threshold = float(
+            silo_settings.get(
+                "low_pellet_alarm_kg",
+                DEFAULT_LOW_PELLET_ALARM_KG
+            )
+        )
+
+    with low_pellet_alarm_lock:
+
+        was_active = bool(
+            low_pellet_alarm_state[
+                "active"
+            ]
+        )
+
+        low_pellet_alarm_state[
+            "level_kg"
+        ] = level
+
+        low_pellet_alarm_state[
+            "threshold_kg"
+        ] = threshold
+
+        should_be_active = (
+            enabled and
+            level <= threshold
+        )
+
+        low_pellet_alarm_state[
+            "active"
+        ] = should_be_active
+
+    # Alarm transition: inactive -> active
+    if should_be_active and not was_active:
+
+        db.add_activity(
+            "ALARM",
+            "Low pellet level",
+            (
+                f"{level:.1f} kg remaining "
+                f"(alarm level {threshold:.1f} kg)"
+            ),
+            response="WARNING"
+        )
+
+        logger.warning(
+            "Low pellet alarm active: %.1f kg "
+            "(threshold %.1f kg)",
+            level,
+            threshold
+        )
+
+    # Alarm transition: active -> cleared
+    elif was_active and not should_be_active:
+
+        db.add_activity(
+            "ALARM",
+            "Low pellet alarm cleared",
+            (
+                f"{level:.1f} kg remaining "
+                f"(alarm level {threshold:.1f} kg)"
+            ),
+            response="OK"
+        )
+
+        logger.info(
+            "Low pellet alarm cleared: %.1f kg "
+            "(threshold %.1f kg)",
+            level,
+            threshold
+        )
+
+
+load_silo_settings()
 
 
 # ============================================================
@@ -2052,6 +2135,8 @@ def collector_loop():
             values = read_controller()
 
             if values:
+
+                evaluate_low_pellet_alarm(values)
 
                 logger.info(
                     "Live update: %d/%d parameters",
@@ -3745,6 +3830,15 @@ def history_loop():
 # ============================================================
 # API: ROOT
 # ============================================================
+
+
+# ============================================================
+# WOODY AI / GEMINI
+# ============================================================
+# WOODY_AI_ROUTER_V1
+from woody_ai import router as woody_ai_router
+app.include_router(woody_ai_router)
+
 
 @app.get("/")
 def root():
@@ -5473,19 +5567,51 @@ def get_silo_settings_api():
 
 @app.post("/api/v1/settings/silo")
 def set_silo_settings(
-    capacity_kg: float = Query(..., gt=1, le=5000)
+    capacity_kg: float = Query(..., gt=1, le=5000),
+    low_pellet_alarm_enabled: bool = Query(False),
+    low_pellet_alarm_kg: float = Query(
+        DEFAULT_LOW_PELLET_ALARM_KG,
+        gt=0,
+        le=5000
+    )
 ):
 
     with silo_settings_lock:
 
         silo_settings["capacity_kg"] = capacity_kg
 
+        silo_settings[
+            "low_pellet_alarm_enabled"
+        ] = bool(
+            low_pellet_alarm_enabled
+        )
+
+        silo_settings[
+            "low_pellet_alarm_kg"
+        ] = float(
+            low_pellet_alarm_kg
+        )
+
         save_silo_settings()
 
     logger.info(
-        "Silo capacity changed: %.1f kg",
-        capacity_kg
+        "Silo settings changed: capacity=%.1f kg, "
+        "low alarm=%s at %.1f kg",
+        capacity_kg,
+        low_pellet_alarm_enabled,
+        low_pellet_alarm_kg
     )
+
+    # Re-evaluate immediately after settings change.
+    with state_lock:
+        current_values = dict(
+            live_data.get("values", {})
+        )
+
+    if current_values:
+        evaluate_low_pellet_alarm(
+            current_values
+        )
 
     return get_silo_settings()
 
@@ -5933,9 +6059,13 @@ def controller_burner_command(action: str):
     )
 
     db.add_activity(
-        "CONTROLLER",
-        "Burner " + action.lower(),
-        f"Command: {command}",
+        "BURNER",
+        (
+            "Burner started"
+            if action.lower() == "start"
+            else "Burner stopped"
+        ),
+        "Manual command from Woody Monitor",
         payload=getattr(
             burner,
             "last_write_payload_hex",
@@ -5982,6 +6112,146 @@ def advanced_timer_burner_is_running():
     }
 
     return mode not in stopped_modes
+
+
+def advanced_timer_action_reason(action):
+    """
+    Return the best documented reason for an automatic
+    burner START/STOP command.
+
+    The text is derived from the same Timer + Weather decision
+    used by Woody Monitor. We deliberately do not invent a
+    cause which cannot be established.
+    """
+
+    action = str(action).lower()
+
+    try:
+
+        settings = get_advanced_timer_settings()
+
+        decision = (
+            settings.get("decision", {})
+            if isinstance(settings, dict)
+            else {}
+        )
+
+        summer_stop = bool(
+            decision.get(
+                "summer_stop_active",
+                False
+            )
+        )
+
+        weather_enabled = bool(
+            decision.get(
+                "weather_enabled",
+                False
+            )
+        )
+
+        weather_available = (
+            decision.get(
+                "weather_available",
+                True
+            )
+            is not False
+        )
+
+        weather_preview = bool(
+            decision.get(
+                "weather_preview",
+                True
+            )
+        )
+
+        curve = decision.get(
+            "weather_curve"
+        )
+
+        full_day = bool(
+            decision.get(
+                "weather_full_day",
+                False
+            )
+        )
+
+        source = str(
+            decision.get(
+                "source",
+                decision.get(
+                    "decision_source",
+                    ""
+                )
+            )
+            or ""
+        ).strip()
+
+        if summer_stop:
+
+            if action == "stop":
+                return (
+                    "Summer Stop · outdoor temperature "
+                    "above configured limit"
+                )
+
+            return "Summer Stop"
+
+        if (
+            weather_enabled
+            and weather_available
+            and not weather_preview
+            and curve
+        ):
+
+            try:
+                curve_number = int(curve)
+            except (
+                TypeError,
+                ValueError
+            ):
+                curve_number = None
+
+            curve_name = (
+                weather_curve_display_name(
+                    curve_number
+                )
+            )
+
+            if action == "start":
+
+                if full_day:
+                    return (
+                        "Weather Compensation · "
+                        f"{curve_name} · continuous operation"
+                    )
+
+                return (
+                    "Weather Compensation · "
+                    f"{curve_name}"
+                )
+
+            return (
+                "Weather Compensation / Advanced Timer "
+                "schedule no longer requests heat"
+            )
+
+        if source and source.lower() != "timer":
+            return source
+
+    except Exception:
+
+        logger.exception(
+            "Could not determine Advanced Timer action reason"
+        )
+
+    if action == "start":
+        return "Advanced Timer schedule became active"
+
+    if action == "stop":
+        return "Advanced Timer schedule ended"
+
+    return "Advanced Timer"
 
 
 def execute_advanced_timer_action(action):
@@ -6060,10 +6330,18 @@ def execute_advanced_timer_action(action):
             command
         )
 
+        reason = advanced_timer_action_reason(
+            action
+        )
+
         db.add_activity(
-            "CONTROLLER",
-            "Advanced timer " + action.lower(),
-            f"Command: {command}",
+            "BURNER",
+            (
+                "Burner started"
+                if str(action).lower() == "start"
+                else "Burner stopped"
+            ),
+            reason,
             payload=getattr(
                 burner,
                 "last_write_payload_hex",
@@ -6339,6 +6617,82 @@ WEATHER_COMPENSATION_FILE = str(
 )
 
 weather_compensation_lock = threading.Lock()
+
+# Remember the last effective Weather Compensation selection.
+# This is intentionally runtime-only:
+# after a Woody Monitor restart the current curve becomes the
+# baseline and is not falsely logged as a curve change.
+_weather_curve_log_lock = threading.Lock()
+_weather_curve_log_initialized = False
+_weather_curve_last_selection = None
+
+
+def weather_curve_display_name(curve_number):
+    """
+    Human-readable Weather Compensation curve name.
+
+    Curve 5 keeps its internal numeric identity for backwards
+    compatibility, but is presented to the user as Non-Stop.
+    """
+
+    if curve_number == 5:
+        return "Non-Stop"
+
+    if curve_number is None:
+        return "No active curve"
+
+    return f"Curve {curve_number}"
+
+
+def log_weather_curve_selection(
+    active_curve,
+    summer_stop_active=False
+):
+    """
+    Add an Activity Log entry only when the effective heating
+    curve actually changes.
+
+    Repeated API/UI reads of Weather Compensation therefore
+    never create duplicate log entries.
+    """
+
+    global _weather_curve_log_initialized
+    global _weather_curve_last_selection
+
+    if summer_stop_active:
+        selection = "Summer Stop"
+    else:
+        selection = weather_curve_display_name(
+            active_curve
+        )
+
+    with _weather_curve_log_lock:
+
+        if not _weather_curve_log_initialized:
+
+            _weather_curve_last_selection = selection
+            _weather_curve_log_initialized = True
+
+            return
+
+        previous = _weather_curve_last_selection
+
+        if previous == selection:
+            return
+
+        _weather_curve_last_selection = selection
+
+    db.add_activity(
+        "SETTING",
+        "Heating curve changed",
+        f"{previous} -> {selection}"
+    )
+
+    logger.info(
+        "Weather Compensation curve changed: %s -> %s",
+        previous,
+        selection
+    )
 
 
 def default_weather_curves():
@@ -6973,6 +7327,13 @@ def calculate_weather_compensation():
             effective_temp,
             settings["curves"]
         )
+    )
+
+    # Activity Log:
+    # record only real changes of the effective heating curve.
+    log_weather_curve_selection(
+        active_curve,
+        summer_stop_active=summer_stop_active
     )
 
     before_minutes = 0
@@ -7786,7 +8147,9 @@ def live():
             ),
             "errors": dict(
                 live_data["errors"]
-            )
+            ),
+            "low_pellet_alarm":
+                get_low_pellet_alarm_state()
         }
 
 
