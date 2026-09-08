@@ -21,6 +21,7 @@ LOCK = threading.RLock()
 JOB = {"state": "idle", "message": "", "started_at": None, "finished_at": None}
 DEFAULTS = {
     "enabled": False, "gemini_api_key": "", "gemini_model": "gemini-3.8-flash",
+    "gemini_fallback_model": "",
     "analysis_days": 7, "target_indoor_temp": 21.0,
     "email_enabled": False, "email_to": "", "smtp_host": "",
     "smtp_port": 465, "smtp_security": "ssl", "smtp_username": "",
@@ -50,6 +51,7 @@ class SettingsUpdate(BaseModel):
     smtp_password: str | None = None
     smtp_from: str | None = None
     max_input_tokens: int | None = Field(None, ge=1000, le=100000)
+    gemini_fallback_model: str | None = None
 
 def load():
     with LOCK:
@@ -372,272 +374,149 @@ DATA:
 """+json.dumps(d,ensure_ascii=False,separators=(",",":"))
 
 def gemini(d, settings):
+    import logging
+    import socket
     import time
 
-    primary_model = settings["gemini_model"]
-
-    if not re.fullmatch(r"[A-Za-z0-9._-]+", primary_model):
+    logger = logging.getLogger("woody.ai")
+    primary = settings["gemini_model"]
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", primary):
         raise RuntimeError("Ugyldigt Gemini-modelnavn.")
+    fallback = settings.get("gemini_fallback_model", "").strip()
+    if fallback and not re.fullmatch(r"[A-Za-z0-9._-]+", fallback):
+        raise RuntimeError("Ugyldigt fallback-modelnavn.")
+    models = [primary] + ([fallback] if fallback and fallback != primary else [])
 
-    # Den valgte model bruges altid først.
-    # Derefter stabile fallback-modeller.
-    fallback_models = [
-        "gemini-3.8-flash",
-        "gemini-3.7-flash",
-        "gemini-3.6-flash",
-        "gemini-3.5-flash-lite",
-    ]
-
-    models = [primary_model]
-
-    for model in fallback_models:
-        if model not in models:
-            models.append(model)
-
-    # Begræns request-størrelse.
-    # Statistik og cyklusser bevares.
     d = dict(d)
-
-    limit = int(
-        settings.get("max_input_tokens", 24000)
-    ) * 3
-
-    while (
-        len(prompt(d)) > limit
-        and len(d.get("timeline_15min", [])) > 24
-    ):
-        d["timeline_15min"] = (
-            d["timeline_15min"][::2]
-        )
-
+    timeline = d.get("timeline_15min", [])
+    if len(timeline) > 192:
+        stride = math.ceil(len(timeline) / 192)
+        d["timeline_15min"] = timeline[::stride]
         d["timeline_sampling_note"] = (
-            "Tidslinjen er reduceret for at begrænse "
-            "API-forbrug; statistik og cyklusser er bevaret."
+            "Tidslinjen er reduceret; statistik, cyklusser og "
+            "afkølingsobservationer er bevaret."
         )
-
+    limit = int(settings.get("max_input_tokens", 24000)) * 3
+    while len(prompt(d)) > limit and len(d.get("timeline_15min", [])) > 24:
+        d["timeline_15min"] = d["timeline_15min"][::2]
     prompt_text = prompt(d)
-
     if len(prompt_text) > limit:
-        raise RuntimeError(
-            "Datamængden er for stor. "
-            "Vælg en kortere analyseperiode."
-        )
-
+        raise RuntimeError("Datamængden er for stor. Vælg en kortere analyseperiode.")
+    prompt_text += (
+        "\n\nSkriv en afsluttet rapport på højst ca. 1000 danske ord. "
+        "Prioritér konklusion, dokumenterede observationer og anbefalinger. "
+        "Undgå gentagelser og lange rådatatabeller. Afslut med en kort "
+        "konklusion. Angiv usikkerhed, når datagrundlaget ikke rækker."
+    )
     body = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": prompt_text
-                    }
-                ]
-            }
-        ],
+        "contents": [{"parts": [{"text": prompt_text}]}],
         "generationConfig": {
             "temperature": 0.2,
             "maxOutputTokens": 6000,
+            "thinkingConfig": {
+                "thinkingLevel": "LOW"
+            },
         },
     }
-
-    encoded_body = json.dumps(body).encode()
-
-    # Kun disse betragtes som server-/kapacitetsfejl
-    # hvor model-fallback giver mening.
-    fallback_http_codes = {
-        500,
-        502,
-        503,
-        504,
-    }
-
-    total_models = len(models)
+    encoded = json.dumps(body).encode()
     errors = []
+    timeout = 120
 
-    for model_index, model in enumerate(
-        models,
-        start=1
-    ):
-        is_fallback = model != primary_model
-
-        if is_fallback:
-            with LOCK:
-                JOB["message"] = (
-                    f"Gemini skifter til fallback-model "
-                    f"{model} "
-                    f"({model_index}/{total_models})…"
-                )
-
+    for index, model in enumerate(models):
+        with LOCK:
+            JOB["message"] = f"Gemini analyserer med {model} ({index+1}/{len(models)})…"
         url = (
             "https://generativelanguage.googleapis.com/"
             f"v1beta/models/{model}:generateContent"
         )
+        req = urllib.request.Request(
+            url, data=encoded,
+            headers={"Content-Type": "application/json",
+                     "x-goog-api-key": settings["gemini_api_key"]},
+            method="POST",
+        )
+        started = time.monotonic()
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                result = json.load(response)
+            elapsed = time.monotonic() - started
+            candidates = result.get("candidates", [])
+            if not candidates:
+                raise RuntimeError(f"{model}: Gemini returnerede ingen rapport.")
+            candidate = candidates[0]
+            reason = candidate.get("finishReason", "")
 
-        # To forsøg pr. model.
-        for attempt in range(1, 3):
-
-            if attempt > 1:
-                with LOCK:
-                    JOB["message"] = (
-                        f"Gemini {model} er midlertidigt "
-                        f"optaget – nyt forsøg {attempt}/2 "
-                        f"om 2 sek…"
-                    )
-
-                time.sleep(2)
-
-            else:
-                with LOCK:
-                    if is_fallback:
-                        JOB["message"] = (
-                            f"Gemini analyserer med "
-                            f"fallback-model {model}…"
-                        )
-                    else:
-                        JOB["message"] = (
-                            f"Gemini analyserer med "
-                            f"{model}…"
-                        )
-
-            req = urllib.request.Request(
-                url,
-                data=encoded_body,
-                headers={
-                    "Content-Type": "application/json",
-                    "x-goog-api-key":
-                        settings["gemini_api_key"],
-                },
-                method="POST",
-            )
-
-            try:
-                with urllib.request.urlopen(
-                    req,
-                    timeout=120
-                ) as response:
-                    result = json.load(response)
-
-                text = "\n".join(
-                    part.get("text", "")
-                    for candidate
-                    in result.get("candidates", [])
-                    for part
-                    in candidate.get(
-                        "content", {}
-                    ).get("parts", [])
-                    if part.get("text")
-                ).strip()
-
-                if not text:
-                    raise RuntimeError(
-                        "Gemini returnerede ingen rapport."
-                    )
-
-                # Returnér både rapport og faktisk model.
-                return (
-                    text,
+            if reason == "MAX_TOKENS":
+                logger.warning(
+                    "Gemini model=%s ramte MAX_TOKENS efter %.1fs",
                     model,
-                    is_fallback,
+                    elapsed,
                 )
-
-            except urllib.error.HTTPError as exc:
-                code = exc.code
 
                 errors.append(
-                    f"{model}: HTTP {code}"
+                    f"{model}: rapporten ramte outputgrænsen"
                 )
 
-                # 429 er kvote/rate-limit.
-                # Vi skjuler den ikke med model-fallback.
-                if code == 429:
-                    raise RuntimeError(
-                        "Gemini HTTP 429. "
-                        "API-kvoten er nået eller "
-                        "forespørgslerne rate-begrænses."
-                    ) from None
-
-                # Permanente fejl.
-                if code not in fallback_http_codes:
-
-                    messages = {
-                        400:
-                            "Ugyldig forespørgsel "
-                            "til Gemini.",
-                        401:
-                            "Gemini API-nøglen "
-                            "blev ikke accepteret.",
-                        403:
-                            "Gemini-adgang blev afvist.",
-                        404:
-                            "Modellen er ikke "
-                            "tilgængelig for projektet.",
-                    }
-
-                    raise RuntimeError(
-                        f"Gemini HTTP {code}. "
-                        + messages.get(
-                            code,
-                            "Kontroller model, "
-                            "API-nøgle og konfiguration."
-                        )
-                    ) from None
-
-                # Første serverfejl:
-                # prøv samme model én gang til.
-                if attempt == 1:
-                    continue
-
-                # Andet forsøg fejlede.
-                # Fortsæt til næste model.
-                break
-
-            except urllib.error.URLError:
-                if attempt == 1:
+                if index + 1 < len(models):
                     with LOCK:
                         JOB["message"] = (
-                            "Forbindelsen til Gemini "
-                            "fejlede – prøver igen om "
-                            "2 sek…"
+                            f"{model} nåede outputgrænsen – "
+                            f"skifter til fallback-model "
+                            f"{models[index + 1]}…"
                         )
-
-                    time.sleep(2)
                     continue
 
                 raise RuntimeError(
-                    "Forbindelsen til Gemini fejlede. "
-                    "Kontroller internetforbindelsen."
-                ) from None
+                    "Gemini-analysen kunne ikke lave en komplet rapport. "
+                    + "; ".join(errors)
+                    + ". Den tidligere rapport er bevaret."
+                )
 
-            except TimeoutError:
-                if attempt == 1:
-                    continue
-
+            if reason != "STOP":
                 raise RuntimeError(
-                    "Gemini svarede ikke inden for "
-                    "tidsgrænsen."
-                ) from None
+                    f"{model}: Rapporten blev ikke afsluttet korrekt "
+                    f"(finishReason={reason or 'mangler'}). "
+                    "Den tidligere rapport er bevaret."
+                )
 
-            except RuntimeError:
-                raise
-
-            except Exception:
-                if attempt == 1:
-                    continue
-
+            text = "\n".join(
+                part.get("text", "")
+                for part in candidate.get("content", {}).get("parts", [])
+                if part.get("text")
+            ).strip()
+            if not text:
+                raise RuntimeError(f"{model}: Gemini returnerede ingen rapport.")
+            logger.info("Gemini model=%s completed in %.1fs", model, elapsed)
+            return text, model, index > 0
+        except urllib.error.HTTPError as exc:
+            logger.warning("Gemini model=%s HTTP %s after %.1fs",
+                           model, exc.code, time.monotonic()-started)
+            if exc.code == 429:
                 raise RuntimeError(
-                    "Forbindelsen til Gemini fejlede. "
-                    "Kontroller netværk og konfiguration."
+                    f"{model}: HTTP 429. API-kvoten er nået eller "
+                    "forespørgslerne rate-begrænses. Ingen fallback forsøgt."
                 ) from None
-
-    details = ", ".join(errors)
+            if exc.code not in (500, 502, 503, 504):
+                raise RuntimeError(
+                    f"{model}: HTTP {exc.code}. Kontroller model, "
+                    "API-adgang og konfiguration."
+                ) from None
+            errors.append(f"{model}: HTTP {exc.code}")
+        except (TimeoutError, socket.timeout):
+            logger.warning("Gemini model=%s timeout after %.1fs",
+                           model, time.monotonic()-started)
+            errors.append(f"{model}: timeout efter {timeout} sekunder")
+        except urllib.error.URLError:
+            logger.warning("Gemini model=%s network error after %.1fs",
+                           model, time.monotonic()-started)
+            errors.append(f"{model}: netværksfejl")
+        if index + 1 < len(models):
+            with LOCK:
+                JOB["message"] = f"Skifter til fallback-model {models[index+1]}…"
 
     raise RuntimeError(
-        "Alle Gemini-modeller var midlertidigt "
-        "utilgængelige. "
-        + (
-            f"Forsøg: {details}"
-            if details
-            else ""
-        )
+        "Gemini-analysen mislykkedes. " + "; ".join(errors)
+        + ". Den tidligere rapport er bevaret."
     )
 
 
@@ -1482,6 +1361,8 @@ def update_settings(update: SettingsUpdate):
     changes = update.model_dump(exclude_none=True)
     if "smtp_security" in changes and changes["smtp_security"] not in ("starttls","ssl"):
         raise HTTPException(400, "SMTP kræver STARTTLS eller SSL.")
+    if "gemini_fallback_model" in changes and changes["gemini_fallback_model"] and not re.fullmatch(r"[A-Za-z0-9._-]+", changes["gemini_fallback_model"]):
+        raise HTTPException(400, "Ugyldigt fallback-modelnavn.")
     if "gemini_model" in changes and not re.fullmatch(r"[A-Za-z0-9._-]+", changes["gemini_model"]):
         raise HTTPException(400, "Ugyldigt modelnavn.")
     with LOCK:
