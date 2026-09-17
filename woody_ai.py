@@ -22,6 +22,7 @@ JOB = {"state": "idle", "message": "", "started_at": None, "finished_at": None}
 DEFAULTS = {
     "enabled": False, "gemini_api_key": "", "gemini_model": "gemini-3.8-flash",
     "gemini_fallback_model": "",
+    "ai_context": "",
     "analysis_days": 7, "target_indoor_temp": 21.0,
     "email_enabled": False, "email_to": "", "smtp_host": "",
     "smtp_port": 465, "smtp_security": "ssl", "smtp_username": "",
@@ -52,6 +53,7 @@ class SettingsUpdate(BaseModel):
     smtp_from: str | None = None
     max_input_tokens: int | None = Field(None, ge=1000, le=100000)
     gemini_fallback_model: str | None = None
+    ai_context: str | None = Field(None, max_length=8000)
 
 def load():
     with LOCK:
@@ -318,9 +320,380 @@ def _cooling(data):
 
     return result
 
+
+def _heat_demand_analysis(days):
+    """
+    Build a compact heat-demand data set for the AI analysis.
+
+    Uses the same Woody Monitor history database as the Heat Demand UI.
+    call_for_heat is sampled as 0/1.
+
+    Missing data is NOT interpreted as no heat demand.
+    Each observed sample interval is capped at 120 seconds so downtime
+    cannot create artificial long ON/OFF periods.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    now = datetime.now(timezone.utc)
+
+    result = {
+        "available": False,
+        "period_days": days,
+        "sample_count": 0,
+        "available_hours": 0.0,
+        "demand_hours": 0.0,
+        "demand_percent": None,
+        "average_heat_demand_temperature_c": None,
+        "average_calling_thermostats": None,
+        "days_with_morning_calls": 0,
+        "typical_first_morning_call": None,
+        "recommended_timer_start": None,
+        "recommended_lead_minutes": None,
+        "hourly_profile": [],
+        "weekday_profile": [],
+        "weekend_profile": [],
+        "daily_first_calls": [],
+        "limitations": [
+            "Heat-demand history only represents periods where samples were actually observed.",
+            "Missing samples are not interpreted as OFF.",
+            "Observed sample intervals are capped at 120 seconds.",
+            "Timer recommendations require at least 3 mornings with observed heat demand.",
+            "The recommendation is advisory only and must not automatically change Advanced Timer."
+        ],
+    }
+
+    if not DB.exists():
+        return result
+
+    with sqlite3.connect(
+        f"file:{DB}?mode=ro",
+        uri=True,
+        timeout=20
+    ) as db:
+        db.row_factory = sqlite3.Row
+
+        heat_rows = db.execute(
+            """
+            SELECT timestamp, value
+            FROM measurements
+            WHERE parameter = 'call_for_heat'
+              AND timestamp >= ?
+            ORDER BY timestamp
+            """,
+            [cutoff.strftime("%Y-%m-%dT%H:%M:%S")]
+        ).fetchall()
+
+        temp_rows = db.execute(
+            """
+            SELECT timestamp, value
+            FROM measurements
+            WHERE parameter = 'heat_demand_temp'
+              AND timestamp >= ?
+            ORDER BY timestamp
+            """,
+            [cutoff.strftime("%Y-%m-%dT%H:%M:%S")]
+        ).fetchall()
+
+        count_rows = db.execute(
+            """
+            SELECT timestamp, value
+            FROM measurements
+            WHERE parameter = 'heat_call_count'
+              AND timestamp >= ?
+            ORDER BY timestamp
+            """,
+            [cutoff.strftime("%Y-%m-%dT%H:%M:%S")]
+        ).fetchall()
+
+    heat = []
+
+    for row in heat_rows:
+        try:
+            t = parse_time(row["timestamp"])
+            v = float(row["value"])
+
+            if (
+                cutoff <= t <= now + timedelta(minutes=5)
+                and math.isfinite(v)
+            ):
+                heat.append((t, 1.0 if v >= 0.5 else 0.0))
+        except (TypeError, ValueError, OverflowError):
+            continue
+
+    if not heat:
+        return result
+
+    result["available"] = True
+    result["sample_count"] = len(heat)
+
+    def empty_hours():
+        return {
+            hour: {
+                "demand_seconds": 0.0,
+                "available_seconds": 0.0,
+            }
+            for hour in range(24)
+        }
+
+    all_hours = empty_hours()
+    weekday_hours = empty_hours()
+    weekend_hours = empty_hours()
+
+    daily = {}
+    first_calls = {}
+
+    total_available = 0.0
+    total_demand = 0.0
+
+    def add_interval(start, end, active):
+        nonlocal total_available, total_demand
+
+        current = start
+
+        while current < end:
+            local = current.astimezone(TZ)
+
+            next_hour_local = (
+                local.replace(
+                    minute=0,
+                    second=0,
+                    microsecond=0
+                )
+                + timedelta(hours=1)
+            )
+
+            next_hour = next_hour_local.astimezone(timezone.utc)
+            part_end = min(end, next_hour)
+
+            seconds = max(
+                0.0,
+                (part_end - current).total_seconds()
+            )
+
+            if seconds <= 0:
+                break
+
+            hour = local.hour
+            is_weekend = local.weekday() >= 5
+            date_key = local.date().isoformat()
+
+            all_hours[hour]["available_seconds"] += seconds
+
+            profile = (
+                weekend_hours
+                if is_weekend
+                else weekday_hours
+            )
+            profile[hour]["available_seconds"] += seconds
+
+            day = daily.setdefault(
+                date_key,
+                {
+                    "available_seconds": 0.0,
+                    "demand_seconds": 0.0,
+                }
+            )
+
+            day["available_seconds"] += seconds
+            total_available += seconds
+
+            if active:
+                all_hours[hour]["demand_seconds"] += seconds
+                profile[hour]["demand_seconds"] += seconds
+                day["demand_seconds"] += seconds
+                total_demand += seconds
+
+            current = part_end
+
+    for index, (t, value) in enumerate(heat):
+        if index + 1 < len(heat):
+            next_t = heat[index + 1][0]
+        else:
+            next_t = min(
+                now,
+                t + timedelta(seconds=120)
+            )
+
+        if next_t <= t:
+            continue
+
+        observed_end = min(
+            next_t,
+            t + timedelta(seconds=120)
+        )
+
+        add_interval(
+            t,
+            observed_end,
+            value >= 0.5
+        )
+
+        local = t.astimezone(TZ)
+
+        if value >= 0.5 and 3 <= local.hour < 10:
+            key = local.date().isoformat()
+
+            if (
+                key not in first_calls
+                or local < first_calls[key]
+            ):
+                first_calls[key] = local
+
+    def profile(source):
+        rows = []
+
+        for hour in range(24):
+            available = source[hour]["available_seconds"]
+            demand = source[hour]["demand_seconds"]
+
+            percent = (
+                demand / available * 100.0
+                if available > 0
+                else 0.0
+            )
+
+            rows.append({
+                "hour": hour,
+                "label": f"{hour:02d}:00",
+                "demand_minutes": round(
+                    demand / 60.0,
+                    1
+                ),
+                "available_minutes": round(
+                    available / 60.0,
+                    1
+                ),
+                "demand_percent": round(
+                    percent,
+                    1
+                ),
+            })
+
+        return rows
+
+    result["available_hours"] = round(
+        total_available / 3600.0,
+        2
+    )
+    result["demand_hours"] = round(
+        total_demand / 3600.0,
+        2
+    )
+
+    if total_available > 0:
+        result["demand_percent"] = round(
+            total_demand / total_available * 100.0,
+            1
+        )
+
+    result["hourly_profile"] = profile(all_hours)
+    result["weekday_profile"] = profile(weekday_hours)
+    result["weekend_profile"] = profile(weekend_hours)
+
+    # --------------------------------------------------------
+    # MORNING FIRST CALL
+    # --------------------------------------------------------
+
+    first_minutes = []
+
+    for date_key in sorted(first_calls):
+        local = first_calls[date_key]
+
+        minutes = local.hour * 60 + local.minute
+        first_minutes.append(minutes)
+
+        result["daily_first_calls"].append({
+            "date": date_key,
+            "time": local.strftime("%H:%M"),
+            "weekday": local.strftime("%A"),
+        })
+
+    result["days_with_morning_calls"] = len(first_minutes)
+
+    if first_minutes:
+        typical = int(round(median(first_minutes)))
+
+        result["typical_first_morning_call"] = (
+            f"{(typical // 60) % 24:02d}:"
+            f"{typical % 60:02d}"
+        )
+
+        # Do not present a timer recommendation until there
+        # are at least three observed mornings.
+        if len(first_minutes) >= 3:
+            recommended = (typical - 30) % (24 * 60)
+
+            result["recommended_timer_start"] = (
+                f"{recommended // 60:02d}:"
+                f"{recommended % 60:02d}"
+            )
+            result["recommended_lead_minutes"] = 30
+
+    # --------------------------------------------------------
+    # ACTIVE HEAT-DEMAND TEMPERATURE
+    # --------------------------------------------------------
+
+    temperatures = []
+
+    for row in temp_rows:
+        try:
+            t = parse_time(row["timestamp"])
+            v = float(row["value"])
+
+            if (
+                cutoff <= t <= now + timedelta(minutes=5)
+                and math.isfinite(v)
+                and 5 <= v <= 40
+            ):
+                temperatures.append(v)
+        except (TypeError, ValueError, OverflowError):
+            continue
+
+    if temperatures:
+        result["average_heat_demand_temperature_c"] = round(
+            mean(temperatures),
+            2
+        )
+
+    # --------------------------------------------------------
+    # NUMBER OF CALLING THERMOSTATS
+    # --------------------------------------------------------
+
+    calling_counts = []
+
+    for row in count_rows:
+        try:
+            t = parse_time(row["timestamp"])
+            v = float(row["value"])
+
+            if (
+                cutoff <= t <= now + timedelta(minutes=5)
+                and math.isfinite(v)
+                and 0 <= v <= 100
+            ):
+                calling_counts.append(v)
+        except (TypeError, ValueError, OverflowError):
+            continue
+
+    if calling_counts:
+        active_counts = [
+            value
+            for value in calling_counts
+            if value > 0
+        ]
+
+        if active_counts:
+            result["average_calling_thermostats"] = round(
+                mean(active_counts),
+                2
+            )
+
+    return result
+
+
 def payload(days, target):
     data,rejected=fetch(days)
     if not data["indoor_temp"]:raise RuntimeError("Ingen gyldige indendørstemperaturer. Kontroller HA-sensoren.")
+    heat_demand = _heat_demand_analysis(days)
     b={p:buckets(rows) for p,rows in data.items() if p!="feeder_time"}
     times=sorted(set().union(*(set(x) for x in b.values())))
     timeline=[]
@@ -349,6 +722,7 @@ def payload(days, target):
       "feeder_calibration":calibration,"feeder_consumption_kg":round(delta*calibration["grams_per_second"]/1000,3),
       "consumption_note":"Estimat fra gyldige positive tællerdeltaer og aktuel kalibrering. Ekskluderede intervaller kan give underestimat.",
       "burner_cycles":_cycle_details(data),"night_cooling_observations":_cooling(data),
+      "heat_demand":heat_demand,
       "data_quality":quality,"timeline_15min":timeline,
       "limitations":["15-minutters middelværdier er ikke samtidige råmålinger.",
       "Manglende intervaller må ikke interpoleres til sikre observationer.",
@@ -360,9 +734,17 @@ def prompt(d):
     return """Du er en forsigtig dansk energianalytiker for et Woody/Scotte pillefyr.
 Skriv en dansk rapport med konklusion, datagrundlag, indetemperatur, varmebehov,
 fyringscyklusser, natlig afkøling, varmtvand, kalibreret pilleforbrug, afvigelser
-og konkrete forslag til yderligere målinger. Skeln mellem observation, hypotese
-og anbefaling. Angiv kun start/stop-klokkeslæt hvis flere sammenlignelige forløb
-understøtter dem; ellers sig at datagrundlaget er utilstrækkeligt. En målt
+og konkrete forslag til yderligere målinger. Brug heat_demand-dataene til at
+vurdere hvornår huset faktisk kalder på varme, hvordan varmebehovet fordeler sig
+over døgnet, og om Advanced Timer med fordel kan placeres tidligere eller senere.
+Sammenlign hverdage og weekend når datadækningen er tilstrækkelig. Skeln mellem
+observation, hypotese og anbefaling. Angiv kun start/stop-klokkeslæt hvis flere
+sammenlignelige forløb understøtter dem; ellers sig at datagrundlaget er
+utilstrækkeligt. Brug ikke heat-demand-procenter uden samtidig at oplyse den
+faktiske datadækning. En høj procent baseret på få timers data må ikke beskrives
+som repræsentativ for hele analyseperioden. recommended_timer_start i data er
+kun en foreløbig rådgivende beregning og må ikke behandles som en udført ændring.
+En målt
 indetemperatur over målet beviser ikke at varmen alene er passiv. Varmtvandskilden
 er ukendt; påstå ikke at den er elpatron, lagret varme eller fyr uden evidens.
 Konstant O2 under drift er ikke en valid forbrændingsmåling. Brug ikke denne til
@@ -402,6 +784,19 @@ def gemini(d, settings):
     prompt_text = prompt(d)
     if len(prompt_text) > limit:
         raise RuntimeError("Datamængden er for stor. Vælg en kortere analyseperiode.")
+
+    ai_context = str(settings.get("ai_context", "") or "").strip()
+
+    if ai_context:
+        prompt_text += (
+            "\n\nBAGGRUNDSINFORMATION FRA BRUGEREN:\n"
+            "Følgende oplysninger er givet af brugeren som baggrund for analysen. "
+            "Brug dem sammen med måledataene. Hvis oplysningerne modsiger de målte "
+            "data, skal du tydeligt gøre opmærksom på forskellen. "
+            "Oplysningerne må ikke tilsidesætte sikkerhedsbegrænsningerne.\n\n"
+            + ai_context
+        )
+
     prompt_text += (
         "\n\nSkriv en afsluttet rapport på højst ca. 1000 danske ord. "
         "Prioritér konklusion, dokumenterede observationer og anbefalinger. "

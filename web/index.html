@@ -2177,6 +2177,134 @@ body { padding-bottom:20px; }
 }
 
 
+
+
+/* ==========================================================
+   HEAT DEMAND SETTINGS
+   ========================================================== */
+
+.heat-demand-settings-content {
+    padding-top: 4px;
+}
+
+.heat-demand-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.heat-demand-toolbar-label {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.heat-demand-select {
+    background: #202934;
+    color: white;
+    border: 1px solid #2b3542;
+    border-radius: 8px;
+    padding: 7px 9px;
+}
+
+.heat-demand-current,
+.heat-demand-summary {
+    display: grid;
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.heat-demand-metric {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    min-width: 0;
+}
+
+.heat-demand-metric-label {
+    color: var(--muted);
+    font-size: 11px;
+    margin-bottom: 5px;
+}
+
+.heat-demand-metric-value {
+    font-size: 18px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.heat-demand-metric-value.small {
+    font-size: 14px;
+}
+
+.heat-demand-status-on {
+    color: var(--green);
+}
+
+.heat-demand-status-off {
+    color: var(--muted);
+}
+
+.heat-demand-zones {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 0;
+    margin-bottom: 12px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.heat-demand-chart-wrap {
+    position: relative;
+    height: 300px;
+    margin-top: 8px;
+}
+
+.heat-demand-data-info {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+
+    .heat-demand-current,
+    .heat-demand-summary {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+
+    .heat-demand-current,
+    .heat-demand-summary {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .heat-demand-chart-wrap {
+        height: 260px;
+    }
+
+    .heat-demand-metric {
+        padding: 9px;
+    }
+
+    .heat-demand-metric-value {
+        font-size: 15px;
+    }
+
+    .heat-demand-metric-value.small {
+        font-size: 13px;
+    }
+}
+
 </style>
 
 <style id="nav-font-fix">
@@ -4482,7 +4610,9 @@ strong {
 <style id="woody-ai-style">
 #woody-ai-panel .woody-ai-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px;margin-top:16px}
 #woody-ai-panel .woody-ai-field{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);min-width:0}
-#woody-ai-panel input:not([type=checkbox]),#woody-ai-panel select{box-sizing:border-box;width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--card,#202934);color:var(--text,#fff);font:inherit}
+#woody-ai-panel input:not([type=checkbox]),#woody-ai-panel select,#woody-ai-panel textarea{box-sizing:border-box;width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--card,#202934);color:var(--text,#fff);font:inherit}
+#woody-ai-panel textarea{min-height:170px;resize:vertical;line-height:1.45}
+#woody-ai-panel .woody-ai-context-field{grid-column:1/-1}
 #woody-ai-panel input[type=checkbox]{align-self:flex-start;width:20px;height:20px}
 #woody-ai-panel .woody-ai-actions{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
 #woody-ai-panel .woody-ai-report{white-space:pre-wrap;overflow-wrap:anywhere;max-height:650px;overflow:auto;padding:16px;border:1px solid var(--border);border-radius:8px;font:inherit;line-height:1.6}
@@ -5374,6 +5504,7 @@ strong {
                     <option value="MQTT">MQTT</option>
                     <option value="NETWORK">Network</option>
                     <option value="SYSTEM">System</option>
+                    <option value="HOUSE">House</option>
                 </select>
 
                 <button
@@ -6237,15 +6368,278 @@ strong {
 
 
 
+
+<div
+    id="heatDemandSettingsCard"
+    class="card col-12"
+>
+
+    <div
+        class="card-header collapsible-card-header"
+        onclick="toggleHeatDemandSettings()"
+    >
+        <div>
+            <div class="card-title">
+                Heat Demand
+            </div>
+
+            <div class="card-subtitle">
+                Analysis of when the house calls for heat
+            </div>
+        </div>
+
+        <button
+            id="heatDemandSettingsToggle"
+            class="collapsible-card-toggle"
+            type="button"
+            aria-label="Expand or collapse"
+            aria-expanded="false"
+            onclick="
+                event.stopPropagation();
+                toggleHeatDemandSettings();
+            "
+        >
+            ▶
+        </button>
+    </div>
+
+    <div
+        id="heatDemandSettingsContent"
+        class="
+            collapsible-card-content
+            collapsed
+            heat-demand-settings-content
+        "
+    >
+
+        <div class="heat-demand-toolbar">
+
+            <span class="heat-demand-toolbar-label">
+                Period
+            </span>
+
+            <select
+                id="heatDemandPeriod"
+                class="heat-demand-select"
+                onchange="loadHeatDemandAnalysis()"
+            >
+                <option value="7">
+                    7 days
+                </option>
+
+                <option value="14">
+                    14 days
+                </option>
+
+                <option value="30" selected>
+                    30 days
+                </option>
+
+                <option value="90">
+                    90 days
+                </option>
+            </select>
+
+
+            <span class="heat-demand-toolbar-label">
+                View
+            </span>
+
+            <select
+                id="heatDemandProfileType"
+                class="heat-demand-select"
+                onchange="renderHeatDemandChart()"
+            >
+                <option value="all">
+                    All days
+                </option>
+
+                <option value="weekday">
+                    Weekdays
+                </option>
+
+                <option value="weekend">
+                    Weekend
+                </option>
+            </select>
+
+
+            <button
+                class="btn"
+                type="button"
+                onclick="loadHeatDemandAnalysis()"
+            >
+                Refresh
+            </button>
+
+        </div>
+
+
+        <div class="heat-demand-current">
+
+            <div class="heat-demand-metric">
+                <div class="heat-demand-metric-label">
+                    Current status
+                </div>
+
+                <div
+                    id="heatDemandCurrentState"
+                    class="heat-demand-metric-value"
+                >
+                    --
+                </div>
+            </div>
+
+
+            <div class="heat-demand-metric">
+                <div class="heat-demand-metric-label">
+                    Temperature
+                </div>
+
+                <div
+                    id="heatDemandCurrentTemp"
+                    class="heat-demand-metric-value"
+                >
+                    --
+                </div>
+            </div>
+
+
+            <div class="heat-demand-metric">
+                <div class="heat-demand-metric-label">
+                    Thermostats
+                </div>
+
+                <div
+                    id="heatDemandCurrentCount"
+                    class="heat-demand-metric-value"
+                >
+                    --
+                </div>
+            </div>
+
+
+            <div class="heat-demand-metric">
+                <div class="heat-demand-metric-label">
+                    Data points
+                </div>
+
+                <div
+                    id="heatDemandSampleCount"
+                    class="heat-demand-metric-value"
+                >
+                    --
+                </div>
+            </div>
+
+        </div>
+
+
+        <div
+            id="heatDemandCallingZones"
+            class="heat-demand-zones"
+        >
+            Aktive zoner: --
+        </div>
+
+
+        <div class="heat-demand-summary">
+
+            <div class="heat-demand-metric">
+                <div class="heat-demand-metric-label">
+                    Heat demand
+                </div>
+
+                <div
+                    id="heatDemandPercent"
+                    class="heat-demand-metric-value"
+                >
+                    --
+                </div>
+            </div>
+
+
+            <div class="heat-demand-metric">
+                <div class="heat-demand-metric-label">
+                    Time with heat demand
+                </div>
+
+                <div
+                    id="heatDemandHours"
+                    class="heat-demand-metric-value"
+                >
+                    --
+                </div>
+            </div>
+
+
+            <div class="heat-demand-metric">
+                <div class="heat-demand-metric-label">
+                    Typical first morning call
+                </div>
+
+                <div
+                    id="heatDemandFirstCall"
+                    class="
+                        heat-demand-metric-value
+                        small
+                    "
+                >
+                    --
+                </div>
+            </div>
+
+
+            <div class="heat-demand-metric">
+                <div class="heat-demand-metric-label">
+                    Recommended timer start
+                </div>
+
+                <div
+                    id="heatDemandRecommendedStart"
+                    class="
+                        heat-demand-metric-value
+                        small
+                    "
+                >
+                    --
+                </div>
+            </div>
+
+        </div>
+
+
+        <div class="card-subtitle">
+            Heat demand by time of day
+        </div>
+
+        <div class="heat-demand-chart-wrap">
+            <canvas
+                id="heatDemandProfileChart"
+            ></canvas>
+        </div>
+
+
+        <div
+            id="heatDemandDataInfo"
+            class="heat-demand-data-info"
+        >
+            Expand the card to load the analysis.
+        </div>
+
+    </div>
+
+</div>
+
 <div class="card col-12 woody-ai-accordion-card">
 
     <div class="card-header">
         <div>
             <div class="card-title">
-                AI driftsanalyse
+                AI Operational Analysis
             </div>
             <div class="card-subtitle">
-                Gemini · Varmebehov · Gmail
+                Gemini · Heat Demand · Gmail
             </div>
         </div>
 
@@ -6267,28 +6661,41 @@ strong {
 <div id="woody-ai-panel">
   
   <div class="woody-ai-grid">
-    <label class="woody-ai-field">Aktivér AI <input id="wai-enabled" type="checkbox"></label>
-    <label class="woody-ai-field">Gemini API-nøgle <input id="wai-key" type="password" autocomplete="new-password" placeholder="Lad stå tomt for at beholde nøgle"></label>
-    <label class="woody-ai-field">Model <select id="wai-model"><option value="gemini-3.8-flash">gemini-3.8-flash</option></select> <button class="btn" type="button" id="wai-models">Hent modeller</button></label>
-    <label class="woody-ai-field">Analyseperiode (dage) <input id="wai-days" type="number" min="1" max="30" value="7"></label>
-    <label class="woody-ai-field">Ønsket indetemperatur (°C) <input id="wai-target" type="number" min="10" max="30" step="0.5" value="21"></label>
-    <label class="woody-ai-field">Send rapport på e-mail <input id="wai-email-enabled" type="checkbox"></label>
-    <label class="woody-ai-field">Modtager <input id="wai-to" type="email"></label>
-    <label class="woody-ai-field">SMTP-server <input id="wai-host" placeholder="smtp.example.com"></label>
-    <label class="woody-ai-field">SMTP-port <input id="wai-port" type="number" value="465"></label>
-    <label class="woody-ai-field">Sikkerhed <select id="wai-security"><option value="ssl">SSL/TLS</option><option value="starttls">STARTTLS</option></select></label>
-    <label class="woody-ai-field">SMTP-brugernavn <input id="wai-user" autocomplete="username"></label>
-    <label class="woody-ai-field">SMTP-password <input id="wai-password" type="password" autocomplete="new-password" placeholder="Lad stå tomt for at beholde password"></label>
-    <label class="woody-ai-field">Afsenderadresse <input id="wai-from" type="email"></label>
+    <label class="woody-ai-field">Enable AI <input id="wai-enabled" type="checkbox"></label>
+    <label class="woody-ai-field">Gemini API key <input id="wai-key" type="password" autocomplete="new-password" placeholder="Leave blank to keep the existing key"></label>
+    <label class="woody-ai-field">Model <select id="wai-model"><option value="gemini-3.8-flash">gemini-3.8-flash</option></select> <button class="btn" type="button" id="wai-models">Load models</button></label>
+    <label class="woody-ai-field">Analysis period (days) <input id="wai-days" type="number" min="1" max="30" value="7"></label>
+    <label class="woody-ai-field">Target indoor temperature (°C) <input id="wai-target" type="number" min="10" max="30" step="0.5" value="21"></label>
+
+    <label class="woody-ai-field woody-ai-context-field">
+      Additional information for AI
+      <textarea
+        id="wai-context"
+        maxlength="8000"
+        placeholder="Example: The house is 192 m². The burner is a Woody/Scotte 16 kW. There is underfloor heating downstairs and radiators upstairs. The goal is low pellet consumption and a stable indoor temperature..."
+      ></textarea>
+      <span class="card-subtitle">
+        This information is stored locally and sent to Gemini with each analysis.
+      </span>
+    </label>
+
+    <label class="woody-ai-field">Send report by email <input id="wai-email-enabled" type="checkbox"></label>
+    <label class="woody-ai-field">Recipient <input id="wai-to" type="email"></label>
+    <label class="woody-ai-field">SMTP server <input id="wai-host" placeholder="smtp.example.com"></label>
+    <label class="woody-ai-field">SMTP port <input id="wai-port" type="number" value="465"></label>
+    <label class="woody-ai-field">Security <select id="wai-security"><option value="ssl">SSL/TLS</option><option value="starttls">STARTTLS</option></select></label>
+    <label class="woody-ai-field">SMTP username <input id="wai-user" autocomplete="username"></label>
+    <label class="woody-ai-field">SMTP password <input id="wai-password" type="password" autocomplete="new-password" placeholder="Leave blank to keep the existing password"></label>
+    <label class="woody-ai-field">Sender address <input id="wai-from" type="email"></label>
   </div>
-  <div class="woody-ai-actions"><button class="btn" type="button" id="wai-gmail">Brug Gmail SMTP</button><button class="btn" type="button" id="wai-test">Send testmail</button>
-    <button class="btn" type="button" id="wai-save">Gem AI-indstillinger</button>
-    <button class="btn" type="button" id="wai-run">Kør AI-analyse nu</button>
-    <button class="btn" type="button" id="wai-refresh">Vis seneste rapport</button>
+  <div class="woody-ai-actions"><button class="btn" type="button" id="wai-gmail">Use Gmail SMTP</button><button class="btn" type="button" id="wai-test">Send test email</button>
+    <button class="btn" type="button" id="wai-save">Save AI settings</button>
+    <button class="btn" type="button" id="wai-run">Run AI analysis now</button>
+    <button class="btn" type="button" id="wai-refresh">Show latest report</button>
   </div>
-  <div id="wai-status" class="card-subtitle" role="status" aria-live="polite">Indlæser AI-status…</div>
-  <div class="card-subtitle" style="margin-top:8px">Analysen er kun rådgivende. Den ændrer ikke fyr, timer eller Home Assistant. Gemini modtager måledata, når du starter analysen.</div>
-  <div class="card-subtitle">Gmail: Brug en appadgangskode fra Google, ikke din almindelige adgangskode. Testmail sendes kun, når du trykker på knappen.</div><pre id="wai-report" class="woody-ai-report" style="display:none"></pre>
+  <div id="wai-status" class="card-subtitle" role="status" aria-live="polite">Loading AI status…</div>
+  <div class="card-subtitle" style="margin-top:8px">The analysis is advisory only. It does not change the burner, timer or Home Assistant. Gemini receives measurement data when you start the analysis.</div>
+  <div class="card-subtitle">Gmail: Use a Google app password, not your normal password. A test email is only sent when you press the button.</div><pre id="wai-report" class="woody-ai-report" style="display:none"></pre>
 </div>
     </div>
 
@@ -20886,7 +21293,8 @@ function activityTypeLabel(type) {
         CONTROLLER: "CONTROLLER",
         MQTT: "MQTT",
         NETWORK: "NETWORK",
-        SYSTEM: "SYSTEM"
+        SYSTEM: "SYSTEM",
+        HOUSE: "HOUSE"
     };
 
     return labels[type] || type || "OTHER";
@@ -20902,7 +21310,8 @@ function activityTypeClass(type) {
         CONTROLLER: "activity-type-controller",
         MQTT: "activity-type-mqtt",
         NETWORK: "activity-type-network",
-        SYSTEM: "activity-type-system"
+        SYSTEM: "activity-type-system",
+        HOUSE: "activity-type-system"
     };
 
     return classes[type] || "activity-type-other";
@@ -21842,7 +22251,10 @@ function woodySwipeBlocked(target) {
                 "button",
                 "a",
                 "[contenteditable='true']",
-                ".pellet-overview-navigation"
+                ".pellet-overview-navigation",
+                "canvas",
+                ".chart-container",
+                ".pellet-chart-container"
             ].join(",")
         )
     );
@@ -22869,6 +23281,29 @@ async function updateSiloForecast() {
         const woodyHistoryStart =
             performance.now();
 
+        let serverSiloSettings = null;
+
+        try {
+
+            const settingsResponse =
+                await fetch(
+                    API + "/settings/silo",
+                    { cache: "no-store" }
+                );
+
+            if (settingsResponse.ok) {
+                serverSiloSettings =
+                    await settingsResponse.json();
+            }
+
+        } catch(error) {
+
+            console.debug(
+                "Server silo refill:",
+                error
+            );
+        }
+
         const rawSiloHistory =
             await getSiloHistory();
 
@@ -22918,66 +23353,112 @@ async function updateSiloForecast() {
 
 
         /*
-         * Find the most recent manual Magazine content change.
+         * Last refill is authoritative server-side state.
          *
-         * magazine_content is normally stored repeatedly with
-         * the same value. A real change therefore marks the
-         * beginning of a new silo period.
+         * The backend detects a significant Magazine content
+         * increase and persists the timestamp in silo_settings.json.
+         * All browsers therefore use exactly the same refill anchor.
          */
         let anchorIndex = -1;
 
-        for (
-            let i = 1;
-            i < siloHistory.length;
-            i++
-        ) {
+        let anchorDate = null;
+        let anchorKg = null;
 
-            const previous =
-                siloHistory[i - 1].kg;
+        const serverRefillAt =
+            serverSiloSettings?.last_refill_at;
 
-            const current =
-                siloHistory[i].kg;
+        const serverRefillKg =
+            siloNumber(
+                serverSiloSettings
+                    ?.last_refill_level_kg
+            );
 
-            /*
-             * A new silo period starts only when pellets are
-             * ADDED to the magazine.
-             *
-             * Normal consumption makes magazine_content fall
-             * and must never move the refill/start date.
-             *
-             * Ignore small corrections/noise as well.
-             */
+        if (serverRefillAt) {
+
+            const parsed =
+                new Date(serverRefillAt);
+
             if (
-                Number.isFinite(previous) &&
-                Number.isFinite(current) &&
-                (current - previous) >= 5
+                !Number.isNaN(
+                    parsed.getTime()
+                )
             ) {
-                anchorIndex = i;
+                anchorDate = parsed;
+                anchorKg = serverRefillKg;
             }
         }
 
-
         /*
-         * If no change has yet been recorded, use the oldest
-         * available Magazine content measurement.
+         * Locate the server anchor in the browser history only
+         * for drawing the actual-history section of the chart.
          */
         if (
-            anchorIndex < 0 &&
+            anchorDate &&
             siloHistory.length
         ) {
-            anchorIndex = 0;
+
+            const target =
+                anchorDate.getTime();
+
+            let bestDistance =
+                Number.POSITIVE_INFINITY;
+
+            for (
+                let i = 0;
+                i < siloHistory.length;
+                i++
+            ) {
+
+                const distance =
+                    Math.abs(
+                        siloHistory[i]
+                            .date
+                            .getTime() -
+                        target
+                    );
+
+                if (
+                    distance <
+                    bestDistance
+                ) {
+                    bestDistance =
+                        distance;
+
+                    anchorIndex = i;
+                }
+            }
         }
 
+        /*
+         * No significant refill has yet been recorded.
+         * Use the oldest available history for forecasting,
+         * but do not invent a Last refill date.
+         */
+        if (!anchorDate) {
 
-        let anchorDate =
-            anchorIndex >= 0
-                ? siloHistory[anchorIndex].date
-                : now;
+            if (siloHistory.length) {
 
-        let anchorKg =
-            anchorIndex >= 0
-                ? siloHistory[anchorIndex].kg
-                : currentKg;
+                anchorIndex = 0;
+
+                anchorDate =
+                    siloHistory[0].date;
+
+                anchorKg =
+                    siloHistory[0].kg;
+
+            } else {
+
+                anchorDate = now;
+                anchorKg = currentKg;
+            }
+        }
+
+        if (
+            anchorKg === null ||
+            !Number.isFinite(anchorKg)
+        ) {
+            anchorKg = currentKg;
+        }
 
 
         /*
@@ -23260,9 +23741,15 @@ async function updateSiloForecast() {
              * calculated refill date.
              */
             lastRefillEl.textContent =
-                formatSiloDateTime(
-                    anchorDate
-                );
+                serverSiloSettings
+                    ?.last_refill_at
+                    ? formatSiloDateTime(
+                        new Date(
+                            serverSiloSettings
+                                .last_refill_at
+                        )
+                    )
+                    : "--";
         }
 
 
@@ -25352,18 +25839,18 @@ document.addEventListener(
 (function(){
 "use strict";
 const base="/api/v1/ai", el=id=>document.getElementById("wai-"+id);
-const fields={enabled:"enabled",model:"gemini_model",days:"analysis_days",target:"target_indoor_temp","email-enabled":"email_enabled",to:"email_to",host:"smtp_host",port:"smtp_port",security:"smtp_security",user:"smtp_username",from:"smtp_from"};
+const fields={enabled:"enabled",model:"gemini_model",days:"analysis_days",target:"target_indoor_temp",context:"ai_context","email-enabled":"email_enabled",to:"email_to",host:"smtp_host",port:"smtp_port",security:"smtp_security",user:"smtp_username",from:"smtp_from"};
 let busy=false,timer=null;
 async function request(path,method="GET",body){const r=await fetch(base+path,{method,headers:{"Content-Type":"application/json"},body:body===undefined?undefined:JSON.stringify(body),cache:"no-store"});const d=await r.json();if(!r.ok)throw Error(typeof d.detail==="string"?d.detail:"HTTP "+r.status);return d;}
 function message(t){el("status").textContent=t;}
 function setModel(value,names){const e=el("model");e.replaceChildren();for(const name of [...new Set([value,...names])]){const o=document.createElement("option");o.value=name;o.textContent=name;e.append(o);}e.value=value;}
 async function models(){const selected=el("model").value;try{const d=await request("/models");setModel(selected,d.models);message("Modeloversigt hentet. Den gemte model er bevaret.");}catch(e){message("Modeloversigt: "+e.message);}}
-async function load(){try{const d=(await request("/settings")).settings;setModel(d.gemini_model||"gemini-3.8-flash",["gemini-3.8-flash"]);for(const [id,key] of Object.entries(fields)){const e=el(id);if(e.type==="checkbox")e.checked=!!d[key];else e.value=d[key]??"";}el("key").value="";el("password").value="";message("Indstillinger indlæst. Gemini-nøgle: "+(d.gemini_api_key_configured?"gemt":"mangler")+". SMTP-password: "+(d.smtp_password_configured?"gemt":"mangler")+".");await status();}catch(e){message("Fejl: "+e.message);}}
+async function load(){try{const d=(await request("/settings")).settings;setModel(d.gemini_model||"gemini-3.8-flash",["gemini-3.8-flash"]);for(const [id,key] of Object.entries(fields)){const e=el(id);if(e.type==="checkbox")e.checked=!!d[key];else e.value=d[key]??"";}el("key").value="";el("password").value="";message("Settings loaded. Gemini key: "+(d.gemini_api_key_configured?"saved":"missing")+". SMTP password: "+(d.smtp_password_configured?"saved":"missing")+".");await status();}catch(e){message("Error: "+e.message);}}
 async function save(){const d={};for(const [id,key] of Object.entries(fields)){const e=el(id);d[key]=e.type==="checkbox"?e.checked:e.type==="number"?Number(e.value):e.value.trim();}if(el("key").value.trim())d.gemini_api_key=el("key").value.trim();if(el("password").value)d.smtp_password=el("password").value;await request("/settings","PUT",d);el("key").value="";el("password").value="";message("AI-indstillinger gemt.");}
 async function report(){try{const d=await request("/report");el("report").textContent=d.report;el("report").style.display="block";}catch(e){message("Rapport: "+e.message);}}
-async function status(){try{const d=await request("/status"),j=d.job||{};busy=j.state==="running";el("run").disabled=busy;if(busy){message(j.message||"Analyserer…");if(!timer)timer=setInterval(status,3000);}else{if(timer){clearInterval(timer);timer=null;}if(j.state==="completed"||j.state==="failed")message(j.message);if(j.state==="completed"&&!el("report").textContent)await report();}}catch(e){message("Statusfejl: "+e.message);}}
-async function run(){try{await save();const d=await request("/analyze","POST",{});el("report").textContent="";el("report").style.display="none";message(d.job.message);await status();}catch(e){message("Analysen kunne ikke startes: "+e.message);}}
-async function test(){try{await save();message("Sender testmail…");const d=await request("/email/test","POST",{});message(d.message);}catch(e){message("Testmail: "+e.message);}}
+async function status(){try{const d=await request("/status"),j=d.job||{};busy=j.state==="running";el("run").disabled=busy;if(busy){message(j.message||"Analyzing…");if(!timer)timer=setInterval(status,3000);}else{if(timer){clearInterval(timer);timer=null;}if(j.state==="completed"||j.state==="failed")message(j.message);if(j.state==="completed"&&!el("report").textContent)await report();}}catch(e){message("Status error: "+e.message);}}
+async function run(){try{await save();const d=await request("/analyze","POST",{});el("report").textContent="";el("report").style.display="none";message(d.job.message);await status();}catch(e){message("Analysis could not be started: "+e.message);}}
+async function test(){try{await save();message("Sending test email…");const d=await request("/email/test","POST",{});message(d.message);}catch(e){message("Test email: "+e.message);}}
 function gmail(){el("host").value="smtp.gmail.com";el("port").value="465";el("security").value="ssl";message("Gmail SMTP er udfyldt. Indtast din Gmail-adresse og appadgangskode, og gem.");}
 el("save").addEventListener("click",()=>save().catch(e=>message("Gem fejl: "+e.message)));
 el("run").addEventListener("click",run);el("refresh").addEventListener("click",report);el("test").addEventListener("click",test);el("gmail").addEventListener("click",gmail);el("models").addEventListener("click",models);load();
@@ -25501,6 +25988,651 @@ el("run").addEventListener("click",run);el("refresh").addEventListener("click",r
     }
 
 })();
+
+
+// ============================================================
+// HEAT DEMAND SETTINGS
+// ============================================================
+
+let heatDemandAnalysisData = null;
+let heatDemandProfileChart = null;
+let heatDemandLoaded = false;
+
+
+function setHeatDemandSettingsCollapsed(collapsed) {
+
+    const content = document.getElementById(
+        "heatDemandSettingsContent"
+    );
+
+    const toggle = document.getElementById(
+        "heatDemandSettingsToggle"
+    );
+
+    if (!content || !toggle) {
+        return;
+    }
+
+    content.classList.toggle(
+        "collapsed",
+        collapsed
+    );
+
+    toggle.textContent =
+        collapsed ? "▶" : "▼";
+
+    toggle.setAttribute(
+        "aria-expanded",
+        collapsed ? "false" : "true"
+    );
+
+    try {
+        localStorage.setItem(
+            "woodyHeatDemandSettings",
+            collapsed
+                ? "collapsed"
+                : "expanded"
+        );
+    } catch (error) {
+        // localStorage is optional.
+    }
+}
+
+
+function toggleHeatDemandSettings() {
+
+    const content = document.getElementById(
+        "heatDemandSettingsContent"
+    );
+
+    if (!content) {
+        return;
+    }
+
+    const isCollapsed =
+        content.classList.contains(
+            "collapsed"
+        );
+
+    setHeatDemandSettingsCollapsed(
+        !isCollapsed
+    );
+
+    if (isCollapsed) {
+
+        loadHeatDemandAnalysis();
+
+        window.setTimeout(
+            () => {
+                if (heatDemandProfileChart) {
+                    heatDemandProfileChart.resize();
+                }
+            },
+            100
+        );
+    }
+}
+
+
+function initHeatDemandSettings() {
+
+    const content = document.getElementById(
+        "heatDemandSettingsContent"
+    );
+
+    if (!content) {
+        return;
+    }
+
+    let collapsed = true;
+
+    try {
+
+        const stored = localStorage.getItem(
+            "woodyHeatDemandSettings"
+        );
+
+        if (stored === "expanded") {
+            collapsed = false;
+        }
+
+    } catch (error) {
+        // Ignore localStorage errors.
+    }
+
+    setHeatDemandSettingsCollapsed(
+        collapsed
+    );
+
+    if (!collapsed) {
+        loadHeatDemandAnalysis();
+    }
+}
+
+
+async function loadHeatDemandAnalysis() {
+
+    const periodElement =
+        document.getElementById(
+            "heatDemandPeriod"
+        );
+
+    const days = periodElement
+        ? Number(periodElement.value || 30)
+        : 30;
+
+    const info =
+        document.getElementById(
+            "heatDemandDataInfo"
+        );
+
+    if (info) {
+        info.textContent =
+            "Loading heat demand...";
+    }
+
+    try {
+
+        const response = await fetch(
+            `/api/v1/heat-demand/analysis?days=${days}`,
+            {
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                `HTTP ${response.status}`
+            );
+        }
+
+        heatDemandAnalysisData =
+            await response.json();
+
+        heatDemandLoaded = true;
+
+        updateHeatDemandValues();
+        renderHeatDemandChart();
+
+    } catch (error) {
+
+        console.error(
+            "Heat demand analysis error:",
+            error
+        );
+
+        if (info) {
+            info.textContent =
+                "Unable to load heat demand data.";
+        }
+    }
+}
+
+
+function updateHeatDemandValues() {
+
+    const data = heatDemandAnalysisData;
+
+    if (!data) {
+        return;
+    }
+
+    const current = data.current || {};
+    const summary = data.summary || {};
+    const morning = data.morning || {};
+    const period = data.period || {};
+
+
+    const stateElement =
+        document.getElementById(
+            "heatDemandCurrentState"
+        );
+
+    if (stateElement) {
+
+        stateElement.classList.remove(
+            "heat-demand-status-on",
+            "heat-demand-status-off"
+        );
+
+        if (current.active === true) {
+
+            stateElement.textContent =
+                "HEAT DEMAND";
+
+            stateElement.classList.add(
+                "heat-demand-status-on"
+            );
+
+        } else if (
+            current.active === false
+        ) {
+
+            stateElement.textContent =
+                "NO HEAT DEMAND";
+
+            stateElement.classList.add(
+                "heat-demand-status-off"
+            );
+
+        } else {
+
+            stateElement.textContent =
+                "UNKNOWN";
+
+            stateElement.classList.add(
+                "heat-demand-status-off"
+            );
+        }
+    }
+
+
+    const tempElement =
+        document.getElementById(
+            "heatDemandCurrentTemp"
+        );
+
+    if (tempElement) {
+
+        tempElement.textContent =
+            current.temperature != null
+                ? `${Number(
+                    current.temperature
+                ).toFixed(1)} °C`
+                : "--";
+    }
+
+
+    const countElement =
+        document.getElementById(
+            "heatDemandCurrentCount"
+        );
+
+    if (countElement) {
+
+        countElement.textContent =
+            current.calling_count != null
+                ? String(
+                    current.calling_count
+                )
+                : "--";
+    }
+
+
+    const sampleElement =
+        document.getElementById(
+            "heatDemandSampleCount"
+        );
+
+    if (sampleElement) {
+
+        sampleElement.textContent =
+            period.sample_count != null
+                ? String(
+                    period.sample_count
+                )
+                : "--";
+    }
+
+
+    const zonesElement =
+        document.getElementById(
+            "heatDemandCallingZones"
+        );
+
+    if (zonesElement) {
+
+        const zones = Array.isArray(
+            current.calling_thermostats
+        )
+            ? current.calling_thermostats
+            : [];
+
+        zonesElement.textContent =
+            zones.length
+                ? `Active zones: ${zones.join(", ")}`
+                : "Active zones: None";
+    }
+
+
+    const percentElement =
+        document.getElementById(
+            "heatDemandPercent"
+        );
+
+    if (percentElement) {
+
+        percentElement.textContent =
+            summary.demand_percent != null
+                ? `${Number(
+                    summary.demand_percent
+                ).toFixed(1)} %`
+                : "--";
+    }
+
+
+    const hoursElement =
+        document.getElementById(
+            "heatDemandHours"
+        );
+
+    if (hoursElement) {
+
+        const demandHours =
+            Number(
+                summary.demand_hours || 0
+            );
+
+        if (demandHours < 1) {
+
+            hoursElement.textContent =
+                `${(
+                    demandHours * 60
+                ).toFixed(0)} min`;
+
+        } else {
+
+            hoursElement.textContent =
+                `${demandHours.toFixed(1)} t`;
+        }
+    }
+
+
+    const firstCallElement =
+        document.getElementById(
+            "heatDemandFirstCall"
+        );
+
+    if (firstCallElement) {
+
+        firstCallElement.textContent =
+            morning.typical_first_call ||
+            "--";
+    }
+
+
+    const recommendedElement =
+        document.getElementById(
+            "heatDemandRecommendedStart"
+        );
+
+    if (recommendedElement) {
+
+        recommendedElement.textContent =
+            morning.recommended_start ||
+            "--";
+    }
+
+
+    const info =
+        document.getElementById(
+            "heatDemandDataInfo"
+        );
+
+    if (info) {
+
+        const samples =
+            Number(
+                period.sample_count || 0
+            );
+
+        const availableHours =
+            Number(
+                summary.available_hours || 0
+            );
+
+        const morningDays =
+            Number(
+                morning.days_with_morning_calls
+                || 0
+            );
+
+        if (
+            !data.available ||
+            samples === 0
+        ) {
+
+            info.textContent =
+                "No heat demand data has been recorded yet.";
+
+        } else if (
+            availableHours < 24
+        ) {
+
+            info.textContent =
+                "The data set is still limited. " +
+                "Let Woody Monitor collect at least " +
+                "24 hours of data before evaluating the profile.";
+
+        } else if (
+            morningDays < 3
+        ) {
+
+            info.textContent =
+                "The heat demand profile is active. " +
+                "At least 3 mornings with heat demand are " +
+                "required before recommending a timer start.";
+
+        } else {
+
+            info.textContent =
+                `Analysis based on ${samples} measurements ` +
+                `and ${availableHours.toFixed(1)} hours of ` +
+                "data coverage. The recommended timer start is " +
+                "currently 30 minutes before the typical " +
+                "first morning call.";
+        }
+    }
+}
+
+
+function renderHeatDemandChart() {
+
+    const data = heatDemandAnalysisData;
+
+    if (!data) {
+        return;
+    }
+
+    const canvas =
+        document.getElementById(
+            "heatDemandProfileChart"
+        );
+
+    if (!canvas) {
+        return;
+    }
+
+    const selector =
+        document.getElementById(
+            "heatDemandProfileType"
+        );
+
+    const type = selector
+        ? selector.value
+        : "all";
+
+    let profile =
+        data.hourly_profile || [];
+
+    let label = "All days";
+
+    if (type === "weekday") {
+
+        profile =
+            data.weekday_profile || [];
+
+        label = "Weekdays";
+    }
+
+    if (type === "weekend") {
+
+        profile =
+            data.weekend_profile || [];
+
+        label = "Weekend";
+    }
+
+    const labels = profile.map(
+        item => item.label
+    );
+
+    const values = profile.map(
+        item => Number(
+            item.demand_percent || 0
+        )
+    );
+
+    if (heatDemandProfileChart) {
+
+        heatDemandProfileChart.destroy();
+        heatDemandProfileChart = null;
+    }
+
+    heatDemandProfileChart =
+        new Chart(
+            canvas.getContext("2d"),
+            {
+                type: "bar",
+
+                data: {
+                    labels: labels,
+
+                    datasets: [
+                        {
+                            label:
+                                `${label} · heat demand %`,
+                            data: values,
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }
+                    ]
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+
+                    plugins: {
+
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: "#aeb8c4"
+                            }
+                        },
+
+                        tooltip: {
+
+                            callbacks: {
+
+                                label: function(
+                                    context
+                                ) {
+
+                                    const item =
+                                        profile[
+                                            context
+                                                .dataIndex
+                                        ];
+
+                                    return [
+                                        `Heat demand: ${
+                                            Number(
+                                                item
+                                                    .demand_percent
+                                                || 0
+                                            ).toFixed(1)
+                                        } %`,
+
+                                        `Time: ${
+                                            Number(
+                                                item
+                                                    .demand_minutes
+                                                || 0
+                                            ).toFixed(1)
+                                        } min`,
+
+                                        `Data coverage: ${
+                                            Number(
+                                                item
+                                                    .available_minutes
+                                                || 0
+                                            ).toFixed(1)
+                                        } min`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+
+                    scales: {
+
+                        x: {
+
+                            ticks: {
+                                color: "#8e9aa8",
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 12
+                            },
+
+                            grid: {
+                                display: false
+                            }
+                        },
+
+                        y: {
+                            beginAtZero: true,
+                            min: 0,
+                            max: 100,
+
+                            title: {
+                                display: true,
+                                text:
+                                    "Heat demand %",
+                                color: "#8e9aa8"
+                            },
+
+                            ticks: {
+                                color: "#8e9aa8",
+
+                                callback:
+                                    value =>
+                                        `${value} %`
+                            },
+
+                            grid: {
+                                color:
+                                    "rgba(255,255,255,0.06)"
+                            }
+                        }
+                    }
+                }
+            }
+        );
+}
+
+
+// Start after DOM is ready.
+
+if (
+    document.readyState ===
+    "loading"
+) {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        initHeatDemandSettings
+    );
+
+} else {
+
+    initHeatDemandSettings();
+}
+
+
 </script>
 
 </body>

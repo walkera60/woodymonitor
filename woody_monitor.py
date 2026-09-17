@@ -51,8 +51,19 @@ home_assistant_lock = threading.Lock()
 home_assistant_settings = {
     "url": "",
     "token": "",
-    "indoor_temperature_entity": ""
+    "indoor_temperature_entity": "",
+
+    # Heating demand from Home Assistant.
+    "call_for_heat_entity": "binary_sensor.call_for_heat",
+    "heat_demand_temperature_entity":
+        "sensor.indoor_temperature_heat_demand"
 }
+
+
+# Runtime state used only for logging state transitions.
+heat_demand_log_lock = threading.Lock()
+heat_demand_log_initialized = False
+heat_demand_last_state = None
 
 
 def load_home_assistant_settings():
@@ -84,6 +95,24 @@ def load_home_assistant_settings():
                 data.get(
                     "indoor_temperature_entity",
                     ""
+                )
+            ).strip()
+
+            home_assistant_settings[
+                "call_for_heat_entity"
+            ] = str(
+                data.get(
+                    "call_for_heat_entity",
+                    "binary_sensor.call_for_heat"
+                )
+            ).strip()
+
+            home_assistant_settings[
+                "heat_demand_temperature_entity"
+            ] = str(
+                data.get(
+                    "heat_demand_temperature_entity",
+                    "sensor.indoor_temperature_heat_demand"
                 )
             ).strip()
 
@@ -257,6 +286,347 @@ def get_home_assistant_temperature():
             "unit": None,
             "error": str(error)
         }
+
+
+
+# ============================================================
+# HOME ASSISTANT - HEAT DEMAND
+# ============================================================
+
+def get_home_assistant_entity_state(entity):
+    """
+    Read one Home Assistant entity through the configured REST API.
+
+    This intentionally uses the existing Woody Monitor HA URL/token.
+    """
+
+    with home_assistant_lock:
+
+        url = home_assistant_settings[
+            "url"
+        ]
+
+        token = home_assistant_settings[
+            "token"
+        ]
+
+    entity = str(
+        entity or ""
+    ).strip()
+
+    if not url or not token or not entity:
+
+        return {
+            "configured": False,
+            "connected": False,
+            "entity": entity or None,
+            "state": None,
+            "attributes": {},
+            "error": None
+        }
+
+    request_url = (
+        url.rstrip("/")
+        + "/api/states/"
+        + entity
+    )
+
+    request = urllib.request.Request(
+        request_url,
+        headers={
+            "Authorization":
+                "Bearer " + token,
+            "Content-Type":
+                "application/json"
+        }
+    )
+
+    try:
+
+        with urllib.request.urlopen(
+            request,
+            timeout=5
+        ) as response:
+
+            payload = json.loads(
+                response.read().decode(
+                    "utf-8"
+                )
+            )
+
+        return {
+            "configured": True,
+            "connected": True,
+            "entity": entity,
+            "state": payload.get("state"),
+            "attributes": payload.get(
+                "attributes",
+                {}
+            ),
+            "error": None
+        }
+
+    except urllib.error.HTTPError as error:
+
+        if error.code == 401:
+            message = "Authentication failed"
+
+        elif error.code == 404:
+            message = "Entity not found"
+
+        else:
+            message = (
+                "Home Assistant HTTP "
+                + str(error.code)
+            )
+
+        return {
+            "configured": True,
+            "connected": False,
+            "entity": entity,
+            "state": None,
+            "attributes": {},
+            "error": message
+        }
+
+    except Exception as error:
+
+        return {
+            "configured": True,
+            "connected": False,
+            "entity": entity,
+            "state": None,
+            "attributes": {},
+            "error": str(error)
+        }
+
+
+def get_home_assistant_heat_demand():
+
+    with home_assistant_lock:
+
+        call_entity = home_assistant_settings.get(
+            "call_for_heat_entity",
+            "binary_sensor.call_for_heat"
+        )
+
+        temperature_entity = (
+            home_assistant_settings.get(
+                "heat_demand_temperature_entity",
+                "sensor.indoor_temperature_heat_demand"
+            )
+        )
+
+    call_status = get_home_assistant_entity_state(
+        call_entity
+    )
+
+    temperature_status = (
+        get_home_assistant_entity_state(
+            temperature_entity
+        )
+    )
+
+    active = None
+
+    if call_status.get("connected"):
+
+        raw_state = str(
+            call_status.get("state") or ""
+        ).strip().lower()
+
+        if raw_state in (
+            "on",
+            "true",
+            "1",
+            "yes",
+            "heating"
+        ):
+            active = True
+
+        elif raw_state in (
+            "off",
+            "false",
+            "0",
+            "no",
+            "idle"
+        ):
+            active = False
+
+    temperature = None
+
+    if temperature_status.get("connected"):
+
+        raw_temperature = (
+            temperature_status.get("state")
+        )
+
+        try:
+
+            if str(
+                raw_temperature
+            ).strip().lower() not in (
+                "",
+                "unknown",
+                "unavailable",
+                "none"
+            ):
+
+                temperature = float(
+                    raw_temperature
+                )
+
+        except (TypeError, ValueError):
+            temperature = None
+
+    attributes = temperature_status.get(
+        "attributes",
+        {}
+    ) or {}
+
+    calling_count = attributes.get(
+        "calling_count"
+    )
+
+    try:
+        calling_count = int(
+            calling_count
+        )
+    except (TypeError, ValueError):
+        calling_count = None
+
+    return {
+        "configured":
+            bool(
+                call_status.get("configured")
+            ),
+
+        "connected":
+            bool(
+                call_status.get("connected")
+            ),
+
+        "active":
+            active,
+
+        "call_for_heat_entity":
+            call_entity,
+
+        "temperature_entity":
+            temperature_entity,
+
+        "temperature":
+            temperature,
+
+        "calling_count":
+            calling_count,
+
+        "calling_thermostats":
+            attributes.get(
+                "calling_thermostats"
+            ),
+
+        "call_status":
+            call_status,
+
+        "temperature_status":
+            temperature_status
+    }
+
+
+def log_home_assistant_heat_demand(
+    active,
+    temperature=None,
+    calling_count=None
+):
+    """
+    Log only real OFF -> ON / ON -> OFF transitions.
+
+    Initial state after Woody Monitor restart establishes a baseline
+    and is intentionally not logged as a new heat-demand event.
+    """
+
+    global heat_demand_log_initialized
+    global heat_demand_last_state
+
+    if active is None:
+        return
+
+    active = bool(
+        active
+    )
+
+    with heat_demand_log_lock:
+
+        if not heat_demand_log_initialized:
+
+            heat_demand_last_state = active
+            heat_demand_log_initialized = True
+            return
+
+        previous = heat_demand_last_state
+
+        if previous == active:
+            return
+
+        heat_demand_last_state = active
+
+    details = (
+        "Home Assistant · "
+        "call_for_heat = "
+        + (
+            "ON"
+            if active
+            else "OFF"
+        )
+    )
+
+    if temperature is not None:
+
+        details += (
+            f" · Heat demand temp "
+            f"{float(temperature):.1f} °C"
+        )
+
+    if calling_count is not None:
+
+        details += (
+            f" · {int(calling_count)} "
+            f"thermostat"
+            + (
+                ""
+                if int(calling_count) == 1
+                else "s"
+            )
+        )
+
+    db.add_activity(
+        "HOUSE",
+        (
+            "Heat demand started"
+            if active
+            else "Heat demand ended"
+        ),
+        details,
+        payload=(
+            "ON"
+            if active
+            else "OFF"
+        ),
+        response="OK"
+    )
+
+    logger.info(
+        "Home Assistant heat demand changed: %s "
+        "(temperature=%s, calling_count=%s)",
+        (
+            "ON"
+            if active
+            else "OFF"
+        ),
+        temperature,
+        calling_count
+    )
 
 
 # ============================================================
@@ -461,7 +831,75 @@ def network_monitor_loop():
                 "Network monitor error"
             )
 
-        time.sleep(10)
+        time.sleep(1)
+
+
+# ============================================================
+# AUTOMATIC BURNER COMMAND NETWORK GUARD
+# ============================================================
+
+AUTOMATIC_COMMAND_NETWORK_STABLE_SECONDS = 60
+
+
+def automatic_command_network_ready():
+    """
+    Fail-safe for automatic burner START/STOP commands.
+
+    The configured network interface must:
+      - currently be UP,
+      - currently have an IPv4 address,
+      - be reported connected by the network monitor,
+      - have been stable for at least 60 seconds.
+
+    Manual burner commands are intentionally not affected.
+    """
+
+    interface_up = network_interface_is_up(
+        NETWORK_INTERFACE
+    )
+
+    ip = get_interface_ipv4(
+        NETWORK_INTERFACE
+    )
+
+    # Direct check at the exact time a command is considered.
+    if not interface_up or not ip:
+        return False, "network unavailable"
+
+    if not network_log_state.get("initialized"):
+        return False, "network state not initialized"
+
+    if not network_log_state.get("connected"):
+        return False, "network monitor reports disconnected"
+
+    changed = network_log_state.get(
+        "changed_monotonic"
+    )
+
+    if changed is None:
+        return False, "network stability time unknown"
+
+    stable_seconds = (
+        time.monotonic() - changed
+    )
+
+    if (
+        stable_seconds
+        < AUTOMATIC_COMMAND_NETWORK_STABLE_SECONDS
+    ):
+        remaining = max(
+            0,
+            AUTOMATIC_COMMAND_NETWORK_STABLE_SECONDS
+            - stable_seconds
+        )
+
+        return (
+            False,
+            f"network stabilizing "
+            f"({remaining:.0f}s remaining)"
+        )
+
+    return True, "network stable"
 
 
 # ============================================================
@@ -816,7 +1254,9 @@ silo_settings_lock = threading.Lock()
 silo_settings = {
     "capacity_kg": DEFAULT_SILO_CAPACITY_KG,
     "low_pellet_alarm_enabled": False,
-    "low_pellet_alarm_kg": DEFAULT_LOW_PELLET_ALARM_KG
+    "low_pellet_alarm_kg": DEFAULT_LOW_PELLET_ALARM_KG,
+    "last_refill_at": None,
+    "last_refill_level_kg": None
 }
 
 low_pellet_alarm_lock = threading.Lock()
@@ -878,6 +1318,32 @@ def load_silo_settings():
                 "low_pellet_alarm_enabled"
             ] = enabled
 
+            last_refill_at = data.get(
+                "last_refill_at"
+            )
+
+            last_refill_level_kg = data.get(
+                "last_refill_level_kg"
+            )
+
+            if last_refill_at:
+                silo_settings[
+                    "last_refill_at"
+                ] = str(last_refill_at)
+
+            if last_refill_level_kg is not None:
+                try:
+                    silo_settings[
+                        "last_refill_level_kg"
+                    ] = float(
+                        last_refill_level_kg
+                    )
+                except (
+                    TypeError,
+                    ValueError
+                ):
+                    pass
+
         logger.info(
             "Loaded silo settings: capacity=%.1f kg, "
             "low pellet alarm=%s at %.1f kg",
@@ -922,6 +1388,250 @@ def get_silo_settings():
 
     with silo_settings_lock:
         return dict(silo_settings)
+
+
+SILO_REFILL_MINIMUM_KG = 20.0
+SILO_REFILL_HISTORY_HOURS = 2160
+
+
+def update_silo_refill_from_history():
+    """
+    Determine the latest significant pellet refill from the
+    authoritative SQLite magazine_content history.
+
+    A refill requires an increase of at least 20 kg between
+    consecutive stored samples.
+
+    The detected timestamp is persisted in silo_settings.json.
+    Once stored, it can only move forward to a newer refill.
+    """
+
+    try:
+
+        end_dt = datetime.now(
+            timezone.utc
+        )
+
+        start_dt = end_dt - timedelta(
+            hours=SILO_REFILL_HISTORY_HOURS
+        )
+
+        rows = db.get_history(
+            ["magazine_content"],
+            start_dt.isoformat(),
+            end_dt.isoformat(),
+            bucket_seconds=None
+        )
+
+        history = []
+
+        for row in rows:
+
+            try:
+
+                timestamp = row.get(
+                    "timestamp"
+                )
+
+                value = row.get(
+                    "value"
+                )
+
+                if timestamp is None or value is None:
+                    continue
+
+                kg = float(value)
+
+                if not (
+                    kg >= 0 and
+                    kg < 10000
+                ):
+                    continue
+
+                dt = datetime.fromisoformat(
+                    str(timestamp).replace(
+                        "Z",
+                        "+00:00"
+                    )
+                )
+
+                if dt.tzinfo is None:
+                    dt = dt.replace(
+                        tzinfo=timezone.utc
+                    )
+
+                history.append(
+                    (
+                        dt,
+                        kg
+                    )
+                )
+
+            except (
+                TypeError,
+                ValueError,
+                AttributeError
+            ):
+                continue
+
+        history.sort(
+            key=lambda item: item[0]
+        )
+
+        detected = None
+
+        for index in range(
+            1,
+            len(history)
+        ):
+
+            previous_dt, previous_kg = (
+                history[index - 1]
+            )
+
+            current_dt, current_kg = (
+                history[index]
+            )
+
+            increase = (
+                current_kg -
+                previous_kg
+            )
+
+            if (
+                increase >=
+                SILO_REFILL_MINIMUM_KG
+            ):
+                detected = (
+                    current_dt,
+                    current_kg
+                )
+
+        # If no significant refill exists in the available
+        # history and no refill has ever been persisted, use the
+        # oldest available magazine measurement as the initial
+        # silo-period anchor.
+        #
+        # This is deliberately only an initialization fallback.
+        # Once last_refill_at exists, ordinary consumption can
+        # never move the stored refill date.
+        if detected is None:
+
+            with silo_settings_lock:
+                existing_refill = (
+                    silo_settings.get(
+                        "last_refill_at"
+                    )
+                )
+
+            if existing_refill:
+                return get_silo_settings()
+
+            if not history:
+                return get_silo_settings()
+
+            detected = history[0]
+
+            logger.info(
+                "Initializing silo refill anchor from "
+                "oldest available history: %.1f kg at %s",
+                detected[1],
+                detected[0].isoformat()
+            )
+
+        detected_dt, detected_kg = detected
+        detected_iso = (
+            detected_dt.astimezone(
+                timezone.utc
+            ).isoformat()
+        )
+
+        should_save = False
+
+        with silo_settings_lock:
+
+            existing_raw = (
+                silo_settings.get(
+                    "last_refill_at"
+                )
+            )
+
+            existing_dt = None
+
+            if existing_raw:
+                try:
+                    existing_dt = (
+                        datetime.fromisoformat(
+                            str(
+                                existing_raw
+                            ).replace(
+                                "Z",
+                                "+00:00"
+                            )
+                        )
+                    )
+
+                    if existing_dt.tzinfo is None:
+                        existing_dt = (
+                            existing_dt.replace(
+                                tzinfo=timezone.utc
+                            )
+                        )
+
+                except (
+                    TypeError,
+                    ValueError
+                ):
+                    existing_dt = None
+
+            if (
+                existing_dt is None or
+                detected_dt >
+                existing_dt
+            ):
+
+                silo_settings[
+                    "last_refill_at"
+                ] = detected_iso
+
+                silo_settings[
+                    "last_refill_level_kg"
+                ] = detected_kg
+
+                should_save = True
+
+                save_silo_settings()
+
+        if should_save:
+
+            logger.info(
+                "Silo refill detected: %.1f kg at %s",
+                detected_kg,
+                detected_iso
+            )
+
+            db.add_activity(
+                "SILO",
+                "Pellet refill detected",
+                (
+                    f"{detected_kg:.1f} kg "
+                    f"at {detected_iso}"
+                ),
+                response="OK"
+            )
+
+        return get_silo_settings()
+
+    except Exception:
+
+        logger.exception(
+            "Could not determine silo refill "
+            "from history"
+        )
+
+        return get_silo_settings()
+
+
 
 
 def get_low_pellet_alarm_state():
@@ -3808,6 +4518,81 @@ def history_loop():
                         "Home Assistant indoor temperature history error"
                     )
 
+                # Home Assistant heating demand.
+                #
+                # call_for_heat is stored as 0/1. Therefore the
+                # hourly average directly represents the fraction
+                # of the hour where the house requested heat.
+                #
+                # Example:
+                #     0.75 = heat demand during 75 % of the hour.
+                try:
+
+                    heat_status = (
+                        get_home_assistant_heat_demand()
+                    )
+
+                    heat_active = (
+                        heat_status.get("active")
+                    )
+
+                    heat_temperature = (
+                        heat_status.get(
+                            "temperature"
+                        )
+                    )
+
+                    calling_count = (
+                        heat_status.get(
+                            "calling_count"
+                        )
+                    )
+
+                    if (
+                        heat_status.get("connected")
+                        and heat_active is not None
+                    ):
+
+                        history_values[
+                            "call_for_heat"
+                        ] = (
+                            1.0
+                            if heat_active
+                            else 0.0
+                        )
+
+                        if (
+                            heat_temperature
+                            is not None
+                        ):
+                            history_values[
+                                "heat_demand_temp"
+                            ] = float(
+                                heat_temperature
+                            )
+
+                        if (
+                            calling_count
+                            is not None
+                        ):
+                            history_values[
+                                "heat_call_count"
+                            ] = float(
+                                calling_count
+                            )
+
+                        log_home_assistant_heat_demand(
+                            heat_active,
+                            heat_temperature,
+                            calling_count
+                        )
+
+                except Exception:
+
+                    logger.exception(
+                        "Home Assistant heat demand history error"
+                    )
+
                 if history_values:
                     db.insert_measurements(
                         history_values
@@ -5335,6 +6120,683 @@ async def test_mqtt_settings_api(
     }
 
 
+@app.get("/api/v1/home-assistant/heat-demand")
+def get_home_assistant_heat_demand_api():
+
+    return get_home_assistant_heat_demand()
+
+
+# ============================================================
+# HEAT DEMAND ANALYSIS
+# ============================================================
+
+def calculate_heat_demand_analysis(days=30):
+    """
+    Analyse Home Assistant call_for_heat history.
+
+    call_for_heat is stored as:
+        0.0 = no heat demand
+        1.0 = heat demand
+
+    Durations are calculated from the actual timestamps rather
+    than assuming that every history sample is exactly one minute.
+
+    A single sample is never allowed to represent more than
+    120 seconds. This prevents downtime / missing samples from
+    being interpreted as continuous heat demand.
+
+    All hourly and daily grouping uses the configured Woody
+    Monitor local timezone.
+    """
+
+    try:
+        days = int(days)
+    except (TypeError, ValueError):
+        days = 30
+
+    days = max(
+        1,
+        min(days, 365)
+    )
+
+    zone = get_timezone()
+    timezone_name = get_timezone_name()
+
+    now_utc = datetime.now(timezone.utc)
+    start_utc = now_utc - timedelta(days=days)
+
+    rows = db.get_history(
+        ["call_for_heat"],
+        start_utc.isoformat(),
+        now_utc.isoformat()
+    )
+
+    samples = []
+
+    for row in rows:
+
+        try:
+            timestamp = datetime.fromisoformat(
+                str(row["timestamp"]).replace(
+                    "Z",
+                    "+00:00"
+                )
+            )
+
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(
+                    tzinfo=timezone.utc
+                )
+
+            timestamp = timestamp.astimezone(
+                timezone.utc
+            )
+
+            value = float(
+                row["value"]
+            )
+
+        except (
+            KeyError,
+            TypeError,
+            ValueError
+        ):
+            continue
+
+        samples.append(
+            (
+                timestamp,
+                value >= 0.5
+            )
+        )
+
+    samples.sort(
+        key=lambda item: item[0]
+    )
+
+    hourly = {
+        hour: {
+            "hour": hour,
+            "demand_seconds": 0.0,
+            "available_seconds": 0.0
+        }
+        for hour in range(24)
+    }
+
+    weekday_hourly = {
+        hour: {
+            "hour": hour,
+            "demand_seconds": 0.0,
+            "available_seconds": 0.0
+        }
+        for hour in range(24)
+    }
+
+    weekend_hourly = {
+        hour: {
+            "hour": hour,
+            "demand_seconds": 0.0,
+            "available_seconds": 0.0
+        }
+        for hour in range(24)
+    }
+
+    daily = {}
+
+    total_demand_seconds = 0.0
+    total_available_seconds = 0.0
+
+    # Maximum time represented by one sample.
+    #
+    # Normal history interval is approximately 60 seconds.
+    # 120 seconds gives enough tolerance for a delayed sample,
+    # while preventing a long HA/Woody outage from being counted.
+    max_interval_seconds = 120.0
+
+    def add_interval(
+        start,
+        end,
+        active
+    ):
+        """
+        Split one measurement interval across local hour and
+        midnight boundaries.
+        """
+
+        nonlocal total_demand_seconds
+        nonlocal total_available_seconds
+
+        cursor = start
+
+        while cursor < end:
+
+            local_cursor = cursor.astimezone(
+                zone
+            )
+
+            next_local_hour = (
+                local_cursor.replace(
+                    minute=0,
+                    second=0,
+                    microsecond=0
+                )
+                + timedelta(hours=1)
+            )
+
+            next_local_midnight = (
+                local_cursor.replace(
+                    hour=0,
+                    minute=0,
+                    second=0,
+                    microsecond=0
+                )
+                + timedelta(days=1)
+            )
+
+            next_boundary = min(
+                next_local_hour.astimezone(
+                    timezone.utc
+                ),
+                next_local_midnight.astimezone(
+                    timezone.utc
+                ),
+                end
+            )
+
+            if next_boundary <= cursor:
+                break
+
+            seconds = (
+                next_boundary - cursor
+            ).total_seconds()
+
+            hour = local_cursor.hour
+
+            date_key = (
+                local_cursor.date().isoformat()
+            )
+
+            weekday = (
+                local_cursor.weekday() < 5
+            )
+
+            if date_key not in daily:
+                daily[date_key] = {
+                    "date": date_key,
+                    "weekday":
+                        local_cursor.strftime("%A"),
+                    "is_weekend":
+                        not weekday,
+                    "demand_seconds": 0.0,
+                    "available_seconds": 0.0
+                }
+
+            hourly[hour][
+                "available_seconds"
+            ] += seconds
+
+            daily[date_key][
+                "available_seconds"
+            ] += seconds
+
+            if weekday:
+                weekday_hourly[hour][
+                    "available_seconds"
+                ] += seconds
+            else:
+                weekend_hourly[hour][
+                    "available_seconds"
+                ] += seconds
+
+            total_available_seconds += seconds
+
+            if active:
+
+                hourly[hour][
+                    "demand_seconds"
+                ] += seconds
+
+                daily[date_key][
+                    "demand_seconds"
+                ] += seconds
+
+                if weekday:
+                    weekday_hourly[hour][
+                        "demand_seconds"
+                    ] += seconds
+                else:
+                    weekend_hourly[hour][
+                        "demand_seconds"
+                    ] += seconds
+
+                total_demand_seconds += seconds
+
+            cursor = next_boundary
+
+    # --------------------------------------------------------
+    # Build time intervals
+    # --------------------------------------------------------
+
+    for index, sample in enumerate(samples):
+
+        timestamp, active = sample
+
+        if index + 1 < len(samples):
+            next_timestamp = samples[
+                index + 1
+            ][0]
+        else:
+            next_timestamp = min(
+                now_utc,
+                timestamp
+                + timedelta(
+                    seconds=max_interval_seconds
+                )
+            )
+
+        seconds = (
+            next_timestamp - timestamp
+        ).total_seconds()
+
+        if seconds <= 0:
+            continue
+
+        seconds = min(
+            seconds,
+            max_interval_seconds
+        )
+
+        interval_end = (
+            timestamp
+            + timedelta(seconds=seconds)
+        )
+
+        add_interval(
+            timestamp,
+            interval_end,
+            active
+        )
+
+    # --------------------------------------------------------
+    # First heat call per local day
+    # --------------------------------------------------------
+
+    first_calls = {}
+
+    previous_active = None
+
+    for timestamp, active in samples:
+
+        local_timestamp = (
+            timestamp.astimezone(zone)
+        )
+
+        date_key = (
+            local_timestamp.date().isoformat()
+        )
+
+        # Treat the first ON sample of a day as a first call,
+        # even when the previous day's final state was also ON.
+        # This keeps the morning profile useful across midnight.
+        if active and (
+            previous_active is False
+            or previous_active is None
+            or date_key not in first_calls
+        ):
+
+            if date_key not in first_calls:
+                first_calls[date_key] = (
+                    local_timestamp
+                )
+
+        previous_active = active
+
+    # Morning calls only.
+    #
+    # 03:00-10:00 avoids midnight carry-over and captures the
+    # normal morning heating window.
+    morning_minutes = []
+
+    for timestamp in first_calls.values():
+
+        minute_of_day = (
+            timestamp.hour * 60
+            + timestamp.minute
+            + timestamp.second / 60.0
+        )
+
+        if 180 <= minute_of_day <= 600:
+            morning_minutes.append(
+                minute_of_day
+            )
+
+    typical_first_call = None
+    recommended_start = None
+
+    if morning_minutes:
+
+        sorted_minutes = sorted(
+            morning_minutes
+        )
+
+        count = len(sorted_minutes)
+        middle = count // 2
+
+        if count % 2:
+            median_minutes = (
+                sorted_minutes[middle]
+            )
+        else:
+            median_minutes = (
+                sorted_minutes[middle - 1]
+                + sorted_minutes[middle]
+            ) / 2.0
+
+        median_minutes = int(
+            round(median_minutes)
+        )
+
+        typical_first_call = (
+            f"{median_minutes // 60:02d}:"
+            f"{median_minutes % 60:02d}"
+        )
+
+        # Initial recommendation:
+        # start 30 minutes before typical heat demand.
+        #
+        # This is intentionally conservative. Later this can be
+        # improved using burner warm-up behaviour and outside temp.
+        start_minutes = max(
+            0,
+            median_minutes - 30
+        )
+
+        recommended_start = (
+            f"{start_minutes // 60:02d}:"
+            f"{start_minutes % 60:02d}"
+        )
+
+    # --------------------------------------------------------
+    # Optional heat-demand temperature statistics
+    # --------------------------------------------------------
+
+    temperature_rows = db.get_history(
+        ["heat_demand_temp"],
+        start_utc.isoformat(),
+        now_utc.isoformat()
+    )
+
+    temperatures = []
+
+    for row in temperature_rows:
+
+        try:
+            temperatures.append(
+                float(row["value"])
+            )
+        except (
+            KeyError,
+            TypeError,
+            ValueError
+        ):
+            pass
+
+    average_heat_temperature = None
+
+    if temperatures:
+        average_heat_temperature = round(
+            sum(temperatures)
+            / len(temperatures),
+            2
+        )
+
+    # --------------------------------------------------------
+    # Format helpers
+    # --------------------------------------------------------
+
+    def format_hourly(source):
+
+        result = []
+
+        for hour in range(24):
+
+            demand = source[hour][
+                "demand_seconds"
+            ]
+
+            available = source[hour][
+                "available_seconds"
+            ]
+
+            percent = (
+                demand
+                / available
+                * 100.0
+                if available > 0
+                else 0.0
+            )
+
+            result.append({
+                "hour": hour,
+                "label":
+                    f"{hour:02d}:00",
+                "demand_minutes":
+                    round(
+                        demand / 60.0,
+                        1
+                    ),
+                "available_minutes":
+                    round(
+                        available / 60.0,
+                        1
+                    ),
+                "demand_percent":
+                    round(percent, 1)
+            })
+
+        return result
+
+    daily_result = []
+
+    for date_key in sorted(
+        daily.keys()
+    ):
+
+        item = daily[date_key]
+
+        demand = item[
+            "demand_seconds"
+        ]
+
+        available = item[
+            "available_seconds"
+        ]
+
+        percent = (
+            demand
+            / available
+            * 100.0
+            if available > 0
+            else 0.0
+        )
+
+        daily_result.append({
+            "date":
+                item["date"],
+            "weekday":
+                item["weekday"],
+            "is_weekend":
+                item["is_weekend"],
+            "demand_hours":
+                round(
+                    demand / 3600.0,
+                    2
+                ),
+            "available_hours":
+                round(
+                    available / 3600.0,
+                    2
+                ),
+            "demand_percent":
+                round(percent, 1),
+            "first_call":
+                (
+                    first_calls[date_key]
+                    .strftime("%H:%M")
+                    if date_key
+                    in first_calls
+                    else None
+                )
+        })
+
+    total_percent = (
+        total_demand_seconds
+        / total_available_seconds
+        * 100.0
+        if total_available_seconds > 0
+        else 0.0
+    )
+
+    current = (
+        get_home_assistant_heat_demand()
+    )
+
+    return {
+        "available":
+            bool(samples),
+
+        "timezone":
+            timezone_name,
+
+        "period": {
+            "days": days,
+            "start":
+                start_utc.isoformat(),
+            "end":
+                now_utc.isoformat(),
+            "sample_count":
+                len(samples)
+        },
+
+        "current": {
+            "connected":
+                current.get("connected"),
+            "active":
+                current.get("active"),
+            "temperature":
+                current.get("temperature"),
+            "calling_count":
+                current.get("calling_count"),
+            "calling_thermostats":
+                current.get(
+                    "calling_thermostats"
+                )
+        },
+
+        "summary": {
+            "demand_hours":
+                round(
+                    total_demand_seconds
+                    / 3600.0,
+                    2
+                ),
+            "available_hours":
+                round(
+                    total_available_seconds
+                    / 3600.0,
+                    2
+                ),
+            "demand_percent":
+                round(
+                    total_percent,
+                    1
+                ),
+            "average_heat_demand_temperature":
+                average_heat_temperature
+        },
+
+        "morning": {
+            "days_with_morning_calls":
+                len(morning_minutes),
+            "typical_first_call":
+                typical_first_call,
+            "recommended_start":
+                recommended_start,
+            "recommended_lead_minutes":
+                (
+                    30
+                    if typical_first_call
+                    else None
+                )
+        },
+
+        "hourly_profile":
+            format_hourly(hourly),
+
+        "weekday_profile":
+            format_hourly(
+                weekday_hourly
+            ),
+
+        "weekend_profile":
+            format_hourly(
+                weekend_hourly
+            ),
+
+        "daily":
+            daily_result
+    }
+
+
+@app.get("/api/v1/heat-demand/analysis")
+def get_heat_demand_analysis_api(
+    days: int = Query(
+        30,
+        ge=1,
+        le=365
+    )
+):
+
+    return calculate_heat_demand_analysis(
+        days
+    )
+
+
+@app.get("/api/v1/heat-demand/profile")
+def get_heat_demand_profile_api(
+    days: int = Query(
+        30,
+        ge=1,
+        le=365
+    )
+):
+
+    analysis = (
+        calculate_heat_demand_analysis(
+            days
+        )
+    )
+
+    return {
+        "available":
+            analysis["available"],
+        "timezone":
+            analysis["timezone"],
+        "period":
+            analysis["period"],
+        "summary":
+            analysis["summary"],
+        "morning":
+            analysis["morning"],
+        "hourly_profile":
+            analysis["hourly_profile"],
+        "weekday_profile":
+            analysis["weekday_profile"],
+        "weekend_profile":
+            analysis["weekend_profile"]
+    }
+
+
 @app.get("/api/v1/settings/home-assistant")
 def get_home_assistant_settings_api():
 
@@ -5348,6 +6810,20 @@ def get_home_assistant_settings_api():
             "indoor_temperature_entity"
         ]
 
+        call_for_heat_entity = (
+            home_assistant_settings.get(
+                "call_for_heat_entity",
+                "binary_sensor.call_for_heat"
+            )
+        )
+
+        heat_demand_temperature_entity = (
+            home_assistant_settings.get(
+                "heat_demand_temperature_entity",
+                "sensor.indoor_temperature_heat_demand"
+            )
+        )
+
         token_configured = bool(
             home_assistant_settings[
                 "token"
@@ -5359,8 +6835,17 @@ def get_home_assistant_settings_api():
     return {
         "url": url,
         "indoor_temperature_entity": entity,
+
+        "call_for_heat_entity":
+            call_for_heat_entity,
+
+        "heat_demand_temperature_entity":
+            heat_demand_temperature_entity,
+
         "token_configured": token_configured,
-        "status": status
+        "status": status,
+        "heat_demand_status":
+            get_home_assistant_heat_demand()
     }
 
 
@@ -5562,7 +7047,7 @@ def set_feeder_settings(
 @app.get("/api/v1/settings/silo")
 def get_silo_settings_api():
 
-    return get_silo_settings()
+    return update_silo_refill_from_history()
 
 
 @app.post("/api/v1/settings/silo")
@@ -6310,6 +7795,33 @@ def execute_advanced_timer_action(action):
             )
             return False
 
+        # Final network fail-safe immediately before the
+        # physical controller write.
+        #
+        # Automatic START/STOP commands are blocked while the
+        # network is unavailable and for 60 seconds after the
+        # connection has returned.
+        network_ready, network_reason = (
+            automatic_command_network_ready()
+        )
+
+        if not network_ready:
+
+            logger.warning(
+                "Advanced timer command blocked: %s (%s)",
+                command,
+                network_reason
+            )
+
+            db.add_activity(
+                "NETWORK",
+                "Automatic burner command blocked",
+                f"{command}: {network_reason}",
+                response="BLOCKED"
+            )
+
+            return False
+
         response = burner.setItem(
             command,
             "0"
@@ -6380,7 +7892,18 @@ def advanced_timer_loop():
     )
 
     last_checked_minute = None
-    last_test_decision = None
+
+    # Last requested burner state.
+    #
+    # Commands are edge-triggered:
+    #
+    #   False -> True  = possible START
+    #   True  -> False = possible STOP
+    #
+    # While the requested state remains unchanged, Woody
+    # Monitor will not repeatedly send the same command just
+    # because the controller has not yet updated its mode.
+    last_control_decision = None
 
     while True:
 
@@ -6429,7 +7952,7 @@ def advanced_timer_loop():
             if not enabled:
 
                 last_checked_minute = None
-                last_test_decision = None
+                last_control_decision = None
 
                 time.sleep(2)
                 continue
@@ -6526,27 +8049,30 @@ def advanced_timer_loop():
                 else "stop"
             )
 
-            should_command = (
-                (desired_on and not running)
+            # Commands are sent only when the requested
+            # control state changes.
+            #
+            # This prevents repeated START commands while the
+            # pellet burner is already starting but still
+            # reports e.g. "Shut off" for a short period.
+            state_changed = (
+                last_control_decision is None
                 or
-                (
-                    not desired_on
-                    and running
-                )
+                last_control_decision != desired_on
             )
 
-            # Test Mode should only log a simulated
-            # command when the desired state changes.
-            if (
-                test_mode
+            should_command = (
+                state_changed
                 and
-                last_test_decision
-                is not None
-                and
-                last_test_decision
-                == desired_on
-            ):
-                should_command = False
+                (
+                    (desired_on and not running)
+                    or
+                    (
+                        not desired_on
+                        and running
+                    )
+                )
+            )
 
             success = True
 
@@ -6572,8 +8098,19 @@ def advanced_timer_loop():
 
                         save_advanced_timer_settings()
 
-            if test_mode:
-                last_test_decision = (
+            # Remember the desired state when:
+            #
+            # 1. no command was necessary because the burner
+            #    was already in the requested state, or
+            # 2. the command was successfully accepted.
+            #
+            # If a command genuinely fails, leave the old state
+            # intact so it may be retried on the next cycle.
+            if (
+                not should_command
+                or success
+            ):
+                last_control_decision = (
                     desired_on
                 )
 
@@ -6625,6 +8162,22 @@ weather_compensation_lock = threading.Lock()
 _weather_curve_log_lock = threading.Lock()
 _weather_curve_log_initialized = False
 _weather_curve_last_selection = None
+
+# Weather Compensation hysteresis.
+#
+# Prevents small changes in the calculated outdoor temperature
+# from continuously switching between neighbouring curves.
+#
+# Example around the 8 C Curve 1 / Curve 2 boundary:
+#   Curve 1 -> Curve 2 only at <= 7.5 C
+#   Curve 2 -> Curve 1 only at >= 8.5 C
+#
+# Summer Stop uses the same hysteresis around its threshold.
+WEATHER_CURVE_HYSTERESIS_C = 0.5
+
+_weather_curve_state_lock = threading.Lock()
+_weather_curve_runtime_selection = None
+_weather_summer_stop_runtime = None
 
 
 def weather_curve_display_name(curve_number):
@@ -7081,27 +8634,197 @@ def weather_active_curve(
     effective_temp,
     curves
 ):
+    """
+    Select the effective Weather Compensation curve with
+    hysteresis.
+
+    Curve 1 is the mild-weather fallback all the way up to
+    Summer Stop. This removes the previous 12-18 C gap where
+    no curve was active.
+
+    Hysteresis is applied only when moving between curves.
+    Large temperature changes may still jump directly across
+    several curves.
+    """
+
+    global _weather_curve_runtime_selection
 
     if effective_temp is None:
         return None
 
-    active = None
+    if not curves:
+        return None
+
+    effective_temp = float(effective_temp)
+
+    # Curve 1 is always the mildest active heating curve.
+    #
+    # Previously active started as None, which meant that
+    # temperatures above Curve 1's to_temp but below Summer
+    # Stop produced "No active curve".
+    candidate = 1
 
     # Curves become progressively colder.
-    # At -7 C, for example, all thresholds match,
-    # therefore Curve 5 becomes the final selection.
-
+    #
+    # Example:
+    #   > 8 C  -> Curve 1
+    #   <= 8 C -> Curve 2
+    #   <= 4 C -> Curve 3
+    #   <= 0 C -> Curve 4
+    #   <= -5 C -> Curve 5 / Non-Stop
     for index, curve in enumerate(
         curves,
         start=1
     ):
-
         if effective_temp <= float(
             curve["to_temp"]
         ):
-            active = index
+            candidate = index
 
-    return active
+    hysteresis = float(
+        WEATHER_CURVE_HYSTERESIS_C
+    )
+
+    with _weather_curve_state_lock:
+
+        previous = (
+            _weather_curve_runtime_selection
+        )
+
+        if (
+            previous is None
+            or previous < 1
+            or previous > len(curves)
+        ):
+            _weather_curve_runtime_selection = (
+                candidate
+            )
+            return candidate
+
+        if candidate == previous:
+            return previous
+
+        # ----------------------------------------------------
+        # Moving to a colder curve.
+        #
+        # Example Curve 1 -> Curve 2:
+        # normal boundary = 8.0 C
+        # actual switch   = 7.5 C
+        # ----------------------------------------------------
+        if candidate > previous:
+
+            next_curve_index = previous
+
+            if next_curve_index < len(curves):
+
+                boundary = float(
+                    curves[
+                        next_curve_index
+                    ]["to_temp"]
+                )
+
+                if (
+                    effective_temp
+                    >
+                    boundary - hysteresis
+                ):
+                    return previous
+
+        # ----------------------------------------------------
+        # Moving to a warmer curve.
+        #
+        # Example Curve 2 -> Curve 1:
+        # normal boundary = 8.0 C
+        # actual switch   = 8.5 C
+        # ----------------------------------------------------
+        else:
+
+            boundary = float(
+                curves[
+                    previous - 1
+                ]["to_temp"]
+            )
+
+            if (
+                effective_temp
+                <
+                boundary + hysteresis
+            ):
+                return previous
+
+        _weather_curve_runtime_selection = (
+            candidate
+        )
+
+        return candidate
+
+
+def weather_summer_stop_active(
+    effective_temp,
+    summer_stop_temp
+):
+    """
+    Return Summer Stop state with hysteresis.
+
+    With an 18.0 C threshold and 0.5 C hysteresis:
+
+      enter Summer Stop at >= 18.5 C
+      leave Summer Stop at <= 17.5 C
+
+    This prevents repeated Curve 1 / Summer Stop switching
+    when the calculated temperature is close to the threshold.
+    """
+
+    global _weather_summer_stop_runtime
+
+    if effective_temp is None:
+        return False
+
+    effective_temp = float(effective_temp)
+    summer_stop_temp = float(
+        summer_stop_temp
+    )
+    hysteresis = float(
+        WEATHER_CURVE_HYSTERESIS_C
+    )
+
+    with _weather_curve_state_lock:
+
+        previous = (
+            _weather_summer_stop_runtime
+        )
+
+        if previous is None:
+
+            active = (
+                effective_temp
+                >
+                summer_stop_temp
+            )
+
+        elif previous:
+
+            active = not (
+                effective_temp
+                <=
+                summer_stop_temp
+                - hysteresis
+            )
+
+        else:
+
+            active = (
+                effective_temp
+                >=
+                summer_stop_temp
+                + hysteresis
+            )
+
+        _weather_summer_stop_runtime = (
+            active
+        )
+
+        return active
 
 
 def timer_schedule_on_at(
@@ -7316,8 +9039,10 @@ def calculate_weather_compensation():
     )
 
     summer_stop_active = (
-        effective_temp >
-        summer_stop_temp
+        weather_summer_stop_active(
+            effective_temp,
+            summer_stop_temp
+        )
     )
 
     active_curve = (
