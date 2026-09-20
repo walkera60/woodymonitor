@@ -35,6 +35,7 @@ import sqlite3
 import tempfile
 import zipfile
 import shutil
+import subprocess
 
 
 
@@ -900,6 +901,544 @@ def automatic_command_network_ready():
         )
 
     return True, "network stable"
+
+
+
+
+# ============================================================
+# NETWORK_REBOOT_WATCHDOG
+# ============================================================
+
+NETWORK_WATCHDOG_FILE = (
+    BASE_DIR / "data" / "network_watchdog.json"
+)
+
+NETWORK_WATCHDOG_INTERVAL = 60
+NETWORK_WATCHDOG_REBOOT_AFTER = 30 * 60
+NETWORK_WATCHDOG_GRACE = 5 * 60
+NETWORK_WATCHDOG_MAX_DAILY = 5
+
+network_watchdog_lock = threading.RLock()
+
+network_watchdog_settings = {
+    "enabled": False,
+    "reboots": []
+}
+
+network_watchdog_state = {
+    "status": "disabled",
+    "gateway": None,
+    "interface": None,
+    "local_network": None,
+    "internet": None,
+    "offline_since": None,
+    "offline_seconds": 0,
+    "last_check": None,
+    "last_online": None,
+    "startup_grace": True,
+    "reboot_pending": False
+}
+
+
+def load_network_watchdog_settings():
+
+    try:
+        if not NETWORK_WATCHDOG_FILE.exists():
+            return
+
+        with NETWORK_WATCHDOG_FILE.open(
+            "r",
+            encoding="utf-8"
+        ) as f:
+            data = json.load(f)
+
+        with network_watchdog_lock:
+
+            network_watchdog_settings["enabled"] = bool(
+                data.get("enabled", False)
+            )
+
+            history = data.get("reboots", [])
+
+            network_watchdog_settings["reboots"] = (
+                history
+                if isinstance(history, list)
+                else []
+            )
+
+    except Exception:
+        logger.exception(
+            "Could not load network watchdog settings"
+        )
+
+
+def save_network_watchdog_settings():
+
+    try:
+        NETWORK_WATCHDOG_FILE.parent.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        with network_watchdog_lock:
+            data = {
+                "enabled":
+                    network_watchdog_settings["enabled"],
+                "reboots":
+                    list(
+                        network_watchdog_settings["reboots"]
+                    )
+            }
+
+        tmp = NETWORK_WATCHDOG_FILE.with_suffix(".tmp")
+
+        with tmp.open("w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+
+        tmp.replace(NETWORK_WATCHDOG_FILE)
+
+    except Exception:
+        logger.exception(
+            "Could not save network watchdog settings"
+        )
+
+
+def network_watchdog_route():
+
+    try:
+        result = subprocess.run(
+            ["ip", "-4", "route", "show", "default"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False
+        )
+
+        for line in result.stdout.splitlines():
+
+            parts = line.split()
+
+            if not parts or parts[0] != "default":
+                continue
+
+            gateway = None
+            interface = None
+
+            if "via" in parts:
+                i = parts.index("via")
+                if i + 1 < len(parts):
+                    gateway = parts[i + 1]
+
+            if "dev" in parts:
+                i = parts.index("dev")
+                if i + 1 < len(parts):
+                    interface = parts[i + 1]
+
+            return gateway, interface
+
+    except Exception:
+        logger.exception(
+            "Network watchdog route check failed"
+        )
+
+    return None, None
+
+
+def network_watchdog_ping(host):
+
+    if not host:
+        return False
+
+    try:
+        result = subprocess.run(
+            [
+                "ping",
+                "-n",
+                "-c", "1",
+                "-W", "3",
+                str(host)
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+            check=False
+        )
+
+        return result.returncode == 0
+
+    except Exception:
+        return False
+
+
+def network_watchdog_internet():
+
+    # Test two public IP addresses without relying on DNS.
+    for host in ("1.1.1.1", "8.8.8.8"):
+
+        if network_watchdog_ping(host):
+            return True
+
+    # Fallback for networks where ICMP is blocked.
+    for target in (
+        ("1.1.1.1", 443),
+        ("8.8.8.8", 53)
+    ):
+        try:
+            with socket.create_connection(
+                target,
+                timeout=4
+            ):
+                return True
+        except OSError:
+            pass
+
+    return False
+
+
+def network_watchdog_reboots_today():
+
+    now = datetime.now().astimezone()
+    today = now.date()
+    cutoff = today - timedelta(days=7)
+
+    valid = []
+    count = 0
+
+    with network_watchdog_lock:
+        history = list(
+            network_watchdog_settings["reboots"]
+        )
+
+    for item in history:
+
+        try:
+            dt = datetime.fromisoformat(item)
+
+            if dt.tzinfo is None:
+                dt = dt.astimezone()
+
+            d = dt.astimezone().date()
+
+            if d >= cutoff:
+                valid.append(item)
+
+            if d == today:
+                count += 1
+
+        except Exception:
+            pass
+
+    if valid != history:
+
+        with network_watchdog_lock:
+            network_watchdog_settings["reboots"] = valid
+
+        save_network_watchdog_settings()
+
+    return count
+
+
+def get_network_watchdog_status():
+
+    with network_watchdog_lock:
+        result = dict(network_watchdog_state)
+        enabled = network_watchdog_settings["enabled"]
+
+    offline = int(
+        result.get("offline_seconds") or 0
+    )
+
+    result.update({
+        "enabled": enabled,
+        "reboots_today":
+            network_watchdog_reboots_today(),
+        "max_reboots_per_day":
+            NETWORK_WATCHDOG_MAX_DAILY,
+        "reboot_after_minutes":
+            NETWORK_WATCHDOG_REBOOT_AFTER // 60,
+        "seconds_until_reboot":
+            max(
+                0,
+                NETWORK_WATCHDOG_REBOOT_AFTER - offline
+            )
+    })
+
+    return result
+
+
+def network_watchdog_reboot():
+
+    now = datetime.now().astimezone()
+
+    with network_watchdog_lock:
+
+        network_watchdog_settings[
+            "reboots"
+        ].append(now.isoformat())
+
+        network_watchdog_state[
+            "reboot_pending"
+        ] = True
+
+        network_watchdog_state[
+            "status"
+        ] = "rebooting"
+
+    save_network_watchdog_settings()
+
+    logger.critical(
+        "Network watchdog: offline for 30 minutes - "
+        "rebooting Raspberry Pi"
+    )
+
+    try:
+        db.add_activity(
+            "SYSTEM",
+            "Network watchdog reboot",
+            "Network unavailable for 30 minutes. "
+            "Rebooting Raspberry Pi.",
+            response="WARNING"
+        )
+    except Exception:
+        logger.exception(
+            "Could not log network watchdog reboot"
+        )
+
+    try:
+        subprocess.run(
+            ["sync"],
+            timeout=10,
+            check=False
+        )
+    except Exception:
+        pass
+
+    try:
+        result = subprocess.run(
+            [
+                "sudo",
+                "-n",
+                "/usr/bin/systemctl",
+                "reboot"
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False
+        )
+
+        if result.returncode != 0:
+
+            logger.error(
+                "Network watchdog reboot failed: %s",
+                result.stderr.strip()
+            )
+
+            with network_watchdog_lock:
+                network_watchdog_state[
+                    "reboot_pending"
+                ] = False
+                network_watchdog_state[
+                    "status"
+                ] = "reboot_failed"
+
+    except Exception:
+
+        logger.exception(
+            "Network watchdog reboot command failed"
+        )
+
+        with network_watchdog_lock:
+            network_watchdog_state[
+                "reboot_pending"
+            ] = False
+            network_watchdog_state[
+                "status"
+            ] = "reboot_failed"
+
+
+def network_reboot_watchdog_loop():
+
+    logger.info(
+        "Network reboot watchdog started"
+    )
+
+    started = time.monotonic()
+    previous_available = None
+
+    while True:
+
+        try:
+            now = datetime.now().astimezone()
+
+            with network_watchdog_lock:
+                enabled = bool(
+                    network_watchdog_settings["enabled"]
+                )
+
+            grace = (
+                time.monotonic() - started
+                < NETWORK_WATCHDOG_GRACE
+            )
+
+            gateway, interface = network_watchdog_route()
+
+            local_ok = (
+                network_watchdog_ping(gateway)
+                if gateway
+                else False
+            )
+
+            internet_ok = network_watchdog_internet()
+
+            # Both local router access and Internet must work.
+            available = local_ok and internet_ok
+
+            with network_watchdog_lock:
+
+                network_watchdog_state["gateway"] = gateway
+                network_watchdog_state["interface"] = interface
+                network_watchdog_state["local_network"] = local_ok
+                network_watchdog_state["internet"] = internet_ok
+                network_watchdog_state["last_check"] = (
+                    now.isoformat()
+                )
+                network_watchdog_state["startup_grace"] = grace
+
+            if not enabled:
+
+                with network_watchdog_lock:
+                    network_watchdog_state["status"] = "disabled"
+                    network_watchdog_state["offline_since"] = None
+                    network_watchdog_state["offline_seconds"] = 0
+                    network_watchdog_state["reboot_pending"] = False
+
+                previous_available = None
+
+            elif grace:
+
+                with network_watchdog_lock:
+                    network_watchdog_state[
+                        "status"
+                    ] = "startup_grace"
+                    network_watchdog_state[
+                        "offline_since"
+                    ] = None
+                    network_watchdog_state[
+                        "offline_seconds"
+                    ] = 0
+
+                previous_available = None
+
+            elif available:
+
+                if previous_available is False:
+                    logger.info(
+                        "Network watchdog: connection restored"
+                    )
+
+                    try:
+                        db.add_activity(
+                            "NETWORK",
+                            "Network restored",
+                            "Router and Internet connectivity restored",
+                            response="OK"
+                        )
+                    except Exception:
+                        pass
+
+                with network_watchdog_lock:
+                    network_watchdog_state["status"] = "online"
+                    network_watchdog_state["offline_since"] = None
+                    network_watchdog_state["offline_seconds"] = 0
+                    network_watchdog_state["last_online"] = (
+                        now.isoformat()
+                    )
+                    network_watchdog_state["reboot_pending"] = False
+
+                previous_available = True
+
+            else:
+
+                with network_watchdog_lock:
+
+                    offline_since = network_watchdog_state[
+                        "offline_since"
+                    ]
+
+                    if not offline_since:
+
+                        offline_since = now.isoformat()
+
+                        network_watchdog_state[
+                            "offline_since"
+                        ] = offline_since
+
+                        logger.warning(
+                            "Network watchdog: connectivity lost "
+                            "local=%s internet=%s gateway=%s interface=%s",
+                            local_ok,
+                            internet_ok,
+                            gateway,
+                            interface
+                        )
+
+                    try:
+                        dt = datetime.fromisoformat(
+                            offline_since
+                        )
+
+                        seconds = int(
+                            (now - dt).total_seconds()
+                        )
+
+                    except Exception:
+                        seconds = 0
+
+                    network_watchdog_state[
+                        "offline_seconds"
+                    ] = max(0, seconds)
+
+                    if not local_ok:
+                        network_watchdog_state[
+                            "status"
+                        ] = "network_unavailable"
+                    else:
+                        network_watchdog_state[
+                            "status"
+                        ] = "internet_unavailable"
+
+                previous_available = False
+
+                if seconds >= NETWORK_WATCHDOG_REBOOT_AFTER:
+
+                    count = network_watchdog_reboots_today()
+
+                    if count >= NETWORK_WATCHDOG_MAX_DAILY:
+
+                        with network_watchdog_lock:
+                            network_watchdog_state[
+                                "status"
+                            ] = "daily_limit_reached"
+
+                    else:
+
+                        with network_watchdog_lock:
+                            pending = network_watchdog_state[
+                                "reboot_pending"
+                            ]
+
+                        if not pending:
+                            network_watchdog_reboot()
+
+        except Exception:
+            logger.exception(
+                "Network reboot watchdog error"
+            )
+
+        time.sleep(NETWORK_WATCHDOG_INTERVAL)
+
+
 
 
 # ============================================================
@@ -2240,6 +2779,53 @@ PARAMETERS = [
 # ============================================================
 # API: ABOUT
 # ============================================================
+
+
+# ============================================================
+# API: NETWORK WATCHDOG
+# ============================================================
+
+@app.get("/api/v1/settings/network-watchdog")
+def get_network_watchdog_api():
+
+    return get_network_watchdog_status()
+
+
+@app.post("/api/v1/settings/network-watchdog")
+def set_network_watchdog_api(enabled: bool):
+
+    with network_watchdog_lock:
+
+        network_watchdog_settings[
+            "enabled"
+        ] = bool(enabled)
+
+        network_watchdog_state[
+            "offline_since"
+        ] = None
+
+        network_watchdog_state[
+            "offline_seconds"
+        ] = 0
+
+        network_watchdog_state[
+            "reboot_pending"
+        ] = False
+
+        if not enabled:
+            network_watchdog_state[
+                "status"
+            ] = "disabled"
+
+    save_network_watchdog_settings()
+
+    logger.info(
+        "Network reboot watchdog %s",
+        "enabled" if enabled else "disabled"
+    )
+
+    return get_network_watchdog_status()
+
 
 @app.get("/api/v1/about")
 def get_about():
@@ -11852,6 +12438,7 @@ def history_parameters():
 def startup():
 
     load_timezone_settings()
+    load_network_watchdog_settings()
     load_cleaning_settings()
     load_advanced_timer_settings()
     load_weather_compensation_settings()
@@ -11878,6 +12465,13 @@ def startup():
     )
 
     network_monitor.start()
+
+    network_reboot_watchdog = threading.Thread(
+        target=network_reboot_watchdog_loop,
+        daemon=True
+    )
+
+    network_reboot_watchdog.start()
 
     advanced_timer = threading.Thread(
         target=advanced_timer_loop,

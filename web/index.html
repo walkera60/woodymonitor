@@ -2054,6 +2054,133 @@ body { padding-bottom:20px; }
 }
 
 
+
+
+/* Network watchdog in Connections */
+
+.woody-watchdog-connection-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.woody-watchdog-connection-item {
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255,255,255,.018);
+}
+
+.woody-watchdog-connection-item > div:last-child {
+    margin-top: 3px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+
+    .woody-watchdog-connection-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 700px) {
+
+    .woody-watchdog-connection-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+
+/* Network watchdog */
+
+.woody-system-grid .woody-network-watchdog {
+    grid-column: 1 / -1;
+    display: block;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255,255,255,.018);
+}
+
+.woody-network-watchdog-inner {
+    width: 100%;
+    min-width: 0;
+}
+
+.woody-network-watchdog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+}
+
+.woody-network-watchdog-title {
+    font-weight: 600;
+}
+
+.woody-network-watchdog-header .switch {
+    flex: 0 0 auto;
+}
+
+.woody-network-watchdog-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.woody-network-watchdog-item {
+    min-width: 0;
+    min-height: 58px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255,255,255,.018);
+}
+
+.woody-network-watchdog-item > div:last-child {
+    margin-top: 3px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.woody-network-watchdog-info {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+
+@media (max-width: 900px) {
+
+    .woody-network-watchdog-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 700px) {
+
+    .woody-system-grid .woody-network-watchdog {
+        grid-column: auto;
+    }
+
+    .woody-network-watchdog-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .woody-network-watchdog-header {
+        align-items: flex-start;
+    }
+
+}
+
+
 /* System information */
 
 .woody-system-grid {
@@ -5594,6 +5721,84 @@ strong {
                 </div>
             </div>
 
+
+            <div class="woody-network-watchdog-connection"
+                 style="padding:12px 0;border-top:1px solid var(--border);">
+
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+
+                    <div style="min-width:0;">
+                        <div>Network watchdog</div>
+
+                        <div class="card-subtitle"
+                             style="margin-top:3px;">
+                            Reboots the Raspberry Pi after 30 minutes without network connectivity
+                        </div>
+                    </div>
+
+                    <label class="switch"
+                           style="flex:0 0 auto;">
+                        <input type="checkbox"
+                               id="networkWatchdogEnabled"
+                               onchange="saveNetworkWatchdogSettings()">
+                        <span class="slider"></span>
+                    </label>
+
+                </div>
+
+                <div class="woody-watchdog-connection-grid">
+
+                    <div class="woody-watchdog-connection-item">
+                        <div class="card-subtitle">
+                            Status
+                        </div>
+                        <div id="networkWatchdogStatus">--</div>
+                    </div>
+
+                    <div class="woody-watchdog-connection-item">
+                        <div class="card-subtitle">
+                            Local network
+                        </div>
+                        <div id="networkWatchdogLocal">--</div>
+                    </div>
+
+                    <div class="woody-watchdog-connection-item">
+                        <div class="card-subtitle">
+                            Internet
+                        </div>
+                        <div id="networkWatchdogInternet">--</div>
+                    </div>
+
+                    <div class="woody-watchdog-connection-item">
+                        <div class="card-subtitle">
+                            Interface
+                        </div>
+                        <div id="networkWatchdogInterface">--</div>
+                    </div>
+
+                    <div class="woody-watchdog-connection-item">
+                        <div class="card-subtitle">
+                            Offline time
+                        </div>
+                        <div id="networkWatchdogOffline">--</div>
+                    </div>
+
+                    <div class="woody-watchdog-connection-item">
+                        <div class="card-subtitle">
+                            Reboots today
+                        </div>
+                        <div id="networkWatchdogReboots">--</div>
+                    </div>
+
+                </div>
+
+                <div id="networkWatchdogInfo"
+                     class="card-subtitle"
+                     style="margin-top:10px;">
+                </div>
+
+            </div>
+
             <div style="padding:12px 0;border-top:1px solid var(--border);">
 
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
@@ -6309,7 +6514,10 @@ strong {
      ">
 </div>
 
-                        <div class="settings-row" style="flex-wrap:wrap;">
+
+
+
+<div class="settings-row" style="flex-wrap:wrap;">
                         <div style="flex:1 1 100%;">
                             <div>Restart Woody Monitor</div>
                             <div class="card-subtitle">
@@ -26632,6 +26840,301 @@ if (
     initHeatDemandSettings();
 }
 
+
+</script>
+
+
+<script id="network-watchdog-ui">
+
+function nwDuration(seconds) {
+
+    seconds = Math.max(0, Number(seconds || 0));
+
+    if (seconds < 60)
+        return seconds + " sec";
+
+    const minutes = Math.floor(seconds / 60);
+
+    if (minutes < 60)
+        return minutes + " min";
+
+    return Math.floor(minutes / 60)
+        + " h "
+        + (minutes % 60)
+        + " min";
+}
+
+
+function nwConnection(value) {
+
+    if (value === true)
+        return "Connected";
+
+    if (value === false)
+        return "Unavailable";
+
+    return "--";
+}
+
+
+function renderNetworkWatchdog(d) {
+
+    const toggle =
+        document.getElementById("networkWatchdogEnabled");
+
+    if (!toggle)
+        return;
+
+    toggle.checked = !!d.enabled;
+
+    const labels = {
+        disabled: "Disabled",
+        startup_grace: "Startup grace period",
+        online: "Online",
+        network_unavailable: "Local network unavailable",
+        internet_unavailable: "Internet unavailable",
+        daily_limit_reached: "Daily reboot limit reached",
+        rebooting: "Rebooting Raspberry Pi",
+        reboot_failed: "Reboot failed"
+    };
+
+    const set = (id, value) => {
+        const e = document.getElementById(id);
+        if (e) e.textContent = value;
+    };
+
+    set(
+        "networkWatchdogStatus",
+        labels[d.status] || d.status || "--"
+    );
+
+    set(
+        "networkWatchdogLocal",
+        nwConnection(d.local_network)
+    );
+
+    set(
+        "networkWatchdogInternet",
+        nwConnection(d.internet)
+    );
+
+    const localElement =
+        document.getElementById(
+            "networkWatchdogLocal"
+        );
+
+    const internetElement =
+        document.getElementById(
+            "networkWatchdogInternet"
+        );
+
+    if (localElement) {
+
+        localElement.style.color =
+            d.local_network === true
+                ? "var(--green)"
+                : d.local_network === false
+                    ? "var(--red)"
+                    : "var(--muted)";
+    }
+
+    if (internetElement) {
+
+        internetElement.style.color =
+            d.internet === true
+                ? "var(--green)"
+                : d.internet === false
+                    ? "var(--red)"
+                    : "var(--muted)";
+    }
+
+    const statusElement =
+        document.getElementById(
+            "networkWatchdogStatus"
+        );
+
+    if (statusElement) {
+
+        if (!d.enabled) {
+
+            statusElement.style.color =
+                "var(--muted)";
+
+        } else if (
+            d.status === "online"
+        ) {
+
+            statusElement.style.color =
+                "var(--green)";
+
+        } else if (
+            d.status === "startup_grace"
+        ) {
+
+            statusElement.style.color =
+                "var(--yellow)";
+
+        } else if (
+            d.status === "network_unavailable" ||
+            d.status === "internet_unavailable" ||
+            d.status === "reboot_failed" ||
+            d.status === "daily_limit_reached"
+        ) {
+
+            statusElement.style.color =
+                "var(--red)";
+
+        } else {
+
+            statusElement.style.color =
+                "var(--muted)";
+        }
+    }
+
+    let iface = d.interface || "--";
+
+    if (d.gateway)
+        iface += " / " + d.gateway;
+
+    set(
+        "networkWatchdogInterface",
+        iface
+    );
+
+    set(
+        "networkWatchdogOffline",
+        d.offline_seconds
+            ? nwDuration(d.offline_seconds)
+            : "--"
+    );
+
+    set(
+        "networkWatchdogReboots",
+        (d.reboots_today ?? 0)
+        + " / "
+        + (d.max_reboots_per_day ?? 5)
+    );
+
+    let info = "";
+
+    if (!d.enabled) {
+
+        info =
+            "Automatic Raspberry Pi reboot is disabled.";
+
+    } else if (
+        d.status === "daily_limit_reached"
+    ) {
+
+        info =
+            "Maximum 5 automatic reboots reached today.";
+
+    } else if (
+        Number(d.offline_seconds || 0) > 0
+    ) {
+
+        info =
+            "Automatic reboot in "
+            + nwDuration(d.seconds_until_reboot)
+            + " if connectivity is not restored.";
+
+    } else if (d.startup_grace) {
+
+        info =
+            "Monitoring starts after the 5 minute startup grace period.";
+
+    } else {
+
+        info =
+            "Automatic reboot after 30 minutes of continuous network or Internet loss.";
+    }
+
+    set("networkWatchdogInfo", info);
+}
+
+
+async function loadNetworkWatchdogSettings() {
+
+    if (!document.getElementById("networkWatchdogEnabled"))
+        return;
+
+    try {
+
+        const r = await fetch(
+            "/api/v1/settings/network-watchdog",
+            {cache: "no-store"}
+        );
+
+        if (!r.ok)
+            throw new Error("HTTP " + r.status);
+
+        renderNetworkWatchdog(
+            await r.json()
+        );
+
+    } catch (e) {
+
+        console.error(
+            "Network watchdog load failed:",
+            e
+        );
+    }
+}
+
+
+async function saveNetworkWatchdogSettings() {
+
+    const toggle =
+        document.getElementById("networkWatchdogEnabled");
+
+    if (!toggle)
+        return;
+
+    toggle.disabled = true;
+
+    try {
+
+        const r = await fetch(
+            "/api/v1/settings/network-watchdog?enabled="
+            + encodeURIComponent(toggle.checked),
+            {method: "POST"}
+        );
+
+        if (!r.ok)
+            throw new Error("HTTP " + r.status);
+
+        renderNetworkWatchdog(
+            await r.json()
+        );
+
+    } catch (e) {
+
+        console.error(
+            "Network watchdog save failed:",
+            e
+        );
+
+        toggle.checked = !toggle.checked;
+
+    } finally {
+
+        toggle.disabled = false;
+    }
+}
+
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        loadNetworkWatchdogSettings();
+
+        setInterval(
+            loadNetworkWatchdogSettings,
+            30000
+        );
+    }
+);
 
 </script>
 
