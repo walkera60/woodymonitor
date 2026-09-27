@@ -9474,6 +9474,37 @@ body.woody-position-editing
 
 </style>
 
+
+<style id="woody-weather-continuous-ranges">
+.weather-temperature-range {
+    white-space: nowrap;
+}
+
+.weather-range-lower,
+.weather-range-upper {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.weather-range-separator {
+    color: var(--muted);
+    margin: 0 6px;
+}
+
+.weather-range-input {
+    width: 74px;
+    margin: 0;
+}
+
+/*
+ * The editable value is shown after the calculated range.
+ * This keeps every threshold manually adjustable while making
+ * the actual continuous operating interval visible.
+ */
+</style>
+
 </head>
 
 <body>
@@ -13717,6 +13748,7 @@ function renderWeatherCompensationSettings() {
                     type="number"
                     step="0.5"
                     value="${summerStopTemp}"
+                    oninput="updateWeatherTemperatureRanges()"
                 >
 
                 °C
@@ -13804,17 +13836,54 @@ function renderWeatherCompensationSettings() {
                             ${weatherCurveLabel(number)}
                         </td>
 
-                        <td>
-                            ≤
+                        <td class="weather-temperature-range">
+                            ${
+                                curve.full_day
+                                    ? `
+                                        ≤
 
-                            <input
-                                id="weatherCurveTemp${number}"
-                                type="number"
-                                step="0.5"
-                                value="${curve.to_temp}"
-                            >
+                                        <input
+                                            id="weatherCurveTemp${number}"
+                                            type="number"
+                                            step="0.5"
+                                            value="${curve.to_temp}"
+                                            oninput="updateWeatherTemperatureRanges()"
+                                        >
 
-                            °C
+                                        °C
+                                    `
+                                    : `
+                                        <span class="weather-range-lower">
+                                            &gt;
+
+                                            <input
+                                                id="weatherCurveTemp${number}"
+                                                class="weather-range-input"
+                                                type="number"
+                                                step="0.5"
+                                                value="${curve.to_temp}"
+                                                oninput="updateWeatherTemperatureRanges()"
+                                                title="Lower temperature threshold for this curve"
+                                            >
+
+                                            °C
+                                        </span>
+
+                                        <span class="weather-range-separator">
+                                            to
+                                        </span>
+
+                                        <span
+                                            id="weatherCurveUpper${number}"
+                                            class="weather-range-upper">
+                                            ≤ ${
+                                                number === 1
+                                                    ? summerStopTemp
+                                                    : curves[index - 1].to_temp
+                                            } °C
+                                        </span>
+                                    `
+                            }
                         </td>
 
                         <td>
@@ -13837,6 +13906,81 @@ function renderWeatherCompensationSettings() {
                 `;
             }
         ).join("");
+}
+
+
+function updateWeatherTemperatureRanges() {
+
+    const summerInput =
+        document.getElementById(
+            "weatherSummerStopTemp"
+        );
+
+    if (!summerInput)
+        return;
+
+    const summer =
+        Number(summerInput.value);
+
+    const temperatures = [];
+
+    for (let i = 1; i <= 5; i++) {
+
+        const input =
+            document.getElementById(
+                `weatherCurveTemp${i}`
+            );
+
+        if (!input)
+            return;
+
+        temperatures.push(
+            Number(input.value)
+        );
+    }
+
+    for (let i = 1; i <= 4; i++) {
+
+        const upper =
+            document.getElementById(
+                `weatherCurveUpper${i}`
+            );
+
+        if (upper) {
+
+            const upperValue =
+                i === 1
+                    ? summer
+                    : temperatures[i - 2];
+
+            upper.textContent =
+                `≤ ${weatherFormatThreshold(
+                    upperValue
+                )} °C`;
+        }
+    }
+}
+
+
+function weatherFormatThreshold(value) {
+
+    const number =
+        Number(value);
+
+    if (!Number.isFinite(number))
+        return "—";
+
+    return number.toLocaleString(
+        undefined,
+        {
+            minimumFractionDigits:
+                Number.isInteger(number)
+                    ? 0
+                    : 1,
+
+            maximumFractionDigits: 2
+        }
+    );
 }
 
 
