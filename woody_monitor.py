@@ -8491,6 +8491,19 @@ def advanced_timer_loop():
     # because the controller has not yet updated its mode.
     last_control_decision = None
 
+    # Weather Compensation period tracking.
+    #
+    # Each weather-extended window belongs to one normal
+    # Advanced Timer period. The normal start/end timestamps form
+    # a stable ID which does not change when the active weather
+    # curve changes.
+    #
+    # If a period has already ended, a colder curve may not reopen
+    # that same period. A different future timer period remains
+    # free to start through its before-extension.
+    active_weather_period_id = None
+    finished_weather_period_id = None
+
     while True:
 
         try:
@@ -8603,6 +8616,72 @@ def advanced_timer_loop():
                         decision_source = (
                             "weather"
                         )
+
+                        # Identify the NORMAL Advanced Timer
+                        # period responsible for the current
+                        # weather-extended ON request.
+                        current_weather_period_id = None
+
+                        if (
+                            weather_desired
+                            and not weather_result.get(
+                                "full_day",
+                                False
+                            )
+                        ):
+                            current_weather_period_id = (
+                                timer_schedule_extended_period_at(
+                                    now,
+                                    get_advanced_timer_settings(),
+                                    weather_result.get(
+                                        "active_before_minutes",
+                                        0
+                                    ),
+                                    weather_result.get(
+                                        "active_after_minutes",
+                                        0
+                                    )
+                                )
+                            )
+
+                        if (
+                            weather_desired
+                            and current_weather_period_id
+                            is not None
+                        ):
+
+                            # Never reopen the exact same timer
+                            # period after it has already ended.
+                            if (
+                                finished_weather_period_id
+                                == current_weather_period_id
+                            ):
+                                desired_on = False
+                                decision_source = (
+                                    "weather-finished-period-lock"
+                                )
+
+                            else:
+                                # This is either the currently
+                                # running period or a genuinely
+                                # new timer period. Both are valid.
+                                active_weather_period_id = (
+                                    current_weather_period_id
+                                )
+
+                        elif (
+                            not weather_desired
+                            and last_control_decision is True
+                            and active_weather_period_id
+                            is not None
+                        ):
+                            # The extended window really ended.
+                            # Remember its stable normal timer ID.
+                            finished_weather_period_id = (
+                                active_weather_period_id
+                            )
+                            active_weather_period_id = None
+
 
                 else:
 
@@ -9427,6 +9506,124 @@ def timer_schedule_on_at(
             day
         ][moment.hour]
     )
+
+
+def timer_schedule_extended_period_at(
+    moment,
+    timer,
+    before_minutes=0,
+    after_minutes=0
+):
+    """
+    Return the normal Advanced Timer period whose weather-
+    extended window contains moment.
+
+    The tuple (normal_start, normal_end) is a stable period ID.
+    Changing Weather Compensation before/after minutes therefore
+    does not change the identity of the underlying timer period.
+    """
+
+    before_minutes = max(
+        0,
+        min(
+            720,
+            int(before_minutes or 0)
+        )
+    )
+
+    after_minutes = max(
+        0,
+        min(
+            720,
+            int(after_minutes or 0)
+        )
+    )
+
+    midnight = moment.replace(
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0
+    )
+
+    # Weather extensions are limited to 12 hours, so checking
+    # neighbouring days is sufficient, including across midnight.
+    for day_offset in (-1, 0, 1):
+
+        day_start = (
+            midnight +
+            timedelta(days=day_offset)
+        )
+
+        day_name = (
+            ADVANCED_TIMER_DAYS[
+                day_start.weekday()
+            ]
+        )
+
+        schedule = timer[
+            "schedule"
+        ][day_name]
+
+        period_start = None
+
+        for hour in range(25):
+
+            enabled = (
+                bool(schedule[hour])
+                if hour < 24
+                else False
+            )
+
+            if (
+                enabled
+                and period_start is None
+            ):
+                period_start = hour
+
+            if (
+                not enabled
+                and period_start is not None
+            ):
+
+                normal_start = (
+                    day_start +
+                    timedelta(
+                        hours=period_start
+                    )
+                )
+
+                normal_end = (
+                    day_start +
+                    timedelta(hours=hour)
+                )
+
+                extended_start = (
+                    normal_start -
+                    timedelta(
+                        minutes=before_minutes
+                    )
+                )
+
+                extended_end = (
+                    normal_end +
+                    timedelta(
+                        minutes=after_minutes
+                    )
+                )
+
+                if (
+                    extended_start <= moment <
+                    extended_end
+                ):
+                    return (
+                        normal_start,
+                        normal_end
+                    )
+
+                period_start = None
+
+    return None
 
 
 def timer_schedule_extended_on_at(
