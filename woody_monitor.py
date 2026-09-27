@@ -2782,6 +2782,137 @@ PARAMETERS = [
 
 
 # ============================================================
+# WOODY_UI_SETTINGS_V1
+# Persistent web UI settings
+# ============================================================
+
+UI_SETTINGS_FILE = Path("/data/ui_settings.json")
+
+DEFAULT_UI_SETTINGS = {
+    "burner_card_design": "classic"
+}
+
+
+def load_ui_settings():
+
+    settings = dict(DEFAULT_UI_SETTINGS)
+
+    try:
+
+        if UI_SETTINGS_FILE.exists():
+
+            with UI_SETTINGS_FILE.open(
+                "r",
+                encoding="utf-8"
+            ) as f:
+
+                saved = json.load(f)
+
+            if isinstance(saved, dict):
+                settings.update(saved)
+
+    except Exception:
+
+        logger.exception(
+            "Could not load UI settings"
+        )
+
+    design = settings.get(
+        "burner_card_design",
+        "classic"
+    )
+
+    if design not in (
+        "classic",
+        "visual"
+    ):
+        design = "classic"
+
+    settings[
+        "burner_card_design"
+    ] = design
+
+    return settings
+
+
+def save_ui_settings(settings):
+
+    UI_SETTINGS_FILE.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    temporary_file = (
+        UI_SETTINGS_FILE.with_suffix(
+            ".json.tmp"
+        )
+    )
+
+    with temporary_file.open(
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            settings,
+            f,
+            indent=2
+        )
+
+    temporary_file.replace(
+        UI_SETTINGS_FILE
+    )
+
+
+@app.get("/api/v1/settings/ui")
+def get_ui_settings_api():
+
+    return load_ui_settings()
+
+
+@app.post("/api/v1/settings/ui")
+def set_ui_settings_api(
+    burner_card_design: str = Query(...)
+):
+
+    design = (
+        str(burner_card_design)
+        .strip()
+        .lower()
+    )
+
+    if design not in (
+        "classic",
+        "visual"
+    ):
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "burner_card_design must "
+                "be classic or visual"
+            )
+        )
+
+    settings = load_ui_settings()
+
+    settings[
+        "burner_card_design"
+    ] = design
+
+    save_ui_settings(
+        settings
+    )
+
+    logger.info(
+        "Burner card design changed to %s",
+        design
+    )
+
+    return settings
+
+
+# ============================================================
 # API: NETWORK WATCHDOG
 # ============================================================
 
@@ -5228,6 +5359,14 @@ def pellet_system_image():
 def burner_card_image():
     return FileResponse(
         str(BASE_DIR / "web" / "burner-card-image.png"),
+        media_type="image/png"
+    )
+
+
+@app.get("/burner-visual.png")
+def burner_visual_image():
+    return FileResponse(
+        str(BASE_DIR / "web" / "burner-visual.png"),
         media_type="image/png"
     )
 
