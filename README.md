@@ -210,6 +210,26 @@ Recommended:
 The installer is intended for Raspberry Pi OS and other Debian-based
 Linux distributions using `apt` and `systemd`.
 
+## Screenshots
+
+### Home dashboard
+
+The main dashboard provides a live overview of the pellet burner and heating system. The Visual Burner Card shows temperatures, burner power, flow, return temperature, flue-gas temperature, outdoor temperature, pellet level, operating state, schedule and warnings.
+
+![Woody Monitor home dashboard](docs/screenshots/home.png)
+
+### History
+
+Interactive history view for monitoring temperatures, burner operation and controller parameters. The graph supports preset time ranges, custom date ranges, automatic updates, zoom and CSV/Excel export.
+
+![Woody Monitor history](docs/screenshots/history.png)
+
+### Pellet consumption
+
+Pellet consumption calculated from feeder runtime with detailed views covering the last 24 hours, 7 days, 3 months and 12 months. Consumption can be compared with outdoor temperature and average burner power.
+
+![Woody Monitor pellet consumption](docs/screenshots/consumption.png)
+
 ## Installation
 
 Clone the repository:
